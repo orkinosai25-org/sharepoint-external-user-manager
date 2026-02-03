@@ -101,3 +101,8 @@ obj
 
 # Backup files
 *.backup
+
+# Backend Azure Functions
+backend/local.settings.json
+backend/dist/
+backend/.funcignore

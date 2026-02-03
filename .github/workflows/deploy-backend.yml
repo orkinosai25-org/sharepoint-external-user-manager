@@ -1,0 +1,126 @@
+name: Deploy Backend to Azure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+env:
+  NODE_VERSION: '18.x'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Build TypeScript
+        run: |
+          cd backend
+          npm run build
+
+      - name: Run tests
+        run: |
+          cd backend
+          npm test
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: |
+            backend/dist
+            backend/node_modules
+            backend/package.json
+            backend/host.json
+
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || inputs.environment == 'dev'
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.function-url }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: backend
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+
+      - name: Deploy to Azure Functions
+        id: deploy
+        uses: Azure/functions-action@v1
+        with:
+          app-name: 'spexternal-func-dev'
+          package: backend
+          respect-funcignore: true
+
+      - name: Run database migrations
+        run: |
+          # TODO: Add database migration step
+          echo "Database migrations would run here"
+
+  deploy-prod:
+    needs: build
+    runs-on: ubuntu-latest
+    if: inputs.environment == 'prod'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.function-url }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: backend
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Deploy to Azure Functions
+        id: deploy
+        uses: Azure/functions-action@v1
+        with:
+          app-name: 'spexternal-func-prod'
+          package: backend
+          respect-funcignore: true
+
+      - name: Run database migrations
+        run: |
+          # TODO: Add database migration step
+          echo "Database migrations would run here"
