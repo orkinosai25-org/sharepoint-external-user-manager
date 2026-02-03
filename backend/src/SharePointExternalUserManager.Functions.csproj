@@ -17,9 +17,9 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.7" />
     
     <!-- Authentication & Authorization -->
-    <PackageReference Include="Microsoft.Identity.Web" Version="3.5.1" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.4.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.6.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.6.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.1" />
     
     <!-- Database Access -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
@@ -30,13 +30,12 @@
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.45.0" />
     
     <!-- Azure SDK -->
-    <PackageReference Include="Azure.Identity" Version="1.14.1" />
+    <PackageReference Include="Azure.Identity" Version="1.17.0" />
     <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.8.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.25.1" />
     
     <!-- Microsoft Graph -->
     <PackageReference Include="Microsoft.Graph" Version="5.90.0" />
-    <PackageReference Include="Azure.Identity" Version="1.14.1" />
     
     <!-- Utilities -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

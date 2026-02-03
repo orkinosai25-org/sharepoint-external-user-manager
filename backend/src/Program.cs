@@ -1,32 +1,31 @@
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SharePointExternalUserManager.Functions.Middleware;
 using SharePointExternalUserManager.Functions.Services;
 
-var builder = FunctionsApplication.CreateBuilder(args);
+var host = new HostBuilder()
+    .ConfigureFunctionsWebApplication(workerApplication =>
+    {
+        // Add authentication middleware
+        workerApplication.UseMiddleware<AuthenticationMiddleware>();
+        
+        // Add licensing enforcement middleware
+        workerApplication.UseMiddleware<LicenseEnforcementMiddleware>();
+    })
+    .ConfigureServices(services =>
+    {
+        // Add Application Insights
+        services.AddApplicationInsightsTelemetryWorkerService();
+        services.ConfigureFunctionsApplicationInsights();
 
-// Configure Functions Web Application with middleware
-builder.ConfigureFunctionsWebApplication(workerApplication =>
-{
-    // Add authentication middleware
-    workerApplication.UseMiddleware<AuthenticationMiddleware>();
-    
-    // Add licensing enforcement middleware
-    workerApplication.UseMiddleware<LicenseEnforcementMiddleware>();
-});
+        // Register services
+        services.AddSingleton<ILicensingService, LicensingService>();
 
-// Add Application Insights
-builder.Services
-    .AddApplicationInsightsTelemetryWorkerService()
-    .ConfigureFunctionsApplicationInsights();
+        // TODO: Add more services as needed
+        // services.AddSingleton<ITenantService, TenantService>();
+        // services.AddSingleton<IGraphApiService, GraphApiService>();
+    })
+    .Build();
 
-// Register services
-builder.Services.AddSingleton<ILicensingService, LicensingService>();
-
-// TODO: Add more services as needed
-// builder.Services.AddSingleton<ITenantService, TenantService>();
-// builder.Services.AddSingleton<IGraphApiService, GraphApiService>();
-
-builder.Build().Run();
+host.Run();
