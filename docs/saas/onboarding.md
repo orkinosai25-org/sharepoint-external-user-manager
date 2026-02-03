@@ -406,7 +406,7 @@ export async function checkTrialExpiry(): Promise<void> {
       template: 'trial-expiry-warning',
       data: {
         daysRemaining: differenceInDays(subscription.trialExpiry, new Date()),
-        upgradeLInk: 'https://admin.spexternal.com/upgrade'
+        upgradeLink: 'https://admin.spexternal.com/upgrade'
       }
     });
     

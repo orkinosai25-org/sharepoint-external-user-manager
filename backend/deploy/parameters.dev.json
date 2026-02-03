@@ -4,6 +4,9 @@
   "parameters": {
     "environment": {
       "value": "dev"
+    },
+    "sqlAdminPassword": {
+      "value": "REPLACE_WITH_SECURE_PASSWORD"
     }
   }
 }

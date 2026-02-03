@@ -73,6 +73,10 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   }
 }
 
+@description('SQL Server administrator password')
+@secure()
+param sqlAdminPassword string
+
 // SQL Server
 resource sqlServer 'Microsoft.Sql/servers@2023-05-01-preview' = {
   name: sqlServerName
@@ -80,7 +84,7 @@ resource sqlServer 'Microsoft.Sql/servers@2023-05-01-preview' = {
   tags: tags
   properties: {
     administratorLogin: 'sqladmin'
-    administratorLoginPassword: 'P@ssw0rd123!'
+    administratorLoginPassword: sqlAdminPassword
     version: '12.0'
     minimalTlsVersion: '1.2'
   }

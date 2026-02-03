@@ -478,7 +478,7 @@ interface AuditLogEntry {
 ### Right to Erasure (GDPR)
 
 ```typescript
-export async function deleteTenan tData(tenantId: number): Promise<void> {
+export async function deleteTenantData(tenantId: number): Promise<void> {
   // 1. Mark tenant as deleted (soft delete)
   await db.updateTenant(tenantId, { status: 'Deleted' });
   
