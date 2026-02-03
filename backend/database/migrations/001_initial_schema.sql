@@ -2,7 +2,7 @@
 CREATE TABLE Tenants (
     tenant_id VARCHAR(50) PRIMARY KEY,
     tenant_name NVARCHAR(255) NOT NULL,
-    azure_tenant_id VARCHAR(50) UNIQUE,
+    azure_tenant_id VARCHAR(50) UNIQUE NULL, -- NULL allowed for pending onboarding
     domain NVARCHAR(255),
     onboarding_date DATETIME2 DEFAULT GETUTCDATE(),
     status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Suspended', 'Trial', 'Churned', 'Pending')),

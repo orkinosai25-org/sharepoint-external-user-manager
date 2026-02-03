@@ -47,6 +47,7 @@ async function validateToken(token: string): Promise<TokenPayload> {
       getKey,
       {
         audience: config.azureAd.clientId,
+        issuer: `https://login.microsoftonline.com/${config.azureAd.tenantId}/v2.0`,
         algorithms: ['RS256']
       },
       (err, decoded) => {

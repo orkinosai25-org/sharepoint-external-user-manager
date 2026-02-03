@@ -49,7 +49,7 @@ app.use(compression());
 
 // Request ID middleware
 app.use((req: Request, res: Response, next) => {
-  req.headers['x-request-id'] = req.headers['x-request-id'] || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  req.headers['x-request-id'] = req.headers['x-request-id'] || `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   next();
 });
 

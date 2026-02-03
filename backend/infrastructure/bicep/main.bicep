@@ -91,6 +91,8 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
 }
 
 // SQL Server
+// Note: In production deployment, create SQL Server separately first,
+// then reference the password parameter with @secure() decorator to avoid circular dependency
 resource sqlServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   name: sqlServerName
   location: location

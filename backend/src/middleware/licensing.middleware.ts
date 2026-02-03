@@ -52,8 +52,9 @@ export async function checkUserQuota(
     const tier = req.tenant?.subscription_tier || 'Free';
     const tierConfig = getSubscriptionTier(tier);
     
-    // Mock current user count - replace with actual database query
-    const currentUserCount = 5;
+    // TODO: Replace with actual database query
+    // const currentUserCount = await db.query('SELECT COUNT(*) FROM Users WHERE tenant_id = @tenantId AND status = \'Active\'');
+    const currentUserCount = 5; // Mock data for MVP
     
     // Check if adding new user would exceed quota
     if (

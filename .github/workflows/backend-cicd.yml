@@ -145,6 +145,9 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
           package: .
       
-      - name: Run database migrations
-        run: echo "Run database migrations here"
-        # Add actual migration commands
+      # TODO: Implement automated database migrations
+      # - name: Run database migrations
+      #   env:
+      #     SQL_CONNECTION_STRING: ${{ secrets.SQL_CONNECTION_STRING_PROD }}
+      #   run: |
+      #     npm run migrate

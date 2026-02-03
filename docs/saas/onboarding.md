@@ -178,6 +178,9 @@ https://login.microsoftonline.com/organizations/v2.0/adminconsent
 
 ```typescript
 import { v4 as uuidv4 } from 'uuid';
+// Note: Redis client should be imported and configured in production
+// import { createClient } from 'redis';
+// const redis = createClient({ url: process.env.REDIS_URL });
 
 export function generateAdminConsentUrl(
   tenantId: string,
@@ -187,7 +190,8 @@ export function generateAdminConsentUrl(
   const clientId = process.env.AZURE_AD_CLIENT_ID;
   
   // Store state for validation
-  await redis.setex(`consent-state:${state}`, 3600, tenantId);
+  // In production, use Redis or database
+  // await redis.setex(`consent-state:${state}`, 3600, tenantId);
   
   const params = new URLSearchParams({
     client_id: clientId,
