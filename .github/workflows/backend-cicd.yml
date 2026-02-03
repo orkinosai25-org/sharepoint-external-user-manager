@@ -18,6 +18,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -58,6 +60,8 @@ jobs:
   deploy-dev:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/develop'
     environment:
       name: 'Development'
@@ -88,6 +92,8 @@ jobs:
   deploy-staging:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     environment:
       name: 'Staging'
@@ -118,6 +124,8 @@ jobs:
   deploy-production:
     needs: [build, deploy-staging]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     environment:
       name: 'Production'
