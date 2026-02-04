@@ -342,7 +342,7 @@ class DatabaseService {
       .query(`
         SELECT Id as id, TenantId as tenantId, ClientName as clientName,
                SiteUrl as siteUrl, SiteId as siteId, CreatedBy as createdBy,
-               CreatedAt as createdAt, Status as status
+               CreatedAt as createdAt, Status as status, ErrorMessage as errorMessage
         FROM [dbo].[Client]
         WHERE Id = @clientId AND TenantId = @tenantId
       `);
@@ -361,13 +361,51 @@ class DatabaseService {
       .query(`
         SELECT Id as id, TenantId as tenantId, ClientName as clientName,
                SiteUrl as siteUrl, SiteId as siteId, CreatedBy as createdBy,
-               CreatedAt as createdAt, Status as status
+               CreatedAt as createdAt, Status as status, ErrorMessage as errorMessage
         FROM [dbo].[Client]
         WHERE TenantId = @tenantId
         ORDER BY CreatedAt DESC
       `);
 
     return result.recordset;
+  }
+
+  async updateClientStatus(
+    tenantId: number,
+    clientId: number,
+    status: 'Provisioning' | 'Active' | 'Error',
+    siteUrl?: string,
+    siteId?: string,
+    errorMessage?: string
+  ): Promise<void> {
+    const pool = this.ensureConnected();
+    const request = pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .input('clientId', sql.Int, clientId)
+      .input('status', sql.NVarChar, status);
+
+    let updateFields = 'Status = @status';
+    
+    if (siteUrl !== undefined) {
+      request.input('siteUrl', sql.NVarChar, siteUrl);
+      updateFields += ', SiteUrl = @siteUrl';
+    }
+    
+    if (siteId !== undefined) {
+      request.input('siteId', sql.NVarChar, siteId);
+      updateFields += ', SiteId = @siteId';
+    }
+    
+    if (errorMessage !== undefined) {
+      request.input('errorMessage', sql.NVarChar, errorMessage);
+      updateFields += ', ErrorMessage = @errorMessage';
+    }
+
+    await request.query(`
+      UPDATE [dbo].[Client]
+      SET ${updateFields}
+      WHERE Id = @clientId AND TenantId = @tenantId
+    `);
   }
 }
 
