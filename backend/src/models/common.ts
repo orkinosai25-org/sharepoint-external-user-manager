@@ -36,11 +36,11 @@ export interface TenantContext {
   entraIdTenantId: string;
   userId: string;
   userEmail: string;
-  role?: UserRole;
+  roles: UserRole[];
   subscriptionTier: 'Free' | 'Pro' | 'Enterprise';
 }
 
-export type UserRole = 'Owner' | 'Admin' | 'User' | 'ReadOnly';
+export type UserRole = 'Owner' | 'Admin' | 'User' | 'ReadOnly' | 'FirmAdmin' | 'FirmUser';
 
 export type SubscriptionStatus = 'Trial' | 'Active' | 'Expired' | 'Cancelled' | 'GracePeriod';
 

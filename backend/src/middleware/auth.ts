@@ -6,7 +6,7 @@ import { HttpRequest, InvocationContext } from '@azure/functions';
 import { verify } from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { config } from '../utils/config';
-import { TenantContext, TokenClaims, UnauthorizedError, NotFoundError } from '../models/common';
+import { TenantContext, TokenClaims, UnauthorizedError, NotFoundError, UserRole } from '../models/common';
 import { databaseService } from '../services/database';
 
 const client = jwksClient({
@@ -44,6 +44,48 @@ async function validateToken(token: string): Promise<TokenClaims> {
       }
     );
   });
+}
+
+/**
+ * Resolve user roles based on JWT claims and tenant information
+ */
+function resolveUserRoles(
+  claims: TokenClaims,
+  tenant: any,
+  userEmail: string
+): UserRole[] {
+  const roles: UserRole[] = [];
+
+  // Check if user is the primary admin (tenant owner)
+  if (userEmail === tenant.PrimaryAdminEmail) {
+    roles.push('Owner');
+    roles.push('FirmAdmin'); // Owner also has FirmAdmin capabilities
+    return roles;
+  }
+
+  // Extract roles from JWT token claims
+  if (claims.roles && Array.isArray(claims.roles)) {
+    for (const role of claims.roles) {
+      // Map Azure AD app roles to our application roles
+      const normalizedRole = role.toLowerCase();
+      if (normalizedRole === 'firmadmin' || normalizedRole === 'admin') {
+        roles.push('FirmAdmin');
+      } else if (normalizedRole === 'firmuser' || normalizedRole === 'user') {
+        roles.push('FirmUser');
+      } else if (normalizedRole === 'owner') {
+        roles.push('Owner');
+      } else if (normalizedRole === 'readonly') {
+        roles.push('ReadOnly');
+      }
+    }
+  }
+
+  // If no roles found, assign default FirmUser role (read-only)
+  if (roles.length === 0) {
+    roles.push('FirmUser');
+  }
+
+  return roles;
 }
 
 export async function authenticateRequest(
@@ -88,12 +130,16 @@ export async function authenticateRequest(
       throw new UnauthorizedError('No active subscription found');
     }
 
+    // Resolve user roles
+    const roles = resolveUserRoles(claims, tenant, userEmail);
+
     // Build tenant context
     const tenantContext: TenantContext = {
       tenantId: tenant.id,
       entraIdTenantId: tenant.entraIdTenantId,
       userId,
       userEmail,
+      roles,
       subscriptionTier: subscription.tier
     };
 

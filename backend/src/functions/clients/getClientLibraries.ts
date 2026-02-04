@@ -6,6 +6,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { databaseService } from '../../services/database';
 import { sharePointService } from '../../services/sharePointService';
 import { authenticateRequest } from '../../middleware/auth';
+import { requirePermission, Permissions } from '../../middleware/permissions';
 import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
@@ -27,6 +28,9 @@ async function getClientLibraries(req: HttpRequest, context: InvocationContext):
 
     // Authenticate request
     const tenantContext = await authenticateRequest(req, context);
+
+    // Check permissions - both FirmAdmin and FirmUser can read client libraries
+    requirePermission(tenantContext, Permissions.CLIENTS_READ, 'view client libraries');
 
     // Get client ID from route parameter
     const clientId = parseInt(req.params.id || '0');
