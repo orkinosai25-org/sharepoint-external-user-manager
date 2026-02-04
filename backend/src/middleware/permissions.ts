@@ -11,6 +11,9 @@ export const Permissions = {
   CLIENTS_READ: 'clients:read',
   CLIENTS_WRITE: 'clients:write',
   CLIENTS_DELETE: 'clients:delete',
+  EXTERNAL_USERS_READ: 'external-users:read',
+  EXTERNAL_USERS_WRITE: 'external-users:write',
+  EXTERNAL_USERS_DELETE: 'external-users:delete',
 } as const;
 
 export type Permission = typeof Permissions[keyof typeof Permissions];
@@ -23,25 +26,37 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     Permissions.CLIENTS_READ,
     Permissions.CLIENTS_WRITE,
     Permissions.CLIENTS_DELETE,
+    Permissions.EXTERNAL_USERS_READ,
+    Permissions.EXTERNAL_USERS_WRITE,
+    Permissions.EXTERNAL_USERS_DELETE,
   ],
   Admin: [
     Permissions.CLIENTS_READ,
     Permissions.CLIENTS_WRITE,
     Permissions.CLIENTS_DELETE,
+    Permissions.EXTERNAL_USERS_READ,
+    Permissions.EXTERNAL_USERS_WRITE,
+    Permissions.EXTERNAL_USERS_DELETE,
   ],
   FirmAdmin: [
     Permissions.CLIENTS_READ,
     Permissions.CLIENTS_WRITE,
     Permissions.CLIENTS_DELETE,
+    Permissions.EXTERNAL_USERS_READ,
+    Permissions.EXTERNAL_USERS_WRITE,
+    Permissions.EXTERNAL_USERS_DELETE,
   ],
   FirmUser: [
     Permissions.CLIENTS_READ,
+    Permissions.EXTERNAL_USERS_READ,
   ],
   User: [
     Permissions.CLIENTS_READ,
+    Permissions.EXTERNAL_USERS_READ,
   ],
   ReadOnly: [
     Permissions.CLIENTS_READ,
+    Permissions.EXTERNAL_USERS_READ,
   ],
 };
 
