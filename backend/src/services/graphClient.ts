@@ -142,7 +142,7 @@ class GraphClientService {
               library: libraryUrl,
               permissions: this.mapSharePointRole(permission.roles?.[0] || 'read'),
               invitedBy: 'system', // Graph API doesn't provide this easily
-              invitedDate: new Date(permission.shareId || Date.now()),
+              invitedDate: new Date(), // Default to current time as Graph API doesn't provide invitation date
               lastAccess: null, // Requires additional API call to get user activity
               status: 'Active',
               metadata: {}

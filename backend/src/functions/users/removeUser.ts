@@ -18,6 +18,8 @@ import { ApiResponse } from '../../models/common';
 
 async function removeUser(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
+  let requestBody: any = null;
+  let email = 'unknown';
 
   try {
     // Handle CORS preflight
@@ -39,8 +41,9 @@ async function removeUser(req: HttpRequest, context: InvocationContext): Promise
     requirePermission(tenantContext, Permissions.EXTERNAL_USERS_DELETE, 'remove external users');
 
     // Parse and validate request body
-    const body = await req.json() as any;
-    const validatedRequest = validateBody<RemoveUserRequest>(body, removeUserSchema);
+    requestBody = await req.json() as any;
+    const validatedRequest = validateBody<RemoveUserRequest>(requestBody, removeUserSchema);
+    email = validatedRequest.email;
 
     // Remove external user access via Graph API
     await graphClient.removeExternalUser(
@@ -53,9 +56,9 @@ async function removeUser(req: HttpRequest, context: InvocationContext): Promise
       tenantContext,
       'UserRemoved',
       'ExternalUser',
-      validatedRequest.email,
+      email,
       {
-        email: validatedRequest.email,
+        email: email,
         library: validatedRequest.library
       },
       req.headers.get('x-forwarded-for') || 'unknown',
@@ -66,7 +69,7 @@ async function removeUser(req: HttpRequest, context: InvocationContext): Promise
     const response: ApiResponse<{ message: string }> = {
       success: true,
       data: {
-        message: `External user ${validatedRequest.email} access removed from ${validatedRequest.library}`
+        message: `External user ${email} access removed from ${validatedRequest.library}`
       },
       meta: {
         correlationId,
@@ -86,17 +89,16 @@ async function removeUser(req: HttpRequest, context: InvocationContext): Promise
   } catch (error) {
     // Log audit event for failed removal
     try {
-      const body = await req.json() as any;
       const tenantContext = await authenticateRequest(req, context);
       
       await auditLogger.logFailure(
         tenantContext,
         'UserRemoved',
         'ExternalUser',
-        body.email || 'unknown',
+        email,
         {
-          email: body.email,
-          library: body.library,
+          email: email,
+          library: requestBody?.library,
           error: error instanceof Error ? error.message : 'Unknown error'
         },
         req.headers.get('x-forwarded-for') || 'unknown',

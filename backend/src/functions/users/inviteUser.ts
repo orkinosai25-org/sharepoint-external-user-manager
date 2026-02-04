@@ -18,6 +18,8 @@ import { ApiResponse } from '../../models/common';
 
 async function inviteUser(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
+  let requestBody: any = null;
+  let email = 'unknown';
 
   try {
     // Handle CORS preflight
@@ -39,8 +41,9 @@ async function inviteUser(req: HttpRequest, context: InvocationContext): Promise
     requirePermission(tenantContext, Permissions.EXTERNAL_USERS_WRITE, 'invite external users');
 
     // Parse and validate request body
-    const body = await req.json() as any;
-    const validatedRequest = validateBody<InviteUserRequest>(body, inviteUserSchema);
+    requestBody = await req.json() as any;
+    const validatedRequest = validateBody<InviteUserRequest>(requestBody, inviteUserSchema);
+    email = validatedRequest.email;
 
     // Invite external user via Graph API
     const invitedUser = await graphClient.inviteExternalUser(
@@ -108,16 +111,15 @@ async function inviteUser(req: HttpRequest, context: InvocationContext): Promise
   } catch (error) {
     // Log audit event for failed invitation
     try {
-      const body = await req.json() as any;
       const tenantContext = await authenticateRequest(req, context);
       
       await auditLogger.logFailure(
         tenantContext,
         'UserInvited',
         'ExternalUser',
-        body.email || 'unknown',
+        email,
         {
-          email: body.email,
+          email: email,
           error: error instanceof Error ? error.message : 'Unknown error'
         },
         req.headers.get('x-forwarded-for') || 'unknown',
