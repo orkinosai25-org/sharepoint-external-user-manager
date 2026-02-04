@@ -34,3 +34,26 @@ export interface ClientResponse {
   status: ClientStatus;
   errorMessage?: string;
 }
+
+export interface LibraryResponse {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  webUrl: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+  itemCount: number;
+}
+
+export interface ListResponse {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  webUrl: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+  itemCount: number;
+  listTemplate: string;
+}
