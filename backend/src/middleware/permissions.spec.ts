@@ -10,8 +10,8 @@ import {
   requireRole,
   requireAnyRole,
   Permissions 
-} from '../permissions';
-import { TenantContext, ForbiddenError } from '../../models/common';
+} from './permissions';
+import { TenantContext, ForbiddenError } from '../models/common';
 
 describe('Permission Middleware', () => {
   const createContext = (roles: string[]): TenantContext => ({
@@ -103,9 +103,12 @@ describe('Permission Middleware', () => {
 
     it('should include helpful error message', () => {
       const context = createContext(['FirmUser']);
+      expect(() => {
+        requirePermission(context, Permissions.CLIENTS_WRITE, 'create clients');
+      }).toThrow(ForbiddenError);
+      
       try {
         requirePermission(context, Permissions.CLIENTS_WRITE, 'create clients');
-        fail('Should have thrown ForbiddenError');
       } catch (error: any) {
         expect(error).toBeInstanceOf(ForbiddenError);
         expect(error.message).toContain('create clients');
@@ -132,9 +135,12 @@ describe('Permission Middleware', () => {
 
     it('should include helpful error message with role information', () => {
       const context = createContext(['FirmUser']);
+      expect(() => {
+        requireRole(context, 'FirmAdmin', 'perform admin action');
+      }).toThrow(ForbiddenError);
+      
       try {
         requireRole(context, 'FirmAdmin', 'perform admin action');
-        fail('Should have thrown ForbiddenError');
       } catch (error: any) {
         expect(error).toBeInstanceOf(ForbiddenError);
         expect(error.message).toContain('perform admin action');
@@ -161,9 +167,12 @@ describe('Permission Middleware', () => {
 
     it('should include all required roles in error message', () => {
       const context = createContext(['ReadOnly']);
+      expect(() => {
+        requireAnyRole(context, ['FirmAdmin', 'Owner'], 'access resource');
+      }).toThrow(ForbiddenError);
+      
       try {
         requireAnyRole(context, ['FirmAdmin', 'Owner'], 'access resource');
-        fail('Should have thrown ForbiddenError');
       } catch (error: any) {
         expect(error).toBeInstanceOf(ForbiddenError);
         expect(error.details).toContain('FirmAdmin');
