@@ -50,3 +50,13 @@ coverage/
 *.seed
 *.pid
 *.pid.lock
+node_modules/
+dist/
+*.log
+.env
+local.settings.json
+test-results/
+coverage/
+.DS_Store
+.vscode/
+.idea/
