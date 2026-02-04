@@ -14,7 +14,9 @@ export type AuditAction =
   | 'LoginSuccess'
   | 'LoginFailed'
   | 'Unauthorized'
-  | 'ClientCreated';
+  | 'ClientCreated'
+  | 'SiteProvisioned'
+  | 'SiteProvisioningFailed';
 
 export type ResourceType = 'Tenant' | 'Subscription' | 'ExternalUser' | 'Policy' | 'Library' | 'Client';
 

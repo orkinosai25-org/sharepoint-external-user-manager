@@ -4,6 +4,7 @@
  */
 
 export type ClientStatus = 'Provisioning' | 'Active' | 'Error';
+export type SiteTemplateType = 'Team' | 'Communication';
 
 export interface Client {
   id: number;
@@ -14,12 +15,12 @@ export interface Client {
   createdBy: string;
   createdAt: Date;
   status: ClientStatus;
+  errorMessage?: string;
 }
 
 export interface CreateClientRequest {
   clientName: string;
-  siteUrl: string;
-  siteId: string;
+  siteTemplate?: SiteTemplateType;
 }
 
 export interface ClientResponse {
@@ -31,4 +32,5 @@ export interface ClientResponse {
   createdBy: string;
   createdAt: string;
   status: ClientStatus;
+  errorMessage?: string;
 }

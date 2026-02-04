@@ -68,8 +68,7 @@ export const auditLogQuerySchema = Joi.object({
 
 export const createClientSchema = Joi.object({
   clientName: Joi.string().min(1).max(255).required(),
-  siteUrl: Joi.string().uri().required(),
-  siteId: Joi.string().min(1).max(100).required()
+  siteTemplate: Joi.string().valid('Team', 'Communication').optional().default('Team')
 });
 
 export function validate<T>(data: any, schema: Joi.Schema): T {
