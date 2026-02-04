@@ -8,6 +8,7 @@ import { Tenant } from '../models/tenant';
 import { Subscription } from '../models/subscription';
 import { Policy } from '../models/policy';
 import { AuditLog, CreateAuditLogEntry } from '../models/audit';
+import { Client } from '../models/client';
 
 class DatabaseService {
   private pool: sql.ConnectionPool | null = null;
@@ -306,6 +307,67 @@ class DatabaseService {
     }));
 
     return { logs, total };
+  }
+
+  // Client operations
+  async createClient(client: Omit<Client, 'id' | 'createdAt'>): Promise<Client> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('tenantId', sql.Int, client.tenantId)
+      .input('clientName', sql.NVarChar, client.clientName)
+      .input('siteUrl', sql.NVarChar, client.siteUrl)
+      .input('siteId', sql.NVarChar, client.siteId)
+      .input('createdBy', sql.NVarChar, client.createdBy)
+      .input('status', sql.NVarChar, client.status)
+      .query(`
+        INSERT INTO [dbo].[Client]
+          (TenantId, ClientName, SiteUrl, SiteId, CreatedBy, Status)
+        OUTPUT INSERTED.Id, INSERTED.CreatedAt
+        VALUES (@tenantId, @clientName, @siteUrl, @siteId, @createdBy, @status)
+      `);
+
+    const inserted = result.recordset[0];
+    return {
+      ...client,
+      id: inserted.Id,
+      createdAt: inserted.CreatedAt
+    };
+  }
+
+  async getClientById(tenantId: number, clientId: number): Promise<Client | null> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .input('clientId', sql.Int, clientId)
+      .query(`
+        SELECT Id as id, TenantId as tenantId, ClientName as clientName,
+               SiteUrl as siteUrl, SiteId as siteId, CreatedBy as createdBy,
+               CreatedAt as createdAt, Status as status
+        FROM [dbo].[Client]
+        WHERE Id = @clientId AND TenantId = @tenantId
+      `);
+
+    if (result.recordset.length === 0) {
+      return null;
+    }
+
+    return result.recordset[0];
+  }
+
+  async getClientsByTenantId(tenantId: number): Promise<Client[]> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .query(`
+        SELECT Id as id, TenantId as tenantId, ClientName as clientName,
+               SiteUrl as siteUrl, SiteId as siteId, CreatedBy as createdBy,
+               CreatedAt as createdAt, Status as status
+        FROM [dbo].[Client]
+        WHERE TenantId = @tenantId
+        ORDER BY CreatedAt DESC
+      `);
+
+    return result.recordset;
   }
 }
 
