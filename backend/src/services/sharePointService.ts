@@ -217,14 +217,7 @@ class SharePointService {
     try {
       const client = this.getGraphClient();
       
-      // Create a new document library (drive) using Microsoft Graph API
-      // Note: The Graph API creates document libraries via the drives endpoint
-      const libraryData = {
-        name: name,
-        description: description || '',
-        '@microsoft.graph.conflictBehavior': 'rename'
-      };
-
+      // Create a new document library using Microsoft Graph API
       const response = await client
         .api(`/sites/${siteId}/lists`)
         .post({

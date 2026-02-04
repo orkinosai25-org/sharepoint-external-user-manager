@@ -33,7 +33,7 @@ Create a new document library in a client's SharePoint site.
   "name": "Client Documents",
   "displayName": "Client Documents",
   "description": "Documents for the client project",
-  "webUrl": "https://contoso.sharepoint.com/sites/client/ClientDocuments",
+  "webUrl": "https://contoso.sharepoint.com/sites/client/Client%20Documents",
   "createdDateTime": "2024-01-15T10:30:00Z",
   "lastModifiedDateTime": "2024-01-15T10:30:00Z",
   "itemCount": 0
