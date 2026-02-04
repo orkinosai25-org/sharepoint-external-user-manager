@@ -53,12 +53,16 @@ Roles are assigned through two mechanisms:
 
 Azure AD app roles are mapped to application roles as follows:
 
-| Azure AD Role | Application Role |
-|--------------|------------------|
-| `FirmAdmin` or `admin` | `FirmAdmin` |
-| `FirmUser` or `user` | `FirmUser` |
-| `owner` | `Owner` |
-| `readonly` | `ReadOnly` |
+| Azure AD Role | Application Role(s) | Notes |
+|--------------|---------------------|-------|
+| `FirmAdmin` | `FirmAdmin` | Specific firm admin role |
+| `admin` | `Admin`, `FirmAdmin` | Generic admin gets both roles for compatibility |
+| `FirmUser` | `FirmUser` | Specific firm user role |
+| `user` | `User`, `FirmUser` | Generic user gets both roles for compatibility |
+| `owner` | `Owner`, `FirmAdmin` | Owner includes admin capabilities |
+| `readonly` | `ReadOnly` | Explicit read-only role |
+
+**Note**: Generic roles (`admin`, `user`) are mapped to both their specific application role and the corresponding Firm* role to ensure compatibility and proper permission inheritance.
 
 ## Protected Endpoints
 

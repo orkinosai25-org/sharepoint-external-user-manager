@@ -68,13 +68,33 @@ function resolveUserRoles(
     for (const role of claims.roles) {
       // Map Azure AD app roles to our application roles
       const normalizedRole = role.toLowerCase();
-      if (normalizedRole === 'firmadmin' || normalizedRole === 'admin') {
+      
+      // Admin roles
+      if (normalizedRole === 'firmadmin') {
         roles.push('FirmAdmin');
-      } else if (normalizedRole === 'firmuser' || normalizedRole === 'user') {
+      } else if (normalizedRole === 'admin') {
+        // Generic admin maps to both Admin and FirmAdmin for compatibility
+        roles.push('Admin');
+        roles.push('FirmAdmin');
+      } 
+      
+      // User roles
+      else if (normalizedRole === 'firmuser') {
         roles.push('FirmUser');
-      } else if (normalizedRole === 'owner') {
+      } else if (normalizedRole === 'user') {
+        // Generic user maps to both User and FirmUser for compatibility
+        roles.push('User');
+        roles.push('FirmUser');
+      } 
+      
+      // Owner role
+      else if (normalizedRole === 'owner') {
         roles.push('Owner');
-      } else if (normalizedRole === 'readonly') {
+        roles.push('FirmAdmin'); // Owner includes FirmAdmin capabilities
+      } 
+      
+      // ReadOnly role
+      else if (normalizedRole === 'readonly') {
         roles.push('ReadOnly');
       }
     }
