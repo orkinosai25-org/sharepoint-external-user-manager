@@ -5,6 +5,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { databaseService } from '../../services/database';
 import { authenticateRequest } from '../../middleware/auth';
+import { requirePermission, Permissions } from '../../middleware/permissions';
 import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
@@ -25,6 +26,9 @@ async function listClients(req: HttpRequest, context: InvocationContext): Promis
 
     // Authenticate request
     const tenantContext = await authenticateRequest(req, context);
+
+    // Check permissions - both FirmAdmin and FirmUser can read clients
+    requirePermission(tenantContext, Permissions.CLIENTS_READ, 'view clients');
 
     // Get all clients for the tenant (ordered by created date)
     const clients = await databaseService.getClientsByTenantId(tenantContext.tenantId);

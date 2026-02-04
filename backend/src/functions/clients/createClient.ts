@@ -7,6 +7,7 @@ import { databaseService } from '../../services/database';
 import { auditLogger } from '../../services/auditLogger';
 import { sharePointService } from '../../services/sharePointService';
 import { authenticateRequest } from '../../middleware/auth';
+import { requirePermission, Permissions } from '../../middleware/permissions';
 import { validateBody, createClientSchema } from '../../utils/validation';
 import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
@@ -28,6 +29,9 @@ async function createClient(req: HttpRequest, context: InvocationContext): Promi
 
     // Authenticate request
     const tenantContext = await authenticateRequest(req, context);
+
+    // Check permissions - only FirmAdmin can create clients
+    requirePermission(tenantContext, Permissions.CLIENTS_WRITE, 'create clients');
 
     // Parse and validate request body
     const body = await req.json() as any;
