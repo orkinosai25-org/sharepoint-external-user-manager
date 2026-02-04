@@ -110,6 +110,7 @@ async function onboardTenant(req: HttpRequest, _context: InvocationContext): Pro
       entraIdTenantId: tenant.entraIdTenantId,
       userId,
       userEmail,
+      roles: ['Owner'], // User who onboards is the owner
       subscriptionTier: subscription.tier
     };
 
