@@ -141,35 +141,93 @@ See [GitHub Actions Workflow Documentation](.github/workflows/README.md) for set
 ### New Developer Onboarding
 📖 **See [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) for comprehensive setup and development instructions.**
 
+## 🚀 SaaS Backend (NEW!)
+
+The project now includes a complete multi-tenant SaaS backend built with Azure Functions!
+
+### Backend Features
+- ✅ **Multi-tenant Architecture**: Database-per-tenant isolation
+- ✅ **Azure Functions**: Serverless API with auto-scaling
+- ✅ **Subscription Management**: Trial/Pro/Enterprise tiers with licensing
+- ✅ **Authentication**: Azure AD multi-tenant with JWT validation
+- ✅ **Rate Limiting**: Per-tenant throttling and quota enforcement
+- ✅ **Audit Logging**: Comprehensive audit trail in Cosmos DB
+- ✅ **Infrastructure as Code**: Bicep templates for Azure deployment
+
+### Backend Tech Stack
+- **Runtime**: Node.js 18 LTS
+- **Framework**: Azure Functions v4
+- **Language**: TypeScript
+- **Database**: Azure Cosmos DB (metadata) + Azure SQL (tenant data)
+- **Authentication**: Azure AD OAuth 2.0
+- **Monitoring**: Application Insights
+
+### Quick Start (Backend)
+
+```bash
+cd backend
+npm install
+npm start
+# API available at http://localhost:7071/api
+```
+
+See [backend/README.md](./backend/README.md) for detailed setup instructions.
+
+### 📚 Complete SaaS Documentation
+
+The [`docs/saas/`](./docs/saas/) directory contains comprehensive documentation:
+
+- **[Architecture](./docs/saas/architecture.md)**: System design, components, and data flow
+- **[Data Model](./docs/saas/data-model.md)**: Database schemas and entity relationships
+- **[Security](./docs/saas/security.md)**: Authentication, authorization, and compliance
+- **[API Specification](./docs/saas/api-spec.md)**: Complete API reference with examples
+- **[Onboarding Flow](./docs/saas/onboarding.md)**: Tenant onboarding and trial management
+- **[Marketplace Plan](./docs/saas/marketplace-plan.md)**: Microsoft Commercial Marketplace integration
+
+### Deployment
+
+**Backend Infrastructure:**
+```bash
+az deployment group create \
+  --resource-group rg-spexternal \
+  --template-file deployment/backend.bicep \
+  --parameters environment=dev
+```
+
+**CI/CD:** GitHub Actions workflow automatically deploys backend on push to main branch.
+
+See [deployment/README.md](./deployment/README.md) for complete deployment guide.
+
 ## Next Steps
 
-This foundation is ready for backend integration with the designed architecture:
+### Immediate (MVP)
+1. ✅ Complete backend API endpoints (tenants, users, policies, audit)
+2. 🔄 Integrate SPFx web part with backend API
+3. 🔄 Add subscription status UI components
+4. 🔄 Implement end-to-end testing
 
-### 🏗️ Backend Architecture Design
-The complete backend design is documented in [`docs/`](./docs/) including:
-
-- **[Backend Architecture](./docs/backend-architecture.md)**: Scalable multi-tenant SaaS architecture using Azure Functions
-- **[API Design](./docs/backend-api-design.md)**: RESTful API specification with authentication and endpoints
-- **[SPFx Communication](./docs/spfx-backend-communication.md)**: Integration patterns between frontend and backend
-- **[User Journey](./docs/user-journey.md)**: Marketplace buyer onboarding and success metrics
-
-### Implementation Roadmap
-
-1. **Backend Development**: Implement Azure Functions API based on the [architecture design](./docs/backend-architecture.md)
-2. **SPFx Integration**: Replace MockDataService using the [communication patterns](./docs/spfx-backend-communication.md)
-3. **User Management**: Implement detailed user management functionality with backend API
-4. **Library Operations**: Add real add/remove library capabilities through backend services
-5. **Marketplace Launch**: Deploy following the [user journey](./docs/user-journey.md) specifications
-4. **Permissions Management**: Implement permission level changes
-5. **Bulk Operations**: Add bulk user management features
+### Phase 2 (Post-MVP)
+1. Microsoft Commercial Marketplace integration
+2. Advanced features (approvals, risk flags, review campaigns)
+3. Multi-region deployment for global scale
+4. Enhanced analytics and reporting dashboards
 
 ## Technology Stack
 
+### Frontend (SPFx)
 - **Framework**: SharePoint Framework (SPFx) 1.18.2
 - **UI Library**: Fluent UI 8.x
 - **Language**: TypeScript 4.5.5
 - **Styling**: SCSS Modules
 - **Build**: Gulp-based SPFx build pipeline
+
+### Backend (SaaS API)
+- **Runtime**: Node.js 18 LTS
+- **Framework**: Azure Functions v4
+- **Language**: TypeScript 5.3
+- **Database**: Azure Cosmos DB + Azure SQL
+- **Authentication**: Azure AD (multi-tenant)
+- **Infrastructure**: Azure (Functions, Cosmos DB, Key Vault, App Insights)
 
 ## License
 

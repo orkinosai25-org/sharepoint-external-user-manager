@@ -1,63 +1,78 @@
 {
   "name": "spexternal-backend",
   "version": "1.0.0",
-  "description": "SharePoint External User Manager - Multi-tenant SaaS Backend API",
+  "description": "SharePoint External User Manager SaaS Backend API",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "lint": "eslint src --ext .ts",
+    "watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "start": "func start",
+    "prestart": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",
-    "migrate": "ts-node src/database/migrate.ts"
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
   },
   "keywords": [
     "sharepoint",
-    "microsoft365",
+    "azure-functions",
     "saas",
-    "external-users",
-    "collaboration"
+    "multi-tenant"
   ],
-  "author": "SharePoint External User Manager",
+  "author": "",
   "license": "MIT",
   "dependencies": {
+    "@azure/functions": "^4.0.0",
     "@azure/identity": "^4.0.0",
     "@azure/keyvault-secrets": "^4.7.0",
-    "@azure/cosmos": "^4.0.0",
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "helmet": "^7.1.0",
-    "express-rate-limit": "^7.1.5",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
     "jwks-rsa": "^3.1.0",
+    "mssql": "^10.0.1",
+    "watch": "tsc -w",
+    "clean": "rimraf dist",
+    "prestart": "npm run build",
+    "start": "func start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@azure/cosmos": "^4.0.0",
+    "@azure/identity": "^4.0.0",
+    "@azure/keyvault-secrets": "^4.7.0",
+    "@azure/storage-blob": "^12.17.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.6.5",
-    "mssql": "^10.0.2",
-    "dotenv": "^16.3.1",
-    "uuid": "^9.0.1",
-    "winston": "^3.11.0",
     "joi": "^17.11.0",
-    "compression": "^1.7.4"
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
+    "mssql": "^10.0.2",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/node": "^20.10.6",
-    "@types/express": "^4.17.21",
-    "@types/cors": "^2.8.17",
+    "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/mssql": "^9.1.4",
+    "@types/node": "^20.10.6",
     "@types/uuid": "^9.0.7",
-    "@types/compression": "^1.7.5",
     "@typescript-eslint/eslint-plugin": "^6.17.0",
     "@typescript-eslint/parser": "^6.17.0",
+    "azure-functions-core-tools": "^4.0.5455",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
-    "@types/jest": "^29.5.11",
+    "rimraf": "^5.0.5",
     "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=18.0.0"
   }
 }
