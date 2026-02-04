@@ -203,6 +203,80 @@ class SharePointService {
   }
 
   /**
+   * Create a new document library in a SharePoint site
+   * @param siteId - SharePoint site ID
+   * @param name - Library name
+   * @param description - Library description (optional)
+   */
+  async createLibrary(siteId: string, name: string, description?: string): Promise<any> {
+    if (!config.features.enableGraphIntegration) {
+      console.log('Graph integration disabled, returning mock library creation');
+      return this.getMockLibraryCreation(name, description);
+    }
+
+    try {
+      const client = this.getGraphClient();
+      
+      // Create a new document library (drive) using Microsoft Graph API
+      // Note: The Graph API creates document libraries via the drives endpoint
+      const libraryData = {
+        name: name,
+        description: description || '',
+        '@microsoft.graph.conflictBehavior': 'rename'
+      };
+
+      const response = await client
+        .api(`/sites/${siteId}/lists`)
+        .post({
+          displayName: name,
+          description: description || '',
+          list: {
+            template: 'documentLibrary'
+          }
+        });
+
+      return response;
+    } catch (error: any) {
+      console.error('Error creating library:', error);
+      throw new Error(`Failed to create library: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create a new list in a SharePoint site
+   * @param siteId - SharePoint site ID
+   * @param name - List name
+   * @param description - List description (optional)
+   * @param template - List template type (optional, defaults to 'genericList')
+   */
+  async createList(siteId: string, name: string, description?: string, template: string = 'genericList'): Promise<any> {
+    if (!config.features.enableGraphIntegration) {
+      console.log('Graph integration disabled, returning mock list creation');
+      return this.getMockListCreation(name, description, template);
+    }
+
+    try {
+      const client = this.getGraphClient();
+      
+      // Create a new list using Microsoft Graph API
+      const response = await client
+        .api(`/sites/${siteId}/lists`)
+        .post({
+          displayName: name,
+          description: description || '',
+          list: {
+            template: template
+          }
+        });
+
+      return response;
+    } catch (error: any) {
+      console.error('Error creating list:', error);
+      throw new Error(`Failed to create list: ${error.message}`);
+    }
+  }
+
+  /**
    * Generate a URL-friendly alias from client name
    * @param clientName - Original client name
    */
@@ -292,6 +366,44 @@ class SharePointService {
         }
       }
     ];
+  }
+
+  /**
+   * Mock library creation for development/testing
+   */
+  private getMockLibraryCreation(name: string, description?: string): any {
+    const now = new Date().toISOString();
+    return {
+      id: `mock-library-${Date.now()}`,
+      name: name,
+      displayName: name,
+      description: description || '',
+      webUrl: `https://contoso.sharepoint.com/sites/client/${name.replace(/\s+/g, '%20')}`,
+      createdDateTime: now,
+      lastModifiedDateTime: now,
+      list: {
+        template: 'documentLibrary'
+      }
+    };
+  }
+
+  /**
+   * Mock list creation for development/testing
+   */
+  private getMockListCreation(name: string, description?: string, template: string = 'genericList'): any {
+    const now = new Date().toISOString();
+    return {
+      id: `mock-list-${Date.now()}`,
+      name: name,
+      displayName: name,
+      description: description || '',
+      webUrl: `https://contoso.sharepoint.com/sites/client/Lists/${name.replace(/\s+/g, '%20')}`,
+      createdDateTime: now,
+      lastModifiedDateTime: now,
+      list: {
+        template: template
+      }
+    };
   }
 }
 

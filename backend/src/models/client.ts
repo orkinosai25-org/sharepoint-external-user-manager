@@ -57,3 +57,14 @@ export interface ListResponse {
   itemCount: number;
   listTemplate: string;
 }
+
+export interface CreateLibraryRequest {
+  name: string;
+  description?: string;
+}
+
+export interface CreateListRequest {
+  name: string;
+  description?: string;
+  template?: string;
+}

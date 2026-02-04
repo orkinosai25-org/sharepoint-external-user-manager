@@ -71,6 +71,17 @@ export const createClientSchema = Joi.object({
   siteTemplate: Joi.string().valid('Team', 'Communication').optional().default('Team')
 });
 
+export const createLibrarySchema = Joi.object({
+  name: Joi.string().min(1).max(255).required(),
+  description: Joi.string().max(1000).optional()
+});
+
+export const createListSchema = Joi.object({
+  name: Joi.string().min(1).max(255).required(),
+  description: Joi.string().max(1000).optional(),
+  template: Joi.string().valid('genericList', 'documentLibrary', 'survey', 'links', 'announcements', 'contacts', 'events', 'tasks', 'issueTracking', 'customList').optional().default('genericList')
+});
+
 export function validate<T>(data: any, schema: Joi.Schema): T {
   const { error, value } = schema.validate(data, {
     abortEarly: false,
