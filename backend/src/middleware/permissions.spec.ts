@@ -210,5 +210,33 @@ describe('Permission Middleware', () => {
       expect(hasPermission(context, Permissions.CLIENTS_WRITE)).toBe(false);
       expect(hasPermission(context, Permissions.CLIENTS_DELETE)).toBe(false);
     });
+
+    it('FirmAdmin should be able to manage external users', () => {
+      const context = createContext(['FirmAdmin']);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_READ)).toBe(true);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_WRITE)).toBe(true);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_DELETE)).toBe(true);
+    });
+
+    it('FirmUser should only be able to read external users', () => {
+      const context = createContext(['FirmUser']);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_READ)).toBe(true);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_WRITE)).toBe(false);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_DELETE)).toBe(false);
+    });
+
+    it('Owner should have all external user permissions', () => {
+      const context = createContext(['Owner']);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_READ)).toBe(true);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_WRITE)).toBe(true);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_DELETE)).toBe(true);
+    });
+
+    it('ReadOnly should only be able to read external users', () => {
+      const context = createContext(['ReadOnly']);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_READ)).toBe(true);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_WRITE)).toBe(false);
+      expect(hasPermission(context, Permissions.EXTERNAL_USERS_DELETE)).toBe(false);
+    });
   });
 });
