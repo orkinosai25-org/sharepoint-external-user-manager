@@ -1,1059 +1,630 @@
-# Tenant Onboarding Flow
+# Tenant Onboarding Guide
 
 ## Overview
 
-This document describes the end-to-end flow for onboarding a new tenant to the SharePoint External User Manager SaaS platform, including Azure AD admin consent and initial setup.
-This document describes the end-to-end tenant onboarding process for the SharePoint External User Manager SaaS platform, from initial signup to full activation.
+This document outlines the end-to-end tenant onboarding process for the SharePoint External User Manager SaaS solution, including Entra ID app registration, admin consent, and resource provisioning.
 
-## Onboarding Journey
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 1: Discovery & Sign-up                                     │
-│  • Admin discovers solution (marketplace/website/trial)         │
-│  • Clicks "Get Started" or "Start Trial"                       │
-└─────────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 2: Azure AD Admin Consent                                  │
-│  • Redirected to Microsoft login                               │
-│  • Admin signs in with organizational account                  │
-│  • Reviews requested permissions                               │
-│  • Grants admin consent for tenant                             │
-└─────────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 3: Tenant Registration (Backend)                           │
-│  • Backend receives consent callback                           │
-│  • Creates Tenant record in database                           │
-│  • Creates Free/Trial Subscription                             │
-│  • Initializes default policies                                │
-│  • Logs onboarding event                                       │
-└─────────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 4: SPFx Web Part Installation                              │
-│  • Admin downloads .sppkg from marketplace/portal              │
-│  • Uploads to SharePoint App Catalog                           │
-│  • Deploys solution tenant-wide                                │
-│  • Adds web part to a SharePoint page                          │
-└─────────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 5: First Use & Configuration                               │
-│  • Web part connects to SaaS backend automatically             │
-│  • Admin views subscription status (Trial)                     │
-│  • Admin configures collaboration policies                     │
-│  • Admin starts managing external users                        │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Detailed Flow
-
-### 1. Admin Consent Flow (Entra ID)
-
-#### 1.1 Initiate Consent
-
-**SPFx Admin Page** triggers consent when "Connect Tenant" is clicked:
-
-```typescript
-// SPFx code to initiate admin consent
-export async function initiateAdminConsent(): Promise<void> {
-  const clientId = 'your-app-client-id';
-  const redirectUri = encodeURIComponent(
-    'https://api.spexternal.com/auth/callback'
-  );
-  const scope = encodeURIComponent(
-    'https://graph.microsoft.com/Sites.Read.All ' +
-    'https://graph.microsoft.com/User.ReadWrite.All'
-  );
-  
-  const consentUrl = 
-    `https://login.microsoftonline.com/common/adminconsent?` +
-    `client_id=${clientId}&` +
-    `redirect_uri=${redirectUri}&` +
-    `scope=${scope}&` +
-    `state=${generateState()}`;  // CSRF protection
-  
-  // Redirect to Azure AD
-  window.location.href = consentUrl;
-}
-```
-
-#### 1.2 Consent Prompt
-
-Microsoft presents permission request screen:
+## Onboarding Flow Diagram
 
 ```
-─────────────────────────────────────────────
-  SharePoint External User Manager
-  wants to access your organization
-─────────────────────────────────────────────
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        Tenant Onboarding Flow                            │
+└──────────────────────────────────────────────────────────────────────────┘
 
-This app would like to:
-
-✓ Read all site collections
-✓ Manage external user invitations
-✓ Read user profiles
-
-Consenting on behalf of your organization
-
-[Accept]  [Cancel]
-─────────────────────────────────────────────
+[1] Marketplace Discovery/Website
+         │
+         ▼
+[2] Start Trial / Sign Up
+    ─────────────────────
+    Input: Email, Organization Name
+         │
+         ▼
+[3] Redirect to Entra ID Login
+    ─────────────────────────────
+    Microsoft Authentication
+         │
+         ▼
+[4] Verify Admin Identity
+    ───────────────────────
+    Check: Global Admin or SharePoint Admin Role
+         │
+         ├──[Not Admin]──► Error: Admin permissions required
+         │
+         ▼
+[5] Admin Consent Required
+    ───────────────────────
+    Request Application Permissions:
+    - Sites.ReadWrite.All
+    - User.Read.All
+    - Directory.Read.All
+         │
+         ├──[Consent Denied]──► Error: Permissions required
+         │
+         ▼
+[6] Provision Tenant Resources
+    ────────────────────────────
+    - Create tenant record in master DB
+    - Provision tenant-specific database
+    - Initialize Cosmos DB containers
+    - Store connection strings in Key Vault
+    - Set subscription to "Trial" (30 days)
+         │
+         ▼
+[7] Configure Initial Settings
+    ────────────────────────────
+    - Default policies
+    - Email notifications
+    - Admin accounts
+         │
+         ▼
+[8] Redirect to Application
+    ─────────────────────────
+    SPFx Web Part or Admin Portal
+         │
+         ▼
+[9] Onboarding Complete
+    ─────────────────────
+    Trial active for 30 days
 ```
 
-#### 1.3 Consent Callback
+## Prerequisites
 
-Azure AD redirects back to backend with consent result:
+### For Tenant Administrators
 
-```http
-GET /auth/callback?
-  admin_consent=True&
-  tenant=12345678-1234-1234-1234-123456789abc&
-  state={state_token}&
-  client_id={client_id}
+**Required Roles:**
+- Global Administrator, OR
+- SharePoint Administrator, OR
+- Application Administrator
+
+**Microsoft 365 Requirements:**
+- Active Microsoft 365 subscription
+- SharePoint Online enabled
+- Entra ID (Azure AD) tenant
+- Ability to consent to application permissions
+
+**Browser Requirements:**
+- Modern browser (Chrome, Edge, Firefox, Safari)
+- JavaScript enabled
+- Cookies enabled
+- Pop-ups allowed for authentication
+
+## Step-by-Step Onboarding Process
+
+### Step 1: Initial Sign-Up
+
+**Landing Page:** `https://spexternal.com/signup`
+
+1. User fills out sign-up form:
+   ```json
+   {
+     "email": "admin@contoso.com",
+     "organizationName": "Contoso Corporation",
+     "organizationSize": "50-200",
+     "country": "United States",
+     "phone": "+1-555-0100" (optional)
+   }
+   ```
+
+2. System validates email format and checks for existing tenant
+
+3. User clicks "Start Free Trial" button
+
+### Step 2: Entra ID Authentication
+
+User is redirected to Microsoft login:
+
+```
+https://login.microsoftonline.com/common/oauth2/v2.0/authorize?
+  client_id=<app_client_id>&
+  response_type=code&
+  redirect_uri=https://api.spexternal.com/auth/callback&
+  response_mode=query&
+  scope=openid%20profile%20email%20offline_access&
+  state=<random_state_token>&
+  prompt=select_account
 ```
 
-### 2. Backend Tenant Registration
+**What Happens:**
+- User selects their work/school account
+- Authenticates with Microsoft
+- MFA prompt if enabled
+- Consent screen (first-time only)
 
-#### 2.1 Process Consent Callback
+### Step 3: Verify Admin Identity
 
-```typescript
-export async function handleConsentCallback(
-  req: HttpRequest
-): Promise<HttpResponse> {
-  const { admin_consent, tenant, state } = req.query;
-  
-  // Verify state token (CSRF protection)
-  if (!verifyState(state)) {
-    return { status: 400, body: 'Invalid state' };
-  }
-  
-  if (admin_consent !== 'True') {
-    return { status: 400, body: 'Admin consent not granted' };
-  }
-  
-  // Onboard tenant
-  const tenantData = await onboardTenant(tenant);
-  
-  // Redirect to success page
-  return {
-    status: 302,
-    headers: {
-      Location: `https://admin.spexternal.com/onboarding-success?tenant=${tenant}`
-    }
-  };
-}
-```
+Backend validates the authenticated user:
 
-#### 2.2 Create Tenant Record
-
-```typescript
-export async function onboardTenant(
-  entraIdTenantId: string
-): Promise<Tenant> {
-  // 1. Get organization info from Graph API
-  const orgInfo = await graphClient.getOrganization(entraIdTenantId);
-  
-  // 2. Create tenant record
-  const tenant = await db.tenants.create({
-    entraIdTenantId,
-    organizationName: orgInfo.displayName,
-    primaryAdminEmail: orgInfo.technicalContact || 'admin@org.com',
-    status: 'Active',
-    onboardedDate: new Date()
-  });
-  
-  // 3. Create free/trial subscription
-  const subscription = await db.subscriptions.create({
-    tenantId: tenant.id,
-    tier: 'Free',
-    status: 'Trial',
-    startDate: new Date(),
-    trialExpiry: addDays(new Date(), 30), // 30-day trial
-    maxUsers: 10,
-    features: {
-      auditHistoryDays: 30,
-      exportEnabled: false,
-      scheduledReviews: false
-    }
-  });
-  
-  // 4. Initialize default policies
-  await createDefaultPolicies(tenant.id);
-  
-  // 5. Audit log the onboarding
-  await auditLog.log({
-    tenantId: tenant.id,
-    action: 'TenantOnboarded',
-    userId: 'system',
-    details: { tier: 'Free', trial: true }
-  });
-  
-  return tenant;
-}
-```
-
-#### 2.3 Default Policies
-
-```typescript
-async function createDefaultPolicies(tenantId: number): Promise<void> {
-  const defaultPolicies = [
-    {
-      policyType: 'GuestExpiration',
-      enabled: false,
-      configuration: { expirationDays: 90, notifyBeforeDays: 7 }
-    },
-    {
-      policyType: 'RequireApproval',
-      enabled: false,
-      configuration: { approvers: [] }
-    },
-    {
-      policyType: 'AllowedDomains',
-      enabled: false,
-      configuration: { whitelist: [], blacklist: [] }
-    }
-  ];
-  
-  for (const policy of defaultPolicies) {
-    await db.policies.create({
-      tenantId,
-      ...policy
-    });
-  }
-}
-```
-
-### 3. SPFx Installation
-
-#### 3.1 Download Package
-
-Admin obtains `.sppkg` file from:
-- Microsoft AppSource (future)
-- GitHub Releases
-- Direct download from portal
-
-#### 3.2 Upload to App Catalog
-
-```powershell
-# PowerShell script for deployment
-Connect-PnPOnline -Url "https://tenant.sharepoint.com/sites/appcatalog" -Interactive
-
-# Upload solution
-Add-PnPApp -Path "./sharepoint-external-user-manager.sppkg" -Overwrite
-
-# Deploy tenant-wide
-Publish-PnPApp -Identity "SharePointExternalUserManager" -SkipFeatureDeployment
-```
-
-#### 3.3 Add Web Part to Page
-
-1. Navigate to SharePoint site
-2. Create or edit a page
-3. Click "+ Add a web part"
-4. Search for "External User Manager"
-5. Add to page and publish
-
-### 4. First Connection
-
-#### 4.1 API Token Acquisition
-
-When SPFx web part loads, it acquires a token:
-
-```typescript
-import { AadTokenProvider } from '@microsoft/sp-http';
-
-export async function getApiToken(
-  context: WebPartContext
-): Promise<string> {
-  const provider = await context.aadTokenProviderFactory
-    .getTokenProvider();
-  
-  const token = await provider.getToken(
-    'api://spexternal.com'  // Backend API resource
-  );
-  
-  return token;
-}
-```
-
-#### 4.2 First API Call
-
-Web part calls backend to verify tenant status:
-
-```typescript
-export async function verifyTenantConnection(): Promise<TenantInfo> {
-  const token = await getApiToken(this.context);
-  
-  const response = await fetch(
-    'https://api.spexternal.com/v1/tenants/me',
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-  
-  if (!response.ok) {
-    if (response.status === 404) {
-      // Tenant not onboarded - show setup wizard
-      this.showOnboardingWizard();
-    }
-    throw new Error('Failed to connect');
-  }
-  
-  return await response.json();
-}
-```
-
-### 5. Onboarding Wizard (if not yet onboarded)
-
-If tenant is not found, SPFx shows setup wizard:
-
-```typescript
-export const OnboardingWizard: React.FC = () => {
-  const [step, setStep] = useState(1);
-  
-  return (
-    <Stack>
-      {step === 1 && (
-        <WelcomeStep onNext={() => setStep(2)} />
-      )}
-      {step === 2 && (
-        <ConsentStep 
-          onConsent={initiateAdminConsent}
-          onNext={() => setStep(3)}
-        />
-      )}
-      {step === 3 && (
-        <ConfigurationStep onNext={() => setStep(4)} />
-      )}
-      {step === 4 && (
-        <CompleteStep />
-      )}
-    </Stack>
-  );
-};
-```
-
-## User Roles During Onboarding
-
-### Tenant Owner (First Admin)
-
-- User who completes admin consent
-- Automatically assigned "Owner" role
-- Has full access to all features
-- Can invite additional admins
-
-### Additional Admins
-
-Can be invited post-onboarding:
-
-```typescript
-export async function inviteAdmin(
-  email: string,
-  role: 'Admin' | 'ReadOnly'
-): Promise<void> {
-  // 1. Send invitation email
-  await emailService.send({
-    to: email,
-    subject: 'You\'ve been invited as admin',
-    template: 'admin-invite',
-    data: { role }
-  });
-  
-  // 2. Create pending invitation record
-  await db.adminInvites.create({
-    tenantId: context.tenantId,
-    email,
-    role,
-    invitedBy: context.userId,
-    expiresAt: addDays(new Date(), 7)
-  });
-}
-```
-
-## Trial Period
-
-### Trial Characteristics
-
-- **Duration**: 30 days from onboarding
-- **Tier**: Free tier features
-- **User Limit**: 10 external users
-- **No Credit Card**: Required only at upgrade
-
-### Trial Expiry Notifications
-
-```typescript
-// Scheduled job: Check trial expiry
-export async function checkTrialExpiry(): Promise<void> {
-  const expiringTrials = await db.subscriptions.find({
-    status: 'Trial',
-    trialExpiry: {
-      $lte: addDays(new Date(), 7),  // Expiring in 7 days
-      $gte: new Date()
-    }
-  });
-  
-  for (const subscription of expiringTrials) {
-    const tenant = await db.tenants.findById(subscription.tenantId);
-    
-    // Send expiry warning email
-    await emailService.send({
-      to: tenant.primaryAdminEmail,
-      subject: 'Your trial expires soon',
-      template: 'trial-expiry-warning',
-      data: {
-        daysRemaining: differenceInDays(subscription.trialExpiry, new Date()),
-        upgradeLink: 'https://admin.spexternal.com/upgrade'
-      }
-    });
-    
-    // In-app notification
-    await notificationService.create({
-      tenantId: tenant.id,
-      type: 'TrialExpiring',
-      message: 'Your trial expires in 7 days. Upgrade to continue.',
-      actionUrl: '/upgrade'
-    });
-  }
-}
-```
-
-## Upgrade Flow
-
-### Self-Service Upgrade (Phase 1: Own Billing)
-
-```typescript
-export async function initiateUpgrade(
-  tier: 'Pro' | 'Enterprise'
-): Promise<CheckoutSession> {
-  // 1. Create checkout session (Stripe/own billing)
-  const session = await paymentProvider.createCheckoutSession({
-    tenantId: context.tenantId,
-    tier,
-    returnUrl: 'https://admin.spexternal.com/upgrade-success',
-    cancelUrl: 'https://admin.spexternal.com/subscription'
-  });
-  
-  // 2. Return checkout URL
-  return session;
-}
-```
-
-### Marketplace Purchase (Phase 2: Future)
-
-- User clicks "Buy" in Microsoft AppSource
-- Marketplace redirects to SaaS landing page
-- Backend receives webhook from marketplace
-- Subscription activated automatically
-
-## Offboarding / Cancellation
-
-### Cancellation Flow
-
-```typescript
-export async function cancelSubscription(
-  tenantId: number
-): Promise<void> {
-  const subscription = await db.subscriptions.findByTenantId(tenantId);
-  
-  // 1. Mark subscription as cancelled
-  await db.subscriptions.update(subscription.id, {
-    status: 'Cancelled',
-    gracePeriodEnd: addDays(new Date(), 90)  // 90-day grace period
-  });
-  
-  // 2. Send cancellation confirmation
-  const tenant = await db.tenants.findById(tenantId);
-  await emailService.send({
-    to: tenant.primaryAdminEmail,
-    subject: 'Subscription cancelled',
-    template: 'subscription-cancelled',
-    data: {
-      gracePeriodEnd: subscription.gracePeriodEnd,
-      dataExportLink: 'https://api.spexternal.com/export'
-    }
-  });
-  
-  // 3. Schedule data deletion after grace period
-  await scheduleDataDeletion(tenantId, subscription.gracePeriodEnd);
-}
-```
-
-## Onboarding Metrics
-
-Track onboarding success:
-
-```typescript
-export interface OnboardingMetrics {
-  totalOnboarded: number;
-  onboardedThisMonth: number;
-  averageTimeToFirstUse: number;  // minutes
-  conversionRate: number;  // trial → paid %
-  dropoffPoints: {
-    consent: number;
-    spfxInstall: number;
-    firstUse: number;
-  };
-}
-```
-
-## Troubleshooting Common Issues
-
-### Issue: Admin Consent Failed
-
-**Symptoms**: Consent redirect returns error
-**Causes**: 
-- Insufficient privileges (not global admin)
-- App not properly registered in Azure AD
-
-**Resolution**: 
-1. Verify user has Global Admin role
-2. Check app registration in Azure portal
-3. Retry consent flow
-
-### Issue: Tenant Not Found After Consent
-
-**Symptoms**: SPFx shows "Not Connected"
-**Causes**:
-- Backend callback failed
-- Database connection issue
-
-**Resolution**:
-1. Check backend logs in App Insights
-2. Verify database connectivity
-3. Retry onboarding API call
-
-### Issue: SPFx Cannot Acquire Token
-
-**Symptoms**: SPFx shows auth error
-**Causes**:
-- Missing API permission in SPFx
-- Incorrect resource URI
-
-**Resolution**:
-1. Update `package-solution.json` with API permissions
-2. Re-deploy SPFx package
-3. Admin re-consents in SharePoint
-
-## Security Considerations
-
-- **State Parameter**: CSRF protection in consent flow
-- **Token Validation**: Backend validates all tokens
-- **Audit Logging**: All onboarding steps logged
-- **Email Verification**: Verify primary admin email (future)
-- **MFA Requirement**: Require MFA for admin consent (future)
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Discover   │────▶│   Sign Up    │────▶│    Consent   │────▶│   Configure  │
-│   Product    │     │   Account    │     │   Azure AD   │     │    Tenant    │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-                                                                        │
-                                                                        ▼
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Complete   │◀────│   Install    │◀────│    Start     │◀────│   Provision  │
-│  Onboarding  │     │  SPFx Web    │     │    Trial     │     │  Resources   │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-```
-
-## Phase 1: Discovery & Sign Up
-
-### 1.1 Landing Page
-User visits the marketing website: `https://spexternal.com`
-
-**Key Information:**
-- Product features and benefits
-- Pricing tiers (Free Trial, Pro, Enterprise)
-- Video demo and screenshots
-- Customer testimonials
-- Documentation links
-
-### 1.2 Sign Up Flow
-User clicks "Start Free Trial" button
-
-**Required Information:**
-```json
+```csharp
+public async Task<AdminVerificationResult> VerifyAdminAsync(string accessToken)
 {
-  "email": "admin@contoso.com",
-  "firstName": "John",
-  "lastName": "Admin",
-  "companyName": "Contoso Ltd",
-  "companySize": "50-200",
-  "role": "IT Administrator",
-  "phoneNumber": "+1-555-0123"
+    // Decode JWT token
+    var claims = ValidateToken(accessToken);
+    var tenantId = claims.FindFirst("tid").Value;
+    var userId = claims.FindFirst("oid").Value;
+    var userPrincipalName = claims.FindFirst("upn").Value;
+    
+    // Call Microsoft Graph to check admin roles
+    var roles = await _graphClient.Users[userId]
+        .AppRoleAssignments
+        .Request()
+        .GetAsync();
+    
+    var isGlobalAdmin = roles.Any(r => r.ResourceDisplayName == "Global Administrator");
+    var isSharePointAdmin = roles.Any(r => r.ResourceDisplayName == "SharePoint Administrator");
+    var isAppAdmin = roles.Any(r => r.ResourceDisplayName == "Application Administrator");
+    
+    if (!isGlobalAdmin && !isSharePointAdmin && !isAppAdmin)
+    {
+        return new AdminVerificationResult
+        {
+            IsAuthorized = false,
+            ErrorMessage = "User must have Global Administrator or SharePoint Administrator role"
+        };
+    }
+    
+    return new AdminVerificationResult
+    {
+        IsAuthorized = true,
+        TenantId = tenantId,
+        UserId = userId,
+        UserPrincipalName = userPrincipalName,
+        Roles = new[] { "TenantAdmin" }
+    };
 }
 ```
 
-**Email Verification:**
-1. Send verification email with 6-digit code
-2. User enters code to verify email address
-3. Account marked as verified
-
-## Phase 2: Azure AD Consent
-
-### 2.1 Admin Consent Flow
-
-**Redirect to Azure AD:**
-```
-https://login.microsoftonline.com/{tenant}/adminconsent
-?client_id={our_app_id}
-&state={state_token}
-&redirect_uri=https://api.spexternal.com/v1/auth/callback
-&scope=https://graph.microsoft.com/.default
-```
+### Step 4: Admin Consent Flow
 
 **Required Permissions:**
-- `Sites.Read.All` - Read all site collections
-- `Sites.Manage.All` - Manage all site collections
-- `User.Read.All` - Read all users' full profiles
-- `Directory.Read.All` - Read directory data
 
-### 2.2 Consent Screen
-User sees Microsoft consent dialog:
+| Permission | Type | Purpose |
+|------------|------|---------|
+| `User.Read.All` | Application | Read all user profiles |
+| `Sites.ReadWrite.All` | Application | Manage SharePoint sites |
+| `Sites.FullControl.All` | Application | Full control for external sharing |
+| `Directory.Read.All` | Application | Read directory data |
+
+**Admin Consent URL:**
+
+```
+https://login.microsoftonline.com/{tenant_id}/v2.0/adminconsent?
+  client_id=<app_client_id>&
+  redirect_uri=https://api.spexternal.com/auth/consent-callback&
+  state=<random_state_token>&
+  scope=https://graph.microsoft.com/.default
+```
+
+**Consent Screen Shows:**
 - Application name: "SharePoint External User Manager"
-- Publisher: Verified publisher badge
+- Publisher: "Your Organization"
 - Permissions requested (listed above)
-- Organization name (auto-detected)
+- Warning: "This app will have access to your organization's data"
 
-### 2.3 Post-Consent Callback
-After consent is granted:
+**After Consent:**
+- Backend receives consent callback
+- Stores consent status in tenant record
+- Proceeds to provisioning
 
-1. Azure AD redirects to: `https://api.spexternal.com/v1/auth/callback?admin_consent=True&tenant={tenantId}&state={state_token}`
-2. Backend validates state token
-3. Backend stores consent record
-4. Redirect user to onboarding wizard
+### Step 5: Tenant Resource Provisioning
 
-**Error Handling:**
-- If consent denied: Show message and "Try Again" button
-- If consent failed: Show error message with support link
+Backend automatically provisions tenant resources:
 
-## Phase 3: Tenant Provisioning
+#### 5.1 Master Database Record
 
-### 3.1 Create Tenant Record
+```sql
+INSERT INTO Tenants (
+    TenantId,
+    TenantDomain,
+    DisplayName,
+    EntraIdTenantId,
+    DatabaseName,
+    SubscriptionTier,
+    SubscriptionStatus,
+    SubscriptionStartDate,
+    TrialEndDate,
+    IsActive,
+    CreatedDate,
+    CreatedBy
+)
+VALUES (
+    NEWID(),
+    'contoso.com',
+    'Contoso Corporation',
+    '<entra_id_tenant_id>',
+    'tenant_<guid>',
+    'Free',
+    'Trial',
+    GETUTCDATE(),
+    DATEADD(DAY, 30, GETUTCDATE()),
+    1,
+    GETUTCDATE(),
+    'admin@contoso.com'
+);
+```
 
-**API Call (Internal):**
-```http
-POST /internal/tenants/provision
-Content-Type: application/json
+#### 5.2 Tenant Database Creation
 
+```csharp
+public async Task ProvisionTenantDatabaseAsync(Guid tenantId, string databaseName)
 {
-  "tenantId": "contoso.onmicrosoft.com",
-  "adminEmail": "admin@contoso.com",
-  "companyName": "Contoso Ltd",
-  "subscriptionTier": "trial",
-  "dataLocation": "eastus"
+    // Create database from template
+    var createDbCommand = $@"
+        CREATE DATABASE [{databaseName}]
+        AS COPY OF [TenantTemplate]
+        (SERVICE_OBJECTIVE = ELASTIC_POOL(name = [TenantPool]));";
+    
+    await ExecuteSqlCommandAsync(createDbCommand, masterConnection);
+    
+    // Wait for database to be ready
+    await WaitForDatabaseReadyAsync(databaseName);
+    
+    // Run initialization scripts
+    await InitializeTenantDatabaseAsync(tenantId, databaseName);
+    
+    // Store connection string in Key Vault
+    var connectionString = BuildConnectionString(databaseName);
+    await _keyVaultService.SetSecretAsync(
+        $"sql-connection-tenant-{tenantId}",
+        connectionString
+    );
 }
 ```
 
-**Backend Actions:**
-1. Create tenant record in Cosmos DB
-2. Provision tenant SQL database
-3. Run database migrations
-4. Initialize default configuration
-5. Create default policies
-6. Generate API credentials
-7. Send welcome email
+#### 5.3 Cosmos DB Container Initialization
 
-**Provisioning Time:** ~30 seconds
+```csharp
+public async Task InitializeCosmosContainersAsync(Guid tenantId)
+{
+    // Create tenant metadata document
+    var tenantMetadata = new
+    {
+        id = $"tenant-{tenantId}-metadata",
+        tenantId = tenantId.ToString(),
+        type = "metadata",
+        settings = new
+        {
+            externalSharingEnabled = true,
+            allowAnonymousLinks = false,
+            defaultLinkPermission = "View",
+            externalUserExpirationDays = 90
+        },
+        features = new
+        {
+            bulkOperations = false,  // Free tier
+            advancedAudit = false,   // Free tier
+            customPolicies = false   // Free tier
+        }
+    };
+    
+    await _cosmosContainer.CreateItemAsync(
+        tenantMetadata,
+        new PartitionKey(tenantId.ToString())
+    );
+}
+```
 
-### 3.2 Default Configuration
+#### 5.4 Initial Admin Account
 
-**Policies:**
+```sql
+INSERT INTO TenantAdmins (
+    AdminId,
+    TenantId,
+    UserPrincipalName,
+    DisplayName,
+    Email,
+    Role,
+    IsActive,
+    CreatedDate
+)
+VALUES (
+    NEWID(),
+    '<tenant_id>',
+    'admin@contoso.com',
+    'Admin User',
+    'admin@contoso.com',
+    'TenantAdmin',
+    1,
+    GETUTCDATE()
+);
+```
+
+### Step 6: Initial Configuration
+
+Backend sets up default configurations:
+
+#### Default Policies
+
 ```json
 {
-  "expirationPolicy": {
-    "enabled": true,
-    "defaultExpirationDays": 90,
-    "sendReminderDays": 7,
-    "autoRevoke": false
-  },
-  "approvalPolicy": {
-    "enabled": false,
-    "requireApprovalForInvites": false,
-    "approvers": []
-  },
-  "restrictionPolicy": {
-    "enabled": false,
-    "allowedDomains": [],
-    "blockedDomains": []
-  }
+  "policies": [
+    {
+      "policyName": "Default External Sharing Policy",
+      "policyType": "ExternalSharingPolicy",
+      "isEnabled": true,
+      "configuration": {
+        "allowAnonymousLinks": false,
+        "defaultExpiration": 90,
+        "requireApproval": false
+      },
+      "appliesTo": "AllLibraries"
+    }
+  ]
 }
 ```
 
-**Trial Subscription:**
+#### Notification Settings
+
 ```json
 {
-  "tier": "trial",
-  "status": "active",
-  "startDate": "2024-01-20T00:00:00Z",
-  "endDate": "2024-02-19T23:59:59Z",
-  "limits": {
-    "maxExternalUsers": 25,
-    "maxLibraries": 10,
-    "apiCallsPerMonth": 10000,
-    "auditRetentionDays": 30
+  "notifications": {
+    "trialExpiring": {
+      "enabled": true,
+      "daysBeforeExpiration": [7, 3, 1]
+    },
+    "newExternalUser": {
+      "enabled": true,
+      "notifyAdmin": true
+    },
+    "accessRevoked": {
+      "enabled": true
+    }
   }
 }
 ```
 
-## Phase 4: Configuration Wizard
+### Step 7: Welcome Email
 
-### 4.1 Welcome Screen
-**Content:**
-- Welcome message
-- Quick overview of setup steps
-- Estimated time: 5 minutes
-- "Let's Get Started" button
+System sends welcome email to administrator:
 
-### 4.2 Step 1: Connect SharePoint
-**Instructions:**
-1. Select SharePoint site to monitor
-2. Grant library access permissions
-3. Verify connection
-
-**UI Flow:**
 ```
-┌─────────────────────────────────────┐
-│  Connect Your SharePoint            │
-├─────────────────────────────────────┤
-│  [Search for site...]               │
-│                                     │
-│  ☑ https://contoso.sharepoint.com  │
-│  ☑ https://contoso.sharepoint.com/sites/projects  │
-│  ☐ https://contoso.sharepoint.com/sites/hr        │
-│                                     │
-│  [Back]              [Next]         │
-└─────────────────────────────────────┘
-```
+Subject: Welcome to SharePoint External User Manager!
 
-**Backend Validation:**
-```http
-POST /tenants/me/validate-connection
-{
-  "siteUrl": "https://contoso.sharepoint.com"
-}
+Hi Admin,
 
-Response:
-{
-  "success": true,
-  "data": {
-    "siteTitle": "Contoso",
-    "librariesCount": 15,
-    "hasPermissions": true
-  }
-}
-```
+Your trial has been successfully activated! Here's what you need to know:
 
-### 4.3 Step 2: Configure Policies
-**Options:**
-- External user expiration (30, 60, 90, 180, 365 days, or never)
-- Require approval for invitations (Yes/No)
-- Allowed email domains (optional)
-- Notification preferences
+Trial Details:
+- Trial Period: 30 days (expires on Feb 14, 2024)
+- Features: All Free tier features included
+- External Users: Up to 5
+- Libraries: Up to 3
 
-**UI Flow:**
-```
-┌─────────────────────────────────────┐
-│  Set Your Policies                  │
-├─────────────────────────────────────┤
-│  Default user expiration:           │
-│  ◉ 90 days  ○ 180 days  ○ Never    │
-│                                     │
-│  Require approval for invites:      │
-│  ○ Yes      ◉ No                    │
-│                                     │
-│  Allowed email domains (optional):  │
-│  [partner.com, vendor.com]          │
-│                                     │
-│  [Back]              [Next]         │
-└─────────────────────────────────────┘
-```
+Get Started:
+1. Install the SPFx web part in your SharePoint site
+2. Add external users to your libraries
+3. Set up collaboration policies
+4. Review audit logs
 
-### 4.4 Step 3: Invite Team Members
-**Optional Step:**
-Add additional administrators to the platform
-
-**UI Flow:**
-```
-┌─────────────────────────────────────┐
-│  Invite Your Team (Optional)        │
-├─────────────────────────────────────┤
-│  Email                    Role      │
-│  [manager@contoso.com]    [Admin ▼]│
-│  [user@contoso.com]       [Reader▼]│
-│                                     │
-│  [+ Add Another]                    │
-│                                     │
-│  [Skip]     [Back]      [Invite]    │
-└─────────────────────────────────────┘
-```
-
-**Roles:**
-- Owner: Full access, billing management
-- Admin: Full access, no billing
-- Reader: View-only access
-
-### 4.5 Step 4: Install SPFx Web Part
-**Instructions:**
-1. Download SPFx package (`.sppkg` file)
-2. Upload to SharePoint App Catalog
-3. Deploy and trust the solution
-4. Add web part to a page
-
-**UI Flow:**
-```
-┌─────────────────────────────────────┐
-│  Install SharePoint Web Part        │
-├─────────────────────────────────────┤
-│  Step 1: Download Package           │
-│  [Download .sppkg File]             │
-│                                     │
-│  Step 2: Upload to App Catalog      │
-│  1. Go to SharePoint Admin Center   │
-│  2. Apps > App Catalog > Apps       │
-│  3. Upload the .sppkg file          │
-│  4. Click "Deploy"                  │
-│                                     │
-│  Step 3: Add to Page                │
-│  1. Edit a SharePoint page          │
-│  2. Add "External User Manager"     │
-│  3. Save and publish                │
-│                                     │
-│  [View Detailed Instructions]       │
-│                                     │
-│  [Back]              [Complete]     │
-└─────────────────────────────────────┘
-```
-
-**Video Tutorial:** Embedded video showing installation process
-
-## Phase 5: Activation & First Use
-
-### 5.1 Onboarding Complete
-**Success Screen:**
-```
-┌─────────────────────────────────────┐
-│  🎉 You're All Set!                 │
-├─────────────────────────────────────┤
-│  Your trial is active until:        │
-│  February 19, 2024                  │
-│                                     │
-│  Next Steps:                        │
-│  ☑ Connected SharePoint             │
-│  ☑ Configured policies              │
-│  ☑ Invited team members             │
-│  ☐ Added web part to page           │
-│                                     │
-│  [Go to Dashboard]                  │
-│  [Download Web Part Again]          │
-└─────────────────────────────────────┘
-```
-
-### 5.2 Welcome Email
-Sent automatically after onboarding:
-
-**Subject:** Welcome to SharePoint External User Manager 🎉
-
-**Content:**
-```
-Hi John,
-
-Welcome to SharePoint External User Manager! Your trial is now active.
-
-Your Account Details:
-- Organization: Contoso Ltd
-- Tenant ID: contoso.onmicrosoft.com
-- Trial ends: February 19, 2024
-- Dashboard: https://portal.spexternal.com
-
-Quick Links:
+Resources:
 - Documentation: https://docs.spexternal.com
-- Video Tutorials: https://docs.spexternal.com/videos
+- Video Tutorials: https://spexternal.com/tutorials
 - Support: support@spexternal.com
 
-What's Next?
-1. Add the web part to your SharePoint site
-2. Invite your first external user
-3. Explore audit logs and reports
-
-Need help? Reply to this email or check our documentation.
-
 Best regards,
-The SharePoint External User Manager Team
+SharePoint External User Manager Team
 ```
 
-### 5.3 In-App Tour
-First-time user experience in the SPFx web part:
+### Step 8: Redirect to Application
 
-**Tour Steps:**
-1. "This is your External User Dashboard"
-2. "Click here to invite external users"
-3. "View and manage user access here"
-4. "Check audit logs and reports here"
-5. "Configure policies and settings here"
+User is redirected to the application dashboard:
 
-**Dismissible:** User can skip tour or complete it
-
-## Phase 6: Trial Management
-
-### 6.1 Trial Reminders
-
-**7 Days Before Expiration:**
 ```
-Subject: Your trial expires in 7 days
-
-Hi John,
-
-Your SharePoint External User Manager trial expires on February 19, 2024.
-
-Current Usage:
-- External Users: 12 / 25
-- API Calls: 3,420 / 10,000
-
-Ready to upgrade? Choose a plan that fits your needs:
-- Pro: $49/month (up to 500 users)
-- Enterprise: $199/month (unlimited users + advanced features)
-
-[View Pricing] [Upgrade Now]
+https://app.spexternal.com/dashboard?tenantId=<guid>&onboarding=complete
 ```
 
-**1 Day Before Expiration:**
+Dashboard shows:
+- Trial status banner
+- Quick start guide
+- SPFx installation instructions
+- Sample data (optional)
+
+## Post-Onboarding Tasks
+
+### For Administrators
+
+**Immediate Actions:**
+1. **Install SPFx Web Part**
+   - Download from App Catalog
+   - Deploy to SharePoint sites
+   - Add web part to pages
+
+2. **Configure Settings**
+   - External sharing policies
+   - Notification preferences
+   - User invitation templates
+
+3. **Add Team Members**
+   - Invite additional administrators
+   - Assign roles (LibraryOwner, ReadOnly)
+
+**Within First Week:**
+1. Sync existing external users
+2. Set up collaboration policies
+3. Configure access reviews
+4. Test user invitation flow
+
+### For End Users
+
+**SPFx Web Part Installation:**
+1. Navigate to SharePoint site
+2. Edit page where web part should appear
+3. Add "External User Manager" web part
+4. Configure web part properties:
+   - API endpoint
+   - Refresh interval
+   - Display options
+
+## Tenant Offboarding
+
+When a tenant cancels subscription or trial expires:
+
+### Grace Period (7 days)
+
+- Read-only access maintained
+- No new invitations allowed
+- Notifications sent daily
+- Option to reactivate subscription
+
+### After Grace Period
+
+```csharp
+public async Task OffboardTenantAsync(Guid tenantId)
+{
+    // 1. Export audit logs (if requested)
+    await ExportAuditLogsAsync(tenantId);
+    
+    // 2. Revoke all external user access
+    await RevokeAllExternalAccessAsync(tenantId);
+    
+    // 3. Mark tenant as inactive
+    await DeactivateTenantAsync(tenantId);
+    
+    // 4. Schedule database deletion (30 days)
+    await ScheduleDatabaseDeletionAsync(tenantId, days: 30);
+    
+    // 5. Remove from active routing
+    await RemoveFromRoutingTableAsync(tenantId);
+    
+    // 6. Send confirmation email
+    await SendOffboardingConfirmationAsync(tenantId);
+}
 ```
-Subject: Your trial expires tomorrow
 
-Hi John,
+### Data Retention
 
-Your trial ends tomorrow (February 19, 2024).
-
-Upgrade now to keep your data and continue managing external users.
-
-[Upgrade Now]
-```
-
-### 6.2 Trial Expiration
-**On Expiration Day:**
-- Status changed to "trial_expired"
-- API returns 402 Payment Required
-- SPFx web part shows upgrade banner
-- Email sent with upgrade instructions
-
-**Grace Period:** 7 days
-- Read-only access to data
-- Cannot invite/remove users
-- Can export audit logs
-- Can upgrade to paid plan
-
-### 6.3 Post-Grace Period
-**After Grace Period:**
-- Status changed to "suspended"
-- All API access disabled (except /tenants/me)
-- Data retained for 30 days
-- Can reactivate by upgrading
-
-## Phase 7: Upgrade to Paid Plan
-
-### 7.1 Choose Plan
-**Available Plans:**
-```
-┌─────────────────────────────────────┐
-│  Choose Your Plan                   │
-├─────────────────────────────────────┤
-│  Pro                                │
-│  $49 /month                         │
-│  - Up to 500 external users         │
-│  - 100 libraries                    │
-│  - 100K API calls/month             │
-│  - 1 year audit retention           │
-│  [Select Pro]                       │
-│                                     │
-│  Enterprise                         │
-│  $199 /month                        │
-│  - Unlimited external users         │
-│  - Unlimited libraries              │
-│  - Unlimited API calls              │
-│  - 7 years audit retention          │
-│  - Priority support                 │
-│  - Custom policies                  │
-│  [Select Enterprise]                │
-└─────────────────────────────────────┘
-```
-
-### 7.2 Payment (Own Billing)
-**Payment Methods:**
-- Credit Card (Stripe)
-- Bank Transfer / Invoice (Enterprise only)
-- Purchase Order (Enterprise only)
-
-**Billing Frequency:**
-- Monthly
-- Annual (10% discount)
-
-### 7.3 Activation
-After successful payment:
-1. Update subscription status to "active"
-2. Update limits based on plan
-3. Send payment receipt
-4. Send activation confirmation
-5. Enable all features
-
-## Onboarding Metrics
-
-### Success Criteria
-- **Onboarding Completion Rate**: > 80%
-- **Time to Value**: < 10 minutes (from signup to first use)
-- **Trial Conversion Rate**: > 25%
-- **Support Tickets During Onboarding**: < 5%
-
-### Tracking Events
-```typescript
-// Analytics events to track
-analytics.track('Onboarding:Started');
-analytics.track('Onboarding:ConsentGranted');
-analytics.track('Onboarding:TenantProvisioned');
-analytics.track('Onboarding:ConfigurationCompleted');
-analytics.track('Onboarding:SPFxInstalled');
-analytics.track('Onboarding:FirstUserInvited');
-analytics.track('Onboarding:Completed');
-```
+- **Audit logs:** Exported and retained for 7 years
+- **User data:** Soft-deleted, purged after 30 days
+- **Backups:** Retained for 90 days after offboarding
 
 ## Troubleshooting
 
-### Common Issues
+### Common Onboarding Issues
 
-**Issue: Consent Failed**
-- **Cause**: User not global admin
-- **Solution**: Must be Global Admin or Application Admin
+**Issue: Admin consent fails**
+- **Cause:** User doesn't have admin role
+- **Solution:** Use account with Global Administrator role
 
-**Issue: Provisioning Timeout**
-- **Cause**: High load or Azure service issue
-- **Solution**: Automatic retry after 1 minute
+**Issue: Database provisioning timeout**
+- **Cause:** Azure SQL elastic pool at capacity
+- **Solution:** Auto-retry with exponential backoff, scale pool if needed
 
-**Issue: SharePoint Connection Failed**
-- **Cause**: Insufficient permissions or incorrect URL
-- **Solution**: Verify permissions and URL format
+**Issue: SharePoint permissions insufficient**
+- **Cause:** Conditional access policies blocking service principal
+- **Solution:** Add service principal to exclusion list
 
-**Issue: Web Part Not Appearing**
-- **Cause**: Not deployed in App Catalog
-- **Solution**: Deploy solution in App Catalog
+### Support Contacts
 
-## Support During Onboarding
+- **Technical Support:** support@spexternal.com
+- **Onboarding Help:** onboarding@spexternal.com
+- **Emergency:** +1-555-0199 (24/7)
 
-**In-App Help:**
-- Help tooltips on every step
-- "Need Help?" button (opens chat)
-- Link to documentation
+## SaaS Admin Role Model
 
-**Email Support:**
-- onboarding@spexternal.com
-- Response time: < 2 hours during business hours
+### Role Hierarchy
 
-**Live Chat:**
-- Available during onboarding wizard
-- Powered by Intercom or similar
+```
+┌─────────────────────────┐
+│    SaaS Admin          │  ← Our team, full system access
+└───────────┬─────────────┘
+            │
+┌───────────▼─────────────┐
+│   Tenant Admin         │  ← Customer admin, full tenant access
+└───────────┬─────────────┘
+            │
+      ┌─────┴──────┐
+      │            │
+┌─────▼────┐  ┌───▼────────┐
+│ Library  │  │ Library    │  ← Limited access
+│ Owner    │  │ Contributor│
+└──────────┘  └────────────┘
+```
 
----
+### Role Permissions Matrix
 
-**Last Updated**: 2024-02-03
-**Version**: 1.0
+| Action | SaaS Admin | Tenant Admin | Library Owner | Library Contributor | Read-Only |
+|--------|-----------|--------------|---------------|-------------------|-----------|
+| View all tenants | ✓ | - | - | - | - |
+| Manage subscriptions | ✓ | - | - | - | - |
+| View tenant data | ✓ | ✓ | - | - | - |
+| Create/delete libraries | ✓ | ✓ | - | - | - |
+| Invite external users | ✓ | ✓ | ✓ | ✓ | - |
+| Revoke user access | ✓ | ✓ | ✓ | - | - |
+| Manage policies | ✓ | ✓ | - | - | - |
+| View audit logs | ✓ | ✓ | ✓ | - | - |
+| Export audit logs | ✓ | ✓ | - | - | - |
+| Change settings | ✓ | ✓ | - | - | - |
+
+### SaaS Admin Functions
+
+**Tenant Management:**
+- View all tenants across the platform
+- Suspend/reactivate tenants
+- Manual subscription changes
+- Data export requests
+- Offboarding support
+
+**Platform Operations:**
+- Monitor system health
+- Review error logs
+- Performance tuning
+- Scale resources
+- Security incident response
+
+**Support:**
+- Handle escalated support tickets
+- Troubleshoot tenant issues
+- Assist with data migrations
+- Provide configuration guidance
+
+## Security Considerations
+
+### During Onboarding
+
+1. **Validate Admin Identity**
+   - Verify admin role via Graph API
+   - Check MFA status
+   - Log all authentication attempts
+
+2. **Secure Token Handling**
+   - Short-lived tokens (1 hour)
+   - Secure storage (encrypted)
+   - Regular token refresh
+
+3. **Audit Onboarding Events**
+   - Log all steps
+   - Track failures and retries
+   - Monitor for suspicious patterns
+
+### Ongoing Security
+
+1. **Conditional Access**
+   - Require MFA for admins
+   - Block legacy authentication
+   - Require compliant devices
+
+2. **Regular Access Reviews**
+   - Quarterly admin role review
+   - Remove inactive users
+   - Verify permissions
+
+## Metrics & Monitoring
+
+### Onboarding Success Metrics
+
+- **Time to Onboard:** Target < 5 minutes
+- **Success Rate:** Target > 95%
+- **Admin Consent Rate:** Target > 90%
+- **Trial to Paid Conversion:** Target > 20%
+
+### Alerts
+
+- Failed onboarding attempts (> 3 in 10 minutes)
+- Admin consent denials
+- Database provisioning failures
+- Long onboarding times (> 10 minutes)
+
+## References
+
+- [Entra ID Admin Consent](https://learn.microsoft.com/entra/identity-platform/v2-admin-consent)
+- [Microsoft Graph Permissions](https://learn.microsoft.com/graph/permissions-reference)
+- [Azure SQL Elastic Pools](https://learn.microsoft.com/azure/azure-sql/database/elastic-pool-overview)

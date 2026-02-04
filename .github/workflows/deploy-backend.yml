@@ -1,296 +1,74 @@
-name: Deploy Backend to Azure
-name: Deploy Backend API
+name: Deploy Backend to Azure Functions
 
 on:
   push:
     branches:
       - main
+      - develop
     paths:
       - 'backend/**'
-      - dev
-    paths:
-      - 'backend/**'
-      - 'deployment/backend.bicep'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - stage
-          - prod
 
 env:
-  NODE_VERSION: '18.x'
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend'
-
-permissions:
-  contents: read
-  id-token: write
+  AZURE_FUNCTIONAPP_NAME: spexternal-func-dev
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend/src'
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-          - staging
-          - prod
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
 
-permissions:
-  id-token: write
-  contents: read
-
-jobs:
-  build:
-    name: Build Backend
-    runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
+      - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Install dependencies
+      - name: 'Restore dependencies'
+        shell: bash
         run: |
-          cd backend
-          npm ci
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet restore
+          popd
 
-      - name: Build TypeScript
+      - name: 'Build project'
+        shell: bash
         run: |
-          cd backend
-          npm run build
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --no-restore
+          popd
 
-      - name: Run tests
+      - name: 'Run tests'
+        shell: bash
         run: |
-          cd backend
-          npm test
+          pushd './backend/tests'
+          # TODO: Add when tests are created
+          # dotnet test --no-build --verbosity normal
+          popd
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-dist
-          path: |
-            backend/dist
-            backend/node_modules
-            backend/package.json
-            backend/host.json
+      - name: 'Publish'
+        shell: bash
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet publish -c Release -o ./output
+          popd
 
-  deploy-dev:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || inputs.environment == 'dev'
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: development
-      url: ${{ steps.deploy.outputs.function-url }}
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-dist
-          path: backend
-
-      - name: Azure Login
+      - name: 'Login to Azure'
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy to Azure Functions
-        id: deploy
+      - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
         with:
-          app-name: 'spexternal-func-dev'
-          package: backend
-          respect-funcignore: true
-
-      - name: Run database migrations
-        run: |
-          # TODO: Add database migration step
-          echo "Database migrations would run here"
-
-  deploy-prod:
-    needs: build
-    runs-on: ubuntu-latest
-    if: inputs.environment == 'prod'
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.function-url }}
-        working-directory: backend
-        run: npm ci
-
-      - name: Lint code
-        working-directory: backend
-        run: npm run lint
-
-      - name: Run tests
-        working-directory: backend
-        run: npm test
-
-      - name: Build TypeScript
-        working-directory: backend
-        run: npm run build
-
-      - name: Archive backend
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-build
-          path: |
-            backend/
-            !backend/node_modules/
-            !backend/src/
-            !backend/**/*.spec.ts
-          retention-days: 1
-
-  deploy-infrastructure:
-    name: Deploy Azure Infrastructure
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy Bicep template
-        uses: azure/arm-deploy@v2
-        with:
-          resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          template: ./deployment/backend.bicep
-          parameters: >
-            environment=${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
-            appName=spexternal
-          deploymentName: backend-${{ github.run_number }}
-
-  deploy-function-app:
-    name: Deploy Function App
-    runs-on: ubuntu-latest
-    needs: [build, deploy-infrastructure]
-    environment:
-      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
-    
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-dist
-          path: backend
-
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
-
-      - name: Deploy to Azure Functions
-        id: deploy
-        uses: Azure/functions-action@v1
-        with:
-          app-name: 'spexternal-func-prod'
-          package: backend
-          respect-funcignore: true
-
-      - name: Run database migrations
-        run: |
-          # TODO: Add database migration step
-          echo "Database migrations would run here"
-          name: backend-build
-          path: backend
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install production dependencies
-        working-directory: backend
-        run: |
-          npm ci --omit=dev
-
-      - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
-        with:
-          app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
-          package: backend
-          publish-profile: ${{ secrets.AZURE_FUNCTION_APP_PUBLISH_PROFILE }}
-
-  verify-deployment:
-    name: Verify Deployment
-    runs-on: ubuntu-latest
-    needs: deploy-function-app
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Wait for deployment
-        run: sleep 30
-
-      - name: Health check
-        run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://${{ secrets.AZURE_FUNCTION_APP_NAME }}.azurewebsites.net/api/health || echo "000")
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
           
-          echo "Health check response: $RESPONSE"
-          
-          if [ "$RESPONSE" != "200" ]; then
-            echo "❌ Health check failed with status $RESPONSE"
-            exit 1
-          fi
-          
-          echo "✅ Health check passed"
-
-      - name: Run smoke tests
-        run: |
-          echo "Running smoke tests..."
-          # Add smoke test commands here
-          echo "✅ Smoke tests passed"
-
-  notify:
-    name: Notify Deployment
-    runs-on: ubuntu-latest
-    needs: [deploy-function-app, verify-deployment]
-    if: always()
-    
-    steps:
-      - name: Deployment Success
-        if: ${{ needs.verify-deployment.result == 'success' }}
-        run: |
-          echo "✅ Backend API deployed successfully!"
-          echo "Environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}"
-          echo "Function App: ${{ secrets.AZURE_FUNCTION_APP_NAME }}"
-
-      - name: Deployment Failure
-        if: ${{ needs.verify-deployment.result == 'failure' }}
-        run: |
-          echo "❌ Backend API deployment failed!"
-          exit 1
+      - name: 'Logout from Azure'
+        run: az logout

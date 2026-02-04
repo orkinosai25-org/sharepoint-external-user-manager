@@ -1,400 +1,317 @@
-# Backend API
+# Backend - SharePoint External User Manager
 
-SharePoint External User Manager - SaaS Backend
+## Overview
 
-## Structure
+This directory contains the Azure Functions backend for the SharePoint External User Manager SaaS solution. The backend provides a RESTful API for managing external users, libraries, policies, and licensing.
 
-```
-backend/
-├── src/
-│   ├── functions/          # Azure Function endpoints
-│   ├── middleware/         # Authentication & subscription checks
-│   ├── services/           # Business logic layer
-│   ├── models/             # TypeScript interfaces
-│   ├── database/           # Data access layer
-│   └── utils/              # Shared utilities
-├── database/
-│   └── migrations/         # SQL schema migrations
-└── deploy/                 # Azure deployment templates
-# SharePoint External User Manager - Backend API
+## Technology Stack
 
-This is the SaaS backend API for SharePoint External User Manager, built with Azure Functions (Node.js/TypeScript).
-
-## Architecture
-
-- **Runtime**: Node.js 18 LTS
-- **Framework**: Azure Functions v4
-- **Language**: TypeScript
-- **Database**: Azure Cosmos DB (shared metadata) + Azure SQL (tenant-specific data)
-- **Authentication**: Azure AD (multi-tenant)
-- **Hosting**: Azure Functions Consumption Plan
+- **Runtime:** .NET 8 (LTS)
+- **Framework:** Azure Functions v4 (Isolated Worker)
+- **Language:** C# 12
+- **Authentication:** Microsoft Identity Web (Entra ID)
+- **Database:** Azure SQL Database (multi-tenant) + Azure Cosmos DB
+- **Key Management:** Azure Key Vault
+- **Monitoring:** Application Insights
 
 ## Project Structure
 
 ```
 backend/
-├── tenants/                    # Tenant management endpoints
-│   ├── onboard.ts             # POST /tenants/onboard
-│   └── get-tenant.ts          # GET /tenants/me
-├── external-users/            # External user management (TODO)
-├── policies/                  # Policy management (TODO)
-├── audit/                     # Audit log endpoints (TODO)
-└── shared/                    # Shared utilities
-    ├── auth/                  # Authentication & authorization
-    │   ├── jwt-validator.ts
-    │   ├── tenant-resolver.ts
-    │   └── rbac.ts
-    ├── middleware/            # Middleware functions
-    │   ├── license-check.ts
-    │   ├── rate-limit.ts
-    │   └── error-handler.ts
-    ├── storage/               # Data access layer
-    │   ├── tenant-repository.ts
-    │   ├── subscription-repository.ts
-    │   └── audit-repository.ts
-    ├── models/                # TypeScript interfaces
-    │   └── types.ts
-    └── utils/                 # Helper functions
-        └── helpers.ts
+├── src/
+│   ├── Functions/
+│   │   ├── TenantOnboarding/
+│   │   │   └── RegisterTenantFunction.cs
+│   │   ├── UserManagement/
+│   │   │   └── GetLibrariesFunction.cs
+│   │   ├── PolicyManagement/
+│   │   ├── AuditLog/
+│   │   └── Licensing/
+│   ├── Middleware/
+│   │   ├── AuthenticationMiddleware.cs
+│   │   └── LicenseEnforcementMiddleware.cs
+│   ├── Services/
+│   │   └── LicensingService.cs
+│   ├── Models/
+│   │   ├── Tenant.cs
+│   │   ├── ExternalUser.cs
+│   │   ├── Library.cs
+│   │   └── ApiResponse.cs
+│   ├── Program.cs
+│   └── SharePointExternalUserManager.Functions.csproj
+├── tests/
+└── README.md
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.x or 20.x
-- Azure Functions Core Tools v4
-- SQL Server (local or Azure)
-- Node.js 18+ 
-- Azure Functions Core Tools v4
-- Azure subscription with:
-  - Cosmos DB account
-  - Azure AD application (multi-tenant)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
+- [Visual Studio 2022](https://visualstudio.microsoft.com/) or [Visual Studio Code](https://code.visualstudio.com/)
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
+- Azure subscription for deployment
 
-### Installation
+### Local Development
 
-```bash
-cd backend
-npm install
-```
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd sharepoint-external-user-manager/backend/src
+   ```
 
-### Configuration
+2. **Restore dependencies**
+   ```bash
+   dotnet restore
+   ```
 
-Copy `local.settings.json.example` to `local.settings.json` and update values:
+3. **Configure local settings**
+   
+   Create a `local.settings.json` file (not committed to git):
+   ```json
+   {
+     "IsEncrypted": false,
+     "Values": {
+       "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+       "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+       "EntraId__ClientId": "<your-entra-id-client-id>",
+       "EntraId__TenantId": "<your-entra-id-tenant-id>",
+       "KeyVaultUri": "https://<your-keyvault>.vault.azure.net/",
+       "SqlServer__MasterConnection": "Server=localhost;Database=master-db;Integrated Security=true;",
+       "CosmosDb__Endpoint": "https://<your-cosmos-account>.documents.azure.com:443/",
+       "CosmosDb__DatabaseName": "SharedMetadata"
+     }
+   }
+   ```
 
-```json
-{
-  "Values": {
-    "AZURE_AD_CLIENT_ID": "your-client-id",
-    "DATABASE_SERVER": "localhost",
-    "DATABASE_NAME": "spexternal_dev"
-1. Copy `local.settings.json.example` (if exists) or create `local.settings.json`
-2. Update the following environment variables:
+4. **Run locally**
+   ```bash
+   func start
+   ```
+   
+   Or using Visual Studio:
+   - Open `SharePointExternalUserManager.Functions.csproj`
+   - Press F5 to start debugging
 
-```json
-{
-  "IsEncrypted": false,
-  "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AZURE_AD_TENANT_ID": "your-tenant-id",
-    "AZURE_AD_CLIENT_ID": "your-client-id",
-    "AZURE_AD_CLIENT_SECRET": "your-client-secret",
-    "COSMOS_DB_ENDPOINT": "https://your-cosmos.documents.azure.com:443/",
-    "COSMOS_DB_KEY": "your-cosmos-key",
-    "APPLICATIONINSIGHTS_CONNECTION_STRING": "your-app-insights-connection"
-  }
-}
-```
-
-### Development
-
-```bash
-# Build TypeScript
-npm run build
-
-# Watch mode
-npm run watch
-
-# Start Functions locally
-npm start
-```
-
-### Testing
-
-```bash
-# Run tests
-npm test
-
-# Watch mode
-npm run test:watch
-```
+5. **Test endpoints**
+   ```bash
+   # Register a new tenant
+   curl -X POST http://localhost:7071/api/v1/tenants/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "tenantDomain": "contoso.com",
+       "displayName": "Contoso Corporation",
+       "adminEmail": "admin@contoso.com"
+     }'
+   
+   # Get libraries (requires auth token)
+   curl -X GET http://localhost:7071/api/v1/libraries \
+     -H "Authorization: Bearer <token>"
+   ```
 
 ## API Endpoints
 
-See `/docs/saas/api-spec.md` for complete API documentation.
+See [API Specification](/docs/saas/api-spec.md) for detailed endpoint documentation.
 
-### Core Endpoints
+### Key Endpoints
 
-- `POST /api/tenants/onboard` - Onboard new tenant
-- `GET /api/tenants/me` - Get current tenant info
-- `GET /api/external-users` - List external users
-- `GET /api/policies` - Get policies
-- `PUT /api/policies` - Update policies  
-- `GET /api/audit` - Get audit logs
-
-## Database
-
-### Migrations
-
-Run database migrations:
-
-```bash
-cd database/migrations
-sqlcmd -S localhost -d spexternal_dev -i 001_initial_schema.sql
-# Watch mode (auto-rebuild on changes)
-npm run watch
-
-# Start Azure Functions locally
-npm start
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-```
-
-The API will be available at: `http://localhost:7071/api`
-
-## API Endpoints
-
-### Tenant Management
-
-#### POST /api/tenants/onboard
-Onboard a new tenant to the platform.
-
-**Request:**
-```json
-{
-  "tenantId": "contoso.onmicrosoft.com",
-  "adminEmail": "admin@contoso.com",
-  "companyName": "Contoso Ltd",
-  "subscriptionTier": "trial",
-  "dataLocation": "eastus"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "data": {
-    "tenantId": "contoso.onmicrosoft.com",
-    "status": "active",
-    "subscriptionTier": "trial",
-    "trialEndDate": "2024-03-20T00:00:00Z",
-    "onboardingCompleted": true,
-    "createdDate": "2024-02-20T15:30:00Z"
-  }
-}
-```
-
-#### GET /api/tenants/me
-Get current tenant information.
-
-**Headers:**
-```
-Authorization: Bearer {azure_ad_token}
-X-Tenant-ID: {tenant_id}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "tenantId": "contoso.onmicrosoft.com",
-    "displayName": "Contoso Ltd",
-    "status": "active",
-    "subscriptionTier": "pro",
-    "features": {
-      "auditExport": true,
-      "bulkOperations": true
-    },
-    "limits": {
-      "maxExternalUsers": 500,
-      "currentExternalUsers": 127
-    }
-  }
-}
-```
+- `POST /api/v1/tenants/register` - Register new tenant
+- `POST /api/v1/tenants/verify` - Verify admin identity
+- `GET /api/v1/libraries` - List libraries
+- `POST /api/v1/libraries` - Create library
+- `GET /api/v1/libraries/{id}/users` - List external users
+- `POST /api/v1/libraries/{id}/users` - Invite external user
+- `GET /api/v1/subscription` - Get subscription status
 
 ## Authentication
 
-All endpoints (except onboarding) require Azure AD authentication:
+All endpoints (except tenant registration) require authentication via Azure AD Bearer tokens.
 
-```http
-Authorization: Bearer {azure_ad_token}
-X-Tenant-ID: {tenant_id}
+**Token Format:**
+```
+Authorization: Bearer <jwt_token>
+X-Tenant-ID: <tenant_guid>
 ```
 
-### Token Requirements
-- Valid Azure AD JWT token
-- Audience: Your API app ID
-- Issuer: Azure AD tenant
-- Required claims: `tid`, `oid`, `email`/`upn`
+The authentication middleware validates:
+- Token signature (Azure AD)
+- Token expiration
+- Required claims (tid, oid, upn)
+- Tenant context
 
-## Rate Limiting
+## Licensing Enforcement
 
-- **Standard endpoints**: 100 requests/minute per tenant
-- **Bulk operations**: 10 requests/minute per tenant
+The licensing middleware enforces subscription tiers and feature gates:
 
-Rate limit headers are included in responses:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1708451600
-```
+### Subscription Tiers
 
-## Error Handling
+| Tier | Max Users | Max Libraries | Features |
+|------|-----------|---------------|----------|
+| Free | 5 | 3 | Basic management |
+| Pro | 50 | 25 | Advanced policies, audit logs |
+| Enterprise | Unlimited | Unlimited | All features, custom integrations |
 
-All errors follow a consistent format:
+### Feature Gates
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable message",
-    "details": "Additional context",
-    "correlationId": "uuid",
-    "timestamp": "2024-02-20T15:30:00Z"
-  }
-}
-```
-
-### Error Codes
-- `UNAUTHORIZED` (401): Missing or invalid auth token
-- `FORBIDDEN` (403): Insufficient permissions
-- `NOT_FOUND` (404): Resource doesn't exist
-- `CONFLICT` (409): Resource already exists
-- `VALIDATION_ERROR` (400): Invalid request body
-- `SUBSCRIPTION_REQUIRED` (402): Active subscription required
-- `RATE_LIMIT_EXCEEDED` (429): Too many requests
-- `INTERNAL_ERROR` (500): Server error
-
-## Subscription Tiers
-
-### Trial
-- Duration: 30 days
-- Max external users: 25
-- Max libraries: 10
-- API calls: 10K/month
-- Audit retention: 30 days
-
-### Pro
-- Price: $49/month
-- Max external users: 500
-- Max libraries: 100
-- API calls: 100K/month
-- Audit retention: 1 year
-
-### Enterprise
-- Price: $199/month
-- Unlimited external users
-- Unlimited libraries
-- Unlimited API calls
-- Audit retention: 7 years
-- Priority support
-
-## Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Generate coverage report
-npm run test:coverage
-```
+Functions are automatically gated based on subscription tier:
+- Free tier: Basic CRUD operations
+- Pro tier: Policies, advanced audit
+- Enterprise tier: Bulk operations, custom integrations
 
 ## Deployment
 
-### Azure Deployment
+### Infrastructure Deployment (Bicep)
 
-```bash
-# Deploy using Azure CLI
-func azure functionapp publish your-function-app-name
-```
-
-See `/docs/saas/architecture.md` for deployment architecture.
-
-## Security
-
-- All endpoints require Azure AD authentication
-- Tenant isolation via row-level security
-- Secrets stored in Azure Key Vault
-- Input validation on all endpoints
-
-See `/docs/saas/security.md` for security details.
-
-## License
-
-MIT
-1. **Create Azure Resources**:
+1. **Create resource group**
    ```bash
-   # Use Bicep template (see /deployment/backend.bicep)
+   az group create --name rg-spexternal-dev --location eastus
+   ```
+
+2. **Deploy infrastructure**
+   ```bash
+   cd infrastructure/bicep
    az deployment group create \
-     --resource-group rg-spexternal \
-     --template-file deployment/backend.bicep
+     --resource-group rg-spexternal-dev \
+     --template-file main.bicep \
+     --parameters environment=dev \
+                  sqlAdminUsername=sqladmin \
+                  sqlAdminPassword='<strong-password>'
    ```
 
-2. **Deploy Function App**:
+3. **Retrieve outputs**
    ```bash
-   func azure functionapp publish spexternal-backend
+   az deployment group show \
+     --resource-group rg-spexternal-dev \
+     --name main \
+     --query properties.outputs
    ```
 
-### CI/CD Pipeline
+### Function App Deployment (GitHub Actions)
 
-GitHub Actions workflow automatically deploys on push to main branch.
-See `.github/workflows/deploy-backend.yml` (to be created).
+The backend is automatically deployed via GitHub Actions when changes are pushed to `main` or `develop` branches.
 
-## Security
+**Required Secrets:**
+- `AZURE_CREDENTIALS`: Service principal credentials (JSON)
 
-- All secrets stored in Azure Key Vault
-- Managed Identity for Azure resource access
-- No hardcoded credentials
-- TLS 1.2+ required for all connections
-- JWT signature validation
-- Tenant isolation enforced
+**Manual deployment:**
+```bash
+cd backend/src
+func azure functionapp publish <function-app-name>
+```
 
 ## Monitoring
 
-Application Insights tracks:
-- Request/response times
-- Error rates
-- Dependency calls
-- Custom events
+### Application Insights
 
-Access dashboards at:
-https://portal.azure.com → Application Insights → spexternal-backend
+- **Telemetry:** Automatic request/response logging
+- **Custom Events:** Business events tracked
+- **Errors:** Exceptions with stack traces
+- **Performance:** Response time metrics
 
-## Documentation
+**Query Examples:**
+```kusto
+// Failed requests
+requests
+| where success == false
+| project timestamp, name, resultCode, duration
 
-- [Architecture](../docs/saas/architecture.md)
-- [Data Model](../docs/saas/data-model.md)
-- [Security](../docs/saas/security.md)
-- [API Specification](../docs/saas/api-spec.md)
+// Licensing enforcement failures
+customEvents
+| where name == "LicenseEnforcementFailed"
+| project timestamp, tenant = tostring(customDimensions.TenantId), reason = tostring(customDimensions.Reason)
+```
 
-## Support
+### Alerts
 
-For issues or questions:
-- GitHub Issues: https://github.com/orkinosai25-org/sharepoint-external-user-manager/issues
-- Email: support@spexternal.com
+Configured alerts:
+- High error rate (>5% in 5 minutes)
+- Slow response time (p95 > 2s)
+- Subscription expiration warnings
+- Database connection failures
+
+## Security
+
+### Key Vault Integration
+
+All secrets are stored in Azure Key Vault:
+- SQL connection strings (per tenant)
+- Entra ID client secrets
+- API keys
+- Encryption keys
+
+**Access:**
+- Function App uses Managed Identity
+- Automatic secret rotation supported
+- Audit logs for all access
+
+### Data Protection
+
+- **Encryption at rest:** TDE for SQL, automatic for Cosmos DB
+- **Encryption in transit:** TLS 1.2+ enforced
+- **Tenant isolation:** Database-per-tenant model
+- **Input validation:** All inputs sanitized
+
+## Testing
+
+### Unit Tests
+
+```bash
+cd backend/tests
+dotnet test
+```
+
+### Integration Tests
+
+```bash
+# Set up test environment
+export TEST_TENANT_ID=<test-tenant-id>
+export TEST_CONNECTION_STRING=<test-connection-string>
+
+# Run integration tests
+dotnet test --filter Category=Integration
+```
+
+### Load Testing
+
+Use Azure Load Testing or Apache JMeter:
+- Target: 1000 requests/minute
+- Acceptable response time: <500ms (p95)
+- Error rate: <1%
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: Authentication middleware fails**
+- Check Entra ID app registration
+- Verify client ID and tenant ID in configuration
+- Ensure token audience matches
+
+**Issue: License enforcement blocks all requests**
+- Verify tenant exists in database
+- Check subscription status in Tenants table
+- Review Application Insights logs
+
+**Issue: Database connection timeout**
+- Check SQL Server firewall rules
+- Verify Managed Identity has database access
+- Test connection string in Key Vault
+
+## Contributing
+
+1. Create a feature branch
+2. Make changes with tests
+3. Run linters and tests locally
+4. Submit pull request
+5. CI/CD will automatically deploy to dev environment
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT License - see [LICENSE](/LICENSE) file
+
+## Support
+
+- **Documentation:** [/docs/saas/](/docs/saas/)
+- **Issues:** Create GitHub issue
+- **Email:** support@spexternal.com

@@ -2,1029 +2,773 @@
 
 ## Overview
 
-This document outlines the security controls, threat model, and compliance measures for the SharePoint External User Manager SaaS platform.
+The SharePoint External User Manager implements defense-in-depth security principles with multiple layers of protection. This document outlines the comprehensive security architecture covering authentication, authorization, data protection, network security, and compliance.
 
 ## Security Layers
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ Layer 1: Network Security                                      │
-│  • HTTPS/TLS 1.2+ only                                        │
-│  • Azure Front Door WAF (future)                              │
-│  • DDoS protection                                            │
-└────────────────────────────────────────────────────────────────┘
-┌────────────────────────────────────────────────────────────────┐
-│ Layer 2: Authentication & Authorization                        │
-│  • Azure AD JWT token validation                              │
-│  • Multi-tenant app registration                              │
-│  • Role-based access control (RBAC)                           │
-└────────────────────────────────────────────────────────────────┘
-┌────────────────────────────────────────────────────────────────┐
-│ Layer 3: Application Security                                  │
-│  • Input validation & sanitization                            │
-│  • Output encoding                                            │
-│  • CORS policy enforcement                                    │
-│  • Rate limiting                                              │
-└────────────────────────────────────────────────────────────────┘
-┌────────────────────────────────────────────────────────────────┐
-│ Layer 4: Data Security                                         │
-│  • Tenant isolation (row-level)                               │
-│  • Encryption at rest (AES-256)                               │
-│  • Encryption in transit (TLS 1.2+)                           │
-│  • Secure credential storage (Key Vault)                      │
-└────────────────────────────────────────────────────────────────┘
-┌────────────────────────────────────────────────────────────────┐
-│ Layer 5: Monitoring & Incident Response                        │
-│  • Audit logging (immutable)                                  │
-│  • Security alerts                                            │
-│  • Anomaly detection                                          │
-└────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ Layer 1: Edge Protection                                        │
+│ - Azure Front Door WAF (OWASP Top 10)                          │
+│ - DDoS Protection Standard                                     │
+│ - Rate Limiting & Throttling                                   │
+│ - Geo-Filtering & IP Restrictions                              │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+┌─────────────────────────────────────────────────────────────────┐
+│ Layer 2: Identity & Access Management                           │
+│ - Microsoft Entra ID (Azure AD)                                │
+│ - OAuth 2.0 / OpenID Connect                                   │
+│ - Multi-Factor Authentication (MFA)                            │
+│ - Conditional Access Policies                                  │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+┌─────────────────────────────────────────────────────────────────┐
+│ Layer 3: Application Security                                   │
+│ - JWT Token Validation                                         │
+│ - Role-Based Access Control (RBAC)                             │
+│ - Tenant Isolation Enforcement                                 │
+│ - Input Validation & Sanitization                              │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+┌─────────────────────────────────────────────────────────────────┐
+│ Layer 4: Data Security                                          │
+│ - Encryption at Rest (TDE, Storage Encryption)                 │
+│ - Encryption in Transit (TLS 1.2+)                             │
+│ - Azure Key Vault for Secrets                                  │
+│ - Database-per-Tenant Isolation                                │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+┌─────────────────────────────────────────────────────────────────┐
+│ Layer 5: Monitoring & Response                                  │
+│ - Application Insights (Security Events)                       │
+│ - Azure Security Center                                        │
+│ - Microsoft Sentinel (SIEM)                                    │
+│ - Automated Threat Detection & Response                        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Authentication
+## Authentication & Authorization
 
-### Azure AD Multi-Tenant App Registration
+### 1. Entra ID (Azure AD) Integration
 
-**App Registration Settings**:
+**Multi-Tenant App Registration:**
+
 ```json
 {
-  "appId": "{app-id}",
   "displayName": "SharePoint External User Manager",
   "signInAudience": "AzureADMultipleOrgs",
-  "identifierUris": ["api://spexternal.com"],
-  "replyUrls": [
-    "https://api.spexternal.com/.auth/callback",
-    "https://*.sharepoint.com/*"
-  ]
+  "requiredResourceAccess": [
+    {
+      "resourceAppId": "00000003-0000-0000-c000-000000000000",
+      "resourceAccess": [
+        {
+          "id": "df021288-bdef-4463-88db-98f22de89214",
+          "type": "Role",
+          "value": "User.Read.All"
+        },
+        {
+          "id": "9492366f-7969-46a4-8d15-ed1a20078fff",
+          "type": "Role",
+          "value": "Sites.FullControl.All"
+        }
+      ]
+    }
+  ],
+  "oauth2AllowImplicitFlow": false,
+  "oauth2AllowIdTokenImplicitFlow": false,
+  "oauth2Permissions": []
 }
 ```
 
-**Required API Permissions**:
-- **Microsoft Graph**:
-  - `Sites.Read.All` (Delegated) - Read SharePoint sites
-  - `User.Read` (Delegated) - Read user profile
-  - `User.ReadWrite.All` (Application) - Manage users [Admin consent required]
-  
-- **SharePoint**:
-  - `Sites.Manage.All` (Delegated) - Manage SharePoint libraries
-  - `AllSites.FullControl` (Application) - Full control [Admin consent required]
+**Required Permissions:**
+- `User.Read.All` - Read all users' profiles
+- `Sites.ReadWrite.All` - Read and write SharePoint sites
+- `Sites.FullControl.All` - Full control of SharePoint sites (admin operations)
+- `Directory.Read.All` - Read directory data
 
-### JWT Token Validation
+### 2. OAuth 2.0 Authentication Flow
 
-```typescript
-import { verify } from 'jsonwebtoken';
-import jwksClient from 'jwks-rsa';
+**Authorization Code Flow (Recommended for SPFx):**
 
-export async function validateToken(token: string): Promise<TokenClaims> {
-  const client = jwksClient({
-    jwksUri: 'https://login.microsoftonline.com/common/discovery/v2.0/keys'
-  });
-  
-  const getKey = (header, callback) => {
-    client.getSigningKey(header.kid, (err, key) => {
-      const signingKey = key.getPublicKey();
-      callback(null, signingKey);
-    });
-  };
-  
-  return new Promise((resolve, reject) => {
-    verify(token, getKey, {
-      audience: process.env.AZURE_AD_CLIENT_ID,
-      issuer: [
-        'https://login.microsoftonline.com/{tenantId}/v2.0',
-        'https://sts.windows.net/{tenantId}/'
-      ],
-      algorithms: ['RS256']
-    }, (err, decoded) => {
-      if (err) reject(err);
-      else resolve(decoded as TokenClaims);
-    });
-  });
+```
+1. Client → Azure AD: Authorization Request
+   GET https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
+   ?client_id={client_id}
+   &response_type=code
+   &redirect_uri={redirect_uri}
+   &scope=api://{api_app_id}/.default
+
+2. Azure AD → Client: Authorization Code
+
+3. Client → Azure AD: Token Request
+   POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+   client_id={client_id}
+   &code={authorization_code}
+   &redirect_uri={redirect_uri}
+   &grant_type=authorization_code
+   &client_secret={client_secret}
+
+4. Azure AD → Client: Access Token + Refresh Token
+
+5. Client → API: API Request with Bearer Token
+   Authorization: Bearer {access_token}
+```
+
+### 3. JWT Token Validation
+
+**Backend Token Validation (C# Azure Functions):**
+
+```csharp
+public class AuthenticationMiddleware
+{
+    private readonly IConfiguration _configuration;
+    
+    public async Task<bool> ValidateTokenAsync(string token)
+    {
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = $"https://login.microsoftonline.com/{tenantId}/v2.0",
+            
+            ValidateAudience = true,
+            ValidAudience = _configuration["EntraId:ClientId"],
+            
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKeyResolver = (token, securityToken, identifier, parameters) =>
+            {
+                // Fetch signing keys from Azure AD
+                var keys = await FetchAzureAdSigningKeysAsync();
+                return keys;
+            },
+            
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5),
+            
+            RequireExpirationTime = true,
+            RequireSignedTokens = true
+        };
+        
+        var handler = new JwtSecurityTokenHandler();
+        var claimsPrincipal = handler.ValidateToken(token, validationParameters, out _);
+        
+        return claimsPrincipal.Identity.IsAuthenticated;
+    }
 }
 ```
 
-**Token Claims Required**:
-- `tid`: Tenant ID (Azure AD)
-- `oid`: User object ID
-- `upn` or `email`: User email
-- `roles` or `groups`: User roles (optional)
+### 4. Role-Based Access Control (RBAC)
 
-### Admin Consent Flow
+**Role Definitions:**
 
-1. User clicks "Connect Tenant" in SPFx admin page
-2. SPFx redirects to Azure AD consent endpoint:
-   ```
-   https://login.microsoftonline.com/{tenant}/v2.0/adminconsent
-     ?client_id={clientId}
-     &redirect_uri={redirectUri}
-     &scope={scopes}
-   ```
-3. Tenant admin reviews and grants permissions
-4. Azure AD redirects back with `admin_consent=True`
-5. Backend creates tenant record and subscription
-
-## Authorization
-
-### Role-Based Access Control (RBAC)
-
-**Roles**:
-
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| **Owner** | Tenant creator/owner | Full access including billing |
-| **Admin** | Tenant administrator | Manage users, policies, view audit |
-| **User** | Regular user | View data, limited actions |
-| **ReadOnly** | Auditor/viewer | Read-only access to all data |
-
-**Role Assignment**:
-```typescript
-export interface UserContext {
-  userId: string;
-  email: string;
-  tenantId: string;
-  role: 'Owner' | 'Admin' | 'User' | 'ReadOnly';
+```csharp
+public enum SystemRole
+{
+    SaasAdmin,      // Full system access, can manage all tenants
+    TenantAdmin,    // Full access within tenant
+    LibraryOwner,   // Manage specific libraries
+    LibraryContributor, // Limited user management
+    ReadOnly        // View-only access
 }
 
-export function checkPermission(
-  context: UserContext, 
-  action: string
-): boolean {
-  const permissions = {
-    Owner: ['*'],
-    Admin: [
-      'users:read', 'users:write', 'users:delete',
-      'policies:read', 'policies:write',
-      'audit:read'
-    ],
-    User: ['users:read', 'policies:read'],
-    ReadOnly: ['users:read', 'policies:read', 'audit:read']
-  };
-  
-  const userPerms = permissions[context.role] || [];
-  return userPerms.includes('*') || userPerms.includes(action);
+public static class Permissions
+{
+    // Library permissions
+    public const string LibrariesRead = "libraries:read";
+    public const string LibrariesWrite = "libraries:write";
+    public const string LibrariesDelete = "libraries:delete";
+    
+    // User permissions
+    public const string UsersRead = "users:read";
+    public const string UsersWrite = "users:write";
+    public const string UsersDelete = "users:delete";
+    
+    // Policy permissions
+    public const string PoliciesRead = "policies:read";
+    public const string PoliciesWrite = "policies:write";
+    
+    // Settings permissions
+    public const string SettingsRead = "settings:read";
+    public const string SettingsWrite = "settings:write";
+    
+    // Audit permissions
+    public const string AuditRead = "audit:read";
+    public const string AuditExport = "audit:export";
 }
+
+public static Dictionary<SystemRole, List<string>> RolePermissions = new()
+{
+    {
+        SystemRole.SaasAdmin,
+        new List<string> { /* All permissions */ }
+    },
+    {
+        SystemRole.TenantAdmin,
+        new List<string>
+        {
+            Permissions.LibrariesRead,
+            Permissions.LibrariesWrite,
+            Permissions.LibrariesDelete,
+            Permissions.UsersRead,
+            Permissions.UsersWrite,
+            Permissions.UsersDelete,
+            Permissions.PoliciesRead,
+            Permissions.PoliciesWrite,
+            Permissions.SettingsRead,
+            Permissions.SettingsWrite,
+            Permissions.AuditRead,
+            Permissions.AuditExport
+        }
+    },
+    {
+        SystemRole.LibraryOwner,
+        new List<string>
+        {
+            Permissions.LibrariesRead,
+            Permissions.LibrariesWrite,
+            Permissions.UsersRead,
+            Permissions.UsersWrite,
+            Permissions.UsersDelete,
+            Permissions.AuditRead
+        }
+    },
+    {
+        SystemRole.LibraryContributor,
+        new List<string>
+        {
+            Permissions.LibrariesRead,
+            Permissions.UsersRead,
+            Permissions.UsersWrite
+        }
+    },
+    {
+        SystemRole.ReadOnly,
+        new List<string>
+        {
+            Permissions.LibrariesRead,
+            Permissions.UsersRead,
+            Permissions.PoliciesRead
+        }
+    }
+};
 ```
 
-## Input Validation
+**Authorization Enforcement:**
 
-### Request Validation
-
-```typescript
-import Joi from 'joi';
-
-// Example: Validate tenant onboarding request
-const onboardSchema = Joi.object({
-  organizationName: Joi.string().min(1).max(255).required(),
-  primaryAdminEmail: Joi.string().email().required(),
-  settings: Joi.object().optional()
-});
-
-export function validateRequest<T>(
-  data: any, 
-  schema: Joi.Schema
-): T {
-  const { error, value } = schema.validate(data);
-  if (error) {
-    throw new ValidationError(error.message);
-  }
-  return value as T;
-}
-```
-
-### SQL Injection Prevention
-
-**Parameterized Queries Only**:
-```typescript
-// ✅ GOOD: Parameterized query
-const result = await db.query(
-  'SELECT * FROM AuditLog WHERE TenantId = @tenantId AND UserId = @userId',
-  { tenantId, userId }
-);
-
-// ❌ BAD: String concatenation (NEVER DO THIS)
-const result = await db.query(
-  `SELECT * FROM AuditLog WHERE TenantId = ${tenantId}`
-);
-```
-
-### XSS Prevention
-
-- All user inputs sanitized before storage
-- Output encoding when returning data
-- Content Security Policy headers
-
-```typescript
-import sanitizeHtml from 'sanitize-html';
-
-export function sanitizeInput(input: string): string {
-  return sanitizeHtml(input, {
-    allowedTags: [], // No HTML tags allowed
-    allowedAttributes: {}
-  });
+```csharp
+[FunctionName("GetLibraries")]
+[Authorize(Permissions.LibrariesRead)]
+public async Task<IActionResult> GetLibraries(
+    [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+{
+    // Function protected by Authorize attribute
+    // Middleware validates token and checks permission
 }
 ```
 
 ## Tenant Isolation
 
-### Data Isolation Strategy
+### 1. Tenant Context Resolution
 
-**Row-Level Security**: Every table has `TenantId` column
-
-```typescript
-export class TenantScopedRepository {
-  constructor(private tenantId: number) {}
-  
-  async find(filters: any): Promise<any[]> {
-    // ALWAYS include tenantId in WHERE clause
-    return await db.query(
-      'SELECT * FROM UserAction WHERE TenantId = @tenantId AND ...',
-      { tenantId: this.tenantId, ...filters }
-    );
-  }
-}
-```
-
-### Tenant Context Middleware
-
-```typescript
-export async function tenantContextMiddleware(
-  req: HttpRequest, 
-  res: HttpResponse, 
-  next: Function
-) {
-  try {
-    // 1. Validate JWT token
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    const claims = await validateToken(token);
-    
-    // 2. Resolve tenant from token
-    const tenant = await db.getTenantByEntraId(claims.tid);
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
+```csharp
+public class TenantContextMiddleware
+{
+    public async Task<TenantContext> ResolveTenantAsync(HttpRequest request)
+    {
+        // Extract tenant ID from token claims
+        var tenantIdClaim = request.HttpContext.User
+            .FindFirst("http://schemas.microsoft.com/identity/claims/tenantid");
+        
+        if (tenantIdClaim == null)
+            throw new UnauthorizedException("Tenant ID not found in token");
+        
+        var tenantId = tenantIdClaim.Value;
+        
+        // Validate tenant exists and is active
+        var tenant = await _tenantService.GetTenantAsync(tenantId);
+        
+        if (tenant == null || !tenant.IsActive)
+            throw new UnauthorizedException("Tenant not found or inactive");
+        
+        // Check subscription status
+        if (tenant.SubscriptionStatus != SubscriptionStatus.Active)
+            throw new PaymentRequiredException("Subscription expired or suspended");
+        
+        return new TenantContext
+        {
+            TenantId = tenant.TenantId,
+            TenantDomain = tenant.TenantDomain,
+            DatabaseName = tenant.DatabaseName,
+            SubscriptionTier = tenant.SubscriptionTier
+        };
     }
-    
-    // 3. Attach tenant context to request
-    req.tenantContext = {
-      tenantId: tenant.id,
-      entraIdTenantId: tenant.entraIdTenantId,
-      userId: claims.oid,
-      userEmail: claims.email
-    };
-    
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
 }
 ```
 
-## Secrets Management
+### 2. Database Connection Isolation
 
-### Azure Key Vault Integration
-
-**Secrets Stored**:
-- Database connection strings
-- Azure AD app client secret
-- API keys for external services
-- Encryption keys
-
-**Access Pattern**:
-```typescript
-import { SecretClient } from '@azure/keyvault-secrets';
-import { DefaultAzureCredential } from '@azure/identity';
-
-const credential = new DefaultAzureCredential();
-const client = new SecretClient(
-  process.env.KEY_VAULT_URL, 
-  credential
-);
-
-export async function getSecret(name: string): Promise<string> {
-  const secret = await client.getSecret(name);
-  return secret.value;
-}
-```
-
-**Managed Identity**:
-- Function App uses Azure Managed Identity
-- No credentials stored in code or environment variables
-- Least privilege access to Key Vault
-
-## Encryption
-
-### Data at Rest
-
-- **Azure SQL Database**: Transparent Data Encryption (TDE) enabled by default
-- **Azure Storage**: Service-side encryption with Microsoft-managed keys
-- **Backups**: Encrypted automatically
-
-### Data in Transit
-
-- **HTTPS Only**: HTTP requests redirected to HTTPS
-- **TLS 1.2+**: Minimum TLS version enforced
-- **Certificate Management**: Azure-managed certificates
-
-```typescript
-// Function app configuration
-export const httpsSettings = {
-  minTlsVersion: '1.2',
-  requireHttps: true,
-  allowInsecureHttp: false
-};
-```
-
-## Rate Limiting
-
-### API Rate Limits
-
-| Tier | Requests/Minute | Burst Allowance |
-|------|-----------------|-----------------|
-| Free | 10 | 20 |
-| Pro | 100 | 150 |
-| Enterprise | 500 | 1000 |
-
-**Implementation**:
-```typescript
-import rateLimit from 'express-rate-limit';
-
-export const createRateLimiter = (tier: SubscriptionTier) => {
-  const limits = {
-    Free: { windowMs: 60000, max: 10 },
-    Pro: { windowMs: 60000, max: 100 },
-    Enterprise: { windowMs: 60000, max: 500 }
-  };
-  
-  return rateLimit({
-    ...limits[tier],
-    message: 'Too many requests, please try again later'
-  });
-};
-```
-
-## CORS Policy
-
-```typescript
-export const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow SharePoint domains only
-    const allowedDomains = [
-      /^https:\/\/.*\.sharepoint\.com$/,
-      /^https:\/\/.*\.sharepoint-df\.com$/,  // GCC
-      process.env.ADMIN_PORTAL_URL
-    ];
-    
-    if (!origin || allowedDomains.some(d => d.test(origin))) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
+```csharp
+public class TenantDatabaseService
+{
+    public async Task<SqlConnection> GetTenantConnectionAsync(Guid tenantId)
+    {
+        // Fetch tenant-specific connection string from Key Vault
+        var connectionString = await _keyVaultService
+            .GetSecretAsync($"sql-connection-tenant-{tenantId}");
+        
+        // Create isolated connection for tenant database
+        var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+        
+        return connection;
     }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Authorization', 'Content-Type', 'X-Correlation-ID']
-};
-```
-
-## Audit Logging
-
-### Audit Requirements
-
-**Log All Security Events**:
-- Authentication attempts (success/failure)
-- Authorization failures
-- Data access (read/write/delete)
-- Configuration changes
-- Subscription changes
-
-**Audit Log Schema**:
-```typescript
-interface AuditLogEntry {
-  id: number;
-  tenantId: number;
-  timestamp: Date;
-  userId: string;
-  userEmail: string;
-  action: string;
-  resourceType: string;
-  resourceId: string;
-  details: object;
-  ipAddress: string;
-  correlationId: string;
-  status: 'Success' | 'Failed';
 }
 ```
 
-**Immutable Logs**:
-- Append-only table (no updates/deletes)
-- Tamper detection via checksums
-- Long-term retention (7 years)
+## Data Protection
 
-## Threat Model
+### 1. Encryption at Rest
 
-### Identified Threats
+**Azure SQL Database:**
+- **Transparent Data Encryption (TDE):** Enabled by default
+- **Always Encrypted:** For sensitive columns (optional)
+- **Column-level Encryption:** For PII data
 
-| Threat | Mitigation |
-|--------|------------|
-| **SQL Injection** | Parameterized queries, ORM usage |
-| **XSS** | Input sanitization, output encoding |
-| **CSRF** | SameSite cookies, CORS policy |
-| **Token Theft** | Short token lifetime, HTTPS only |
-| **Data Leakage** | Tenant isolation, row-level security |
-| **DDoS** | Rate limiting, Azure DDoS protection |
-| **Privilege Escalation** | RBAC enforcement, least privilege |
-| **Insider Threat** | Audit logging, access reviews |
+**Azure Cosmos DB:**
+- **Automatic Encryption:** All data encrypted at rest
+- **Customer-Managed Keys:** Optional via Key Vault
 
-### Security Testing
+**Azure Storage:**
+- **Storage Service Encryption (SSE):** Enabled by default
+- **Client-side Encryption:** For additional security
 
-**Regular Activities**:
-- Dependency vulnerability scanning (npm audit, Snyk)
-- Penetration testing (annual)
-- Security code reviews
-- Threat modeling updates
+### 2. Encryption in Transit
 
-## Incident Response
-
-### Security Incident Procedure
-
-1. **Detection**: Alert triggers via Azure Monitor
-2. **Assessment**: Severity classification (Low/Medium/High/Critical)
-3. **Containment**: Isolate affected resources
-4. **Investigation**: Root cause analysis from audit logs
-5. **Remediation**: Apply fixes, rotate credentials
-6. **Recovery**: Restore service, validate security
-7. **Post-Incident**: Report, lessons learned, improve controls
-
-### Breach Notification
-
-- **Timeline**: Notify affected tenants within 72 hours
-- **Communication**: Email to primary admin + in-app notification
-- **Information**: Incident details, impact, remediation steps
-
-## Compliance
-
-### Standards Alignment
-
-- **GDPR**: Data subject rights, right to erasure
-- **SOC 2 Type II**: Security, availability, confidentiality (future)
-- **ISO 27001**: Information security management (future)
-- **HIPAA**: Not currently in scope
-
-### Data Residency
-
-- Tenants choose data region during onboarding
-- Data never leaves chosen region
-- Compliant with EU data protection requirements
-
-### Right to Erasure (GDPR)
-
-```typescript
-export async function deleteTenantData(tenantId: number): Promise<void> {
-  // 1. Mark tenant as deleted (soft delete)
-  await db.updateTenant(tenantId, { status: 'Deleted' });
-  
-  // 2. Schedule hard delete after 30 days
-  await db.scheduleDataPurge(tenantId, addDays(new Date(), 30));
-  
-  // 3. Audit the deletion request
-  await auditLog.log({
-    action: 'TenantDataDeletionRequested',
-    tenantId,
-    timestamp: new Date()
-  });
-}
-```
-
-## Security Checklist
-
-### Pre-Production
-
-- [ ] All secrets in Azure Key Vault
-- [ ] HTTPS enforced (no HTTP)
-- [ ] JWT validation implemented
-- [ ] Tenant isolation verified
-- [ ] Rate limiting configured
-- [ ] CORS policy restrictive
-- [ ] Input validation on all endpoints
-- [ ] SQL injection prevention verified
-- [ ] Audit logging enabled
-- [ ] Security alerts configured
-
-### Production
-
-- [ ] Penetration test completed
-- [ ] Vulnerability scan passed
-- [ ] Backup and recovery tested
-- [ ] Incident response plan documented
-- [ ] Security training completed
-- [ ] Compliance certifications obtained (if applicable)
-
-## Responsible Disclosure
-
-**Security Bug Reporting**:
-- Email: security@spexternal.com
-- Response time: 48 hours
-- Coordinated disclosure: 90 days
-- Bug bounty program (future)
-# Security Documentation
-
-## Overview
-
-This document outlines the comprehensive security controls, threat models, and compliance measures for the SharePoint External User Manager SaaS platform.
-
-## Security Principles
-
-1. **Defense in Depth**: Multiple layers of security controls
-2. **Least Privilege**: Minimum permissions for all operations
-3. **Zero Trust**: Verify every request, trust nothing
-4. **Data Protection**: Encrypt data at rest and in transit
-5. **Audit Everything**: Comprehensive logging and monitoring
-
-## Threat Model
-
-### Assets to Protect
-- Customer tenant data (external user lists, permissions)
-- Authentication credentials (tokens, secrets)
-- Application secrets (connection strings, API keys)
-- Audit logs and compliance data
-- Source code and intellectual property
-
-### Threat Actors
-1. **External Attackers**: Attempting unauthorized access
-2. **Malicious Insiders**: Employees or contractors with access
-3. **Compromised Accounts**: Legitimate users with stolen credentials
-4. **Automated Bots**: Scanning for vulnerabilities
-
-### Attack Vectors
-- API endpoint exploitation
-- SQL injection attacks
-- Cross-site scripting (XSS)
-- Authentication bypass
-- Token theft/replay attacks
-- DDoS attacks
-- Data exfiltration
-
-## Authentication & Authorization
-
-### Azure AD Integration
-
-**Multi-Tenant Application Registration:**
+**TLS Configuration:**
 ```json
 {
-  "appId": "00000000-0000-0000-0000-000000000000",
-  "signInAudience": "AzureADMultipleOrgs",
-  "oauth2Permissions": [
+  "minimumTlsVersion": "1.2",
+  "cipherSuites": [
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+  ],
+  "protocols": ["TLSv1.2", "TLSv1.3"]
+}
+```
+
+### 3. Azure Key Vault Integration
+
+**Secret Management:**
+
+```csharp
+public class KeyVaultService
+{
+    private readonly SecretClient _secretClient;
+    
+    public KeyVaultService(string keyVaultUrl)
     {
-      "adminConsentDescription": "Access SharePoint External User Manager API",
-      "adminConsentDisplayName": "Access API",
-      "id": "user_impersonation_guid",
-      "isEnabled": true,
-      "type": "User",
-      "userConsentDescription": "Allow the application to access API on your behalf",
-      "userConsentDisplayName": "Access API",
-      "value": "user_impersonation"
+        var credential = new DefaultAzureCredential();
+        _secretClient = new SecretClient(new Uri(keyVaultUrl), credential);
     }
-  ]
+    
+    public async Task<string> GetSecretAsync(string secretName)
+    {
+        try
+        {
+            var secret = await _secretClient.GetSecretAsync(secretName);
+            return secret.Value.Value;
+        }
+        catch (RequestFailedException ex)
+        {
+            _logger.LogError(ex, $"Failed to retrieve secret: {secretName}");
+            throw;
+        }
+    }
+    
+    public async Task SetSecretAsync(string secretName, string secretValue)
+    {
+        await _secretClient.SetSecretAsync(secretName, secretValue);
+    }
 }
 ```
 
-**Required API Permissions:**
-```
-Microsoft Graph:
-- Sites.Read.All (Delegated)
-- Sites.Manage.All (Delegated)  
-- User.Read.All (Delegated)
-- Directory.Read.All (Delegated)
-
-SharePoint:
-- AllSites.Manage (Delegated)
-- User.ReadWrite.All (Delegated)
-```
-
-### JWT Token Validation
-
-**Token Validation Steps:**
-1. Verify token signature using Azure AD public keys
-2. Validate issuer (`iss` claim)
-3. Validate audience (`aud` claim)
-4. Check token expiration (`exp` claim)
-5. Validate tenant ID (`tid` claim)
-6. Extract user identity (`upn` or `email` claim)
-
-**Implementation:**
-```typescript
-import { verify, decode } from 'jsonwebtoken';
-import * as jwksClient from 'jwks-rsa';
-
-const client = jwksClient({
-  jwksUri: 'https://login.microsoftonline.com/common/discovery/v2.0/keys',
-  cache: true,
-  cacheMaxAge: 86400000 // 24 hours
-});
-
-async function validateToken(token: string): Promise<TokenPayload> {
-  const decoded = decode(token, { complete: true });
-  const kid = decoded.header.kid;
-  
-  const key = await client.getSigningKey(kid);
-  const signingKey = key.getPublicKey();
-  
-  const verified = verify(token, signingKey, {
-    audience: process.env.AZURE_AD_CLIENT_ID,
-    issuer: `https://sts.windows.net/${process.env.AZURE_AD_TENANT_ID}/`,
-    algorithms: ['RS256']
-  });
-  
-  return verified as TokenPayload;
-}
-```
-
-### Role-Based Access Control (RBAC)
-
-**Roles Hierarchy:**
-```
-TenantOwner (highest privileges)
-  └─ TenantAdmin
-      └─ LibraryOwner
-          └─ LibraryContributor
-              └─ LibraryReader (lowest privileges)
-```
-
-**Permission Matrix:**
-
-| Operation | TenantOwner | TenantAdmin | LibraryOwner | LibraryContributor | LibraryReader |
-|-----------|-------------|-------------|--------------|-------------------|---------------|
-| Manage Tenant Settings | ✓ | ✓ | ✗ | ✗ | ✗ |
-| View Subscription | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Manage Admins | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Create Library | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Delete Library | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Invite Users | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Remove Users | ✓ | ✓ | ✓ | ✓ | ✗ |
-| View Users | ✓ | ✓ | ✓ | ✓ | ✓ |
-| View Audit Logs | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Export Data | ✓ | ✓ | ✗ | ✗ | ✗ |
+**Secrets Stored in Key Vault:**
+- SQL connection strings (per tenant)
+- Entra ID client secrets
+- API keys for external services
+- Encryption keys
+- Certificate private keys
 
 ## Network Security
 
-### HTTPS/TLS Configuration
-- **Minimum Version**: TLS 1.2
-- **Cipher Suites**: AES-GCM preferred
-- **Certificate Management**: Azure Key Vault
-- **Certificate Rotation**: Automated every 90 days
+### 1. Azure Front Door & WAF
 
-### API Gateway Protection
-```yaml
-Azure API Management Policies:
-  - Rate Limiting: 100 req/min per tenant
-  - IP Whitelisting: Optional for enterprise customers
-  - CORS: Strict origin validation
-  - Request Size Limit: 5 MB max payload
-  - Timeout: 30 seconds per request
-```
-
-### DDoS Protection
-- Azure DDoS Protection Standard enabled
-- Automatic traffic filtering and mitigation
-- Real-time attack metrics and alerts
-
-## Data Security
-
-### Encryption at Rest
-
-**Azure SQL Database:**
-- Transparent Data Encryption (TDE) enabled
-- AES-256 encryption algorithm
-- Microsoft-managed keys (default)
-- Customer-managed keys (enterprise option via Key Vault)
-
-**Cosmos DB:**
-- Automatic encryption for all data
-- AES-256 encryption
-- Microsoft-managed keys
-
-**Blob Storage:**
-- Azure Storage Service Encryption (SSE)
-- AES-256 encryption
-- Encryption scopes for data isolation
-
-### Encryption in Transit
-- All API calls require HTTPS
-- TLS 1.2 or higher
-- Perfect Forward Secrecy (PFS) enabled
-- Backend-to-backend communication via private endpoints
-
-### Key Management
-
-**Azure Key Vault Configuration:**
+**WAF Rules:**
 ```json
 {
-  "secrets": [
-    "CosmosDB-ConnectionString",
-    "SQL-ConnectionString-Master",
-    "AzureAD-ClientSecret",
-    "ApplicationInsights-InstrumentationKey"
-  ],
-  "keys": [
-    "DataEncryption-Key",
-    "TokenSigning-Key"
-  ],
-  "certificates": [
-    "API-TLS-Certificate"
-  ],
-  "accessPolicies": [
-    {
-      "principalId": "function-app-managed-identity",
-      "permissions": {
-        "secrets": ["get", "list"],
-        "keys": ["get", "decrypt", "encrypt"]
+  "wafPolicy": {
+    "managedRules": {
+      "managedRuleSets": [
+        {
+          "ruleSetType": "OWASP",
+          "ruleSetVersion": "3.2"
+        },
+        {
+          "ruleSetType": "Microsoft_BotManagerRuleSet",
+          "ruleSetVersion": "1.0"
+        }
+      ]
+    },
+    "customRules": [
+      {
+        "name": "BlockSuspiciousIPs",
+        "priority": 1,
+        "ruleType": "MatchRule",
+        "matchConditions": [
+          {
+            "matchVariable": "RemoteAddr",
+            "operator": "IPMatch",
+            "matchValue": ["1.2.3.4", "5.6.7.8"]
+          }
+        ],
+        "action": "Block"
+      },
+      {
+        "name": "RateLimitPerIP",
+        "priority": 2,
+        "ruleType": "RateLimitRule",
+        "rateLimitThreshold": 100,
+        "rateLimitDurationInMinutes": 1,
+        "action": "Block"
       }
+    ]
+  }
+}
+```
+
+### 2. Private Endpoints
+
+**Azure SQL Private Endpoint:**
+```bicep
+resource sqlPrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-05-01' = {
+  name: 'pe-sqlserver'
+  location: location
+  properties: {
+    subnet: {
+      id: subnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'sql-connection'
+        properties: {
+          privateLinkServiceId: sqlServer.id
+          groupIds: ['sqlServer']
+        }
+      }
+    ]
+  }
+}
+```
+
+### 3. Network Security Groups (NSG)
+
+```bicep
+resource nsg 'Microsoft.Network/networkSecurityGroups@2021-05-01' = {
+  name: 'nsg-backend'
+  location: location
+  properties: {
+    securityRules: [
+      {
+        name: 'AllowHTTPS'
+        properties: {
+          priority: 100
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '443'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      },
+      {
+        name: 'DenyAllInbound'
+        properties: {
+          priority: 4096
+          direction: 'Inbound'
+          access: 'Deny'
+          protocol: '*'
+          sourcePortRange: '*'
+          destinationPortRange: '*'
+          sourceAddressPrefix: '*'
+          destinationAddressPrefix: '*'
+        }
+      }
+    ]
+  }
+}
+```
+
+## Application Security
+
+### 1. Input Validation
+
+```csharp
+public class InputValidator
+{
+    public static ValidationResult ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return ValidationResult.Error("Email is required");
+        
+        if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            return ValidationResult.Error("Invalid email format");
+        
+        if (email.Length > 255)
+            return ValidationResult.Error("Email too long");
+        
+        return ValidationResult.Success();
+    }
+    
+    public static string SanitizeInput(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+        
+        // Remove dangerous characters
+        input = Regex.Replace(input, @"[<>""']", "");
+        
+        // Trim whitespace
+        input = input.Trim();
+        
+        return input;
+    }
+}
+```
+
+### 2. SQL Injection Prevention
+
+```csharp
+// Always use parameterized queries
+public async Task<ExternalUser> GetUserByEmailAsync(string email)
+{
+    using var connection = await GetConnectionAsync();
+    
+    var query = @"
+        SELECT UserId, Email, DisplayName, Status 
+        FROM ExternalUsers 
+        WHERE Email = @Email AND IsActive = 1";
+    
+    var parameters = new { Email = email };
+    
+    return await connection.QueryFirstOrDefaultAsync<ExternalUser>(query, parameters);
+}
+
+// Never concatenate user input into SQL
+// BAD: $"SELECT * FROM Users WHERE Email = '{email}'"  // VULNERABLE!
+```
+
+### 3. Cross-Site Scripting (XSS) Protection
+
+**API Response Encoding:**
+```csharp
+public class ApiResponse<T>
+{
+    [JsonProperty("data")]
+    public T Data { get; set; }
+    
+    // Automatically encode string properties
+    public string ToJson()
+    {
+        var settings = new JsonSerializerSettings
+        {
+            StringEscapeHandling = StringEscapeHandling.EscapeHtml
+        };
+        
+        return JsonConvert.SerializeObject(this, settings);
+    }
+}
+```
+
+### 4. Cross-Site Request Forgery (CSRF) Protection
+
+```csharp
+// For state-changing operations, validate origin
+public class CsrfMiddleware
+{
+    public bool ValidateOrigin(HttpRequest request)
+    {
+        var origin = request.Headers["Origin"].FirstOrDefault();
+        var referer = request.Headers["Referer"].FirstOrDefault();
+        
+        var allowedOrigins = _configuration.GetSection("AllowedOrigins").Get<List<string>>();
+        
+        if (!string.IsNullOrEmpty(origin))
+            return allowedOrigins.Contains(origin);
+        
+        if (!string.IsNullOrEmpty(referer))
+            return allowedOrigins.Any(o => referer.StartsWith(o));
+        
+        return false;
+    }
+}
+```
+
+## Monitoring & Threat Detection
+
+### 1. Security Event Logging
+
+```csharp
+public class SecurityLogger
+{
+    private readonly ILogger _logger;
+    
+    public void LogAuthenticationSuccess(string userPrincipalName, string ipAddress)
+    {
+        _logger.LogInformation(
+            "Authentication successful: User={User}, IP={IP}",
+            userPrincipalName, ipAddress);
+    }
+    
+    public void LogAuthenticationFailure(string reason, string ipAddress)
+    {
+        _logger.LogWarning(
+            "Authentication failed: Reason={Reason}, IP={IP}",
+            reason, ipAddress);
+    }
+    
+    public void LogUnauthorizedAccess(string userPrincipalName, string resource)
+    {
+        _logger.LogWarning(
+            "Unauthorized access attempt: User={User}, Resource={Resource}",
+            userPrincipalName, resource);
+    }
+    
+    public void LogSuspiciousActivity(string activity, string details)
+    {
+        _logger.LogError(
+            "Suspicious activity detected: Activity={Activity}, Details={Details}",
+            activity, details);
+    }
+}
+```
+
+### 2. Application Insights Security Alerts
+
+```json
+{
+  "alerts": [
+    {
+      "name": "High Authentication Failure Rate",
+      "condition": "Failed auth attempts > 10 in 5 minutes from same IP",
+      "action": "Block IP, send alert"
+    },
+    {
+      "name": "Unauthorized Access Attempts",
+      "condition": "403 responses > 20 in 10 minutes",
+      "action": "Send alert, review logs"
+    },
+    {
+      "name": "Anomalous API Usage",
+      "condition": "API calls spike > 500% from baseline",
+      "action": "Send alert, check for abuse"
+    },
+    {
+      "name": "Data Exfiltration Attempt",
+      "condition": "Large data export requests",
+      "action": "Block request, investigate"
     }
   ]
 }
 ```
 
-**Key Rotation Policy:**
-- Secrets: Every 90 days
-- Keys: Every 180 days
-- Certificates: Every 365 days
-- Automated rotation via Azure DevOps pipelines
+## Compliance & Auditing
 
-## Input Validation & Output Encoding
+### 1. Audit Trail
 
-### Input Validation Rules
-```typescript
-// Email validation
-const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+All security-relevant events are logged:
+- Authentication attempts (success/failure)
+- Authorization decisions
+- Data access and modifications
+- Permission grants and revocations
+- Configuration changes
+- Administrative actions
 
-// URL validation (SharePoint URLs)
-const urlRegex = /^https:\/\/[a-z0-9-]+\.sharepoint\.com\/.+$/i;
+### 2. Compliance Standards
 
-// Permission level validation
-const validPermissions = ['read', 'contribute', 'fullcontrol'];
+**SOC 2 Type II:**
+- Access controls and authentication
+- Encryption and data protection
+- Monitoring and incident response
+- Change management procedures
 
-// Input sanitization
-import * as validator from 'validator';
+**GDPR:**
+- Data minimization and purpose limitation
+- Right to access and erasure
+- Data portability
+- Breach notification (72 hours)
 
-function sanitizeInput(input: string): string {
-  return validator.escape(validator.trim(input));
-}
-```
+**ISO 27001:**
+- Information security management system
+- Risk assessment and treatment
+- Security policies and procedures
+- Continuous improvement
 
-### SQL Injection Prevention
-- **Parameterized Queries**: All SQL queries use parameters
-- **ORM Usage**: TypeORM or Prisma for type-safe queries
-- **Input Validation**: Whitelist validation for all inputs
-- **Stored Procedures**: For complex operations
+### 3. Data Breach Response Plan
 
-```typescript
-// Good: Parameterized query
-const users = await db.query(
-  'SELECT * FROM ExternalUsers WHERE Email = @email',
-  { email: userEmail }
-);
+1. **Detection** (0-1 hour):
+   - Automated alerts trigger
+   - Security team notified
+   - Initial assessment
 
-// Bad: String concatenation (NEVER DO THIS)
-// const users = await db.query(`SELECT * FROM ExternalUsers WHERE Email = '${userEmail}'`);
-```
+2. **Containment** (1-4 hours):
+   - Isolate affected systems
+   - Revoke compromised credentials
+   - Block malicious IPs
 
-### XSS Prevention
-- Output encoding for all user-generated content
-- Content Security Policy (CSP) headers
-- HttpOnly and Secure flags on cookies
-- No inline JavaScript in responses
+3. **Investigation** (4-24 hours):
+   - Analyze logs and forensics
+   - Determine scope and impact
+   - Identify root cause
 
-## Audit Logging
+4. **Notification** (24-72 hours):
+   - Notify affected customers
+   - Regulatory reporting (if required)
+   - Public disclosure (if necessary)
 
-### Event Types to Log
-1. **Authentication Events**
-   - Login attempts (success/failure)
-   - Token issuance
-   - Token validation failures
-   - Role changes
+5. **Remediation** (1-2 weeks):
+   - Fix vulnerabilities
+   - Enhance security controls
+   - Conduct post-mortem
 
-2. **Authorization Events**
-   - Permission checks (allow/deny)
-   - Role assignments
-   - Policy changes
+## Security Best Practices
 
-3. **Data Access Events**
-   - External user list queries
-   - User detail views
-   - Export operations
-   - Bulk operations
+### Development
+- Secure coding guidelines (OWASP)
+- Code review for security issues
+- Static application security testing (SAST)
+- Dynamic application security testing (DAST)
+- Dependency vulnerability scanning
 
-4. **Data Modification Events**
-   - User invitations
-   - User removals
-   - Permission changes
-   - Library additions/deletions
-   - Policy updates
+### Operations
+- Principle of least privilege
+- Regular security patching
+- Penetration testing (quarterly)
+- Security awareness training
+- Incident response drills
 
-5. **System Events**
-   - Tenant onboarding
-   - Subscription changes
-   - Configuration updates
-   - API errors
+### Data
+- Data classification and labeling
+- Encryption for sensitive data
+- Secure deletion procedures
+- Data loss prevention (DLP)
+- Regular backup testing
 
-### Audit Log Format
-```json
-{
-  "timestamp": "2024-01-20T14:35:22.123Z",
-  "correlationId": "550e8400-e29b-41d4-a716-446655440000",
-  "tenantId": "contoso.onmicrosoft.com",
-  "eventType": "user.invite",
-  "actor": {
-    "userId": "user-guid",
-    "email": "admin@contoso.com",
-    "ipAddress": "203.0.113.45",
-    "userAgent": "Mozilla/5.0..."
-  },
-  "action": "POST /external-users/invite",
-  "status": "success",
-  "target": {
-    "resourceType": "externalUser",
-    "resourceId": "extuser-guid",
-    "email": "partner@external.com"
-  },
-  "metadata": {
-    "libraryId": "lib-guid",
-    "permissions": "read",
-    "requestDurationMs": 245
-  },
-  "changes": {
-    "before": null,
-    "after": { "status": "invited" }
-  }
-}
-```
+## References
 
-### Log Retention
-- **Operational Logs**: 90 days (hot storage)
-- **Compliance Logs**: 7 years (cold storage)
-- **Security Logs**: 2 years (warm storage)
-
-## Security Monitoring & Incident Response
-
-### Real-Time Monitoring
-
-**Application Insights Alerts:**
-```yaml
-Alerts:
-  - HighErrorRate:
-      condition: errorRate > 5%
-      window: 5 minutes
-      action: Email security team
-  
-  - FailedAuthAttempts:
-      condition: failedLogins > 10
-      window: 1 minute
-      action: Block IP + Email security team
-  
-  - UnusualDataAccess:
-      condition: dataExportVolume > 1GB
-      window: 10 minutes
-      action: Email compliance team
-  
-  - SQLInjectionAttempt:
-      condition: sqlErrorPattern detected
-      window: immediate
-      action: Block IP + Email security team
-```
-
-### Security Information and Event Management (SIEM)
-- Integration with Azure Sentinel
-- Automated threat detection
-- Correlation with Microsoft threat intelligence
-- Custom detection rules for application-specific threats
-
-### Incident Response Plan
-
-**1. Detection Phase:**
-- Automated alerts trigger investigation
-- Security team notified via PagerDuty/Teams
-- Initial triage within 15 minutes
-
-**2. Containment Phase:**
-- Isolate affected systems
-- Block malicious IP addresses
-- Revoke compromised tokens
-- Disable affected user accounts
-
-**3. Investigation Phase:**
-- Analyze audit logs
-- Identify scope of breach
-- Determine root cause
-- Preserve evidence
-
-**4. Remediation Phase:**
-- Patch vulnerabilities
-- Rotate compromised secrets
-- Restore from backups if needed
-- Update security controls
-
-**5. Recovery Phase:**
-- Restore normal operations
-- Monitor for recurring issues
-- Notify affected customers (if required)
-
-**6. Post-Incident Phase:**
-- Document incident details
-- Update runbooks
-- Conduct lessons learned
-- Implement preventive measures
-
-## Vulnerability Management
-
-### Dependency Scanning
-```yaml
-GitHub Advanced Security:
-  - Dependabot: Automated dependency updates
-  - Code Scanning: Static analysis via CodeQL
-  - Secret Scanning: Detect committed secrets
-```
-
-### Penetration Testing
-- **Frequency**: Annually + after major releases
-- **Scope**: Full application stack
-- **Provider**: Third-party security firm
-- **Remediation**: All high/critical findings within 30 days
-
-### Security Patching
-- **Critical**: Within 24 hours
-- **High**: Within 7 days
-- **Medium**: Within 30 days
-- **Low**: Next release cycle
-
-## Compliance & Certifications
-
-### Current Compliance
-- **GDPR**: Data protection and privacy
-- **SOC 2 Type II**: Security, availability, confidentiality (in progress)
-- **ISO 27001**: Information security management (planned)
-
-### Data Privacy
-- Data Processing Agreement (DPA) available
-- Sub-processor transparency
-- Data residency options (US, EU, Asia)
-- Customer data isolation guaranteed
-
-### Compliance Controls
-```yaml
-GDPR Controls:
-  - Right to Access: API endpoint for data export
-  - Right to Erasure: Hard delete functionality
-  - Right to Portability: JSON/CSV export
-  - Data Breach Notification: 72-hour SLA
-  - Privacy by Design: Default settings secure
-  - Data Minimization: Only collect necessary data
-
-SOC 2 Controls:
-  - Access Controls: RBAC implemented
-  - Change Management: All changes via CI/CD
-  - Logical Security: MFA enforced
-  - System Operations: Monitoring and alerting
-  - Risk Mitigation: Vulnerability management
-```
-
-## Secure Development Lifecycle
-
-### Code Review Requirements
-- All code changes require peer review
-- Security-focused review for auth/data access
-- Automated SAST scanning on every PR
-- No secrets in source code (enforced by pre-commit hooks)
-
-### Security Testing
-```yaml
-Testing Phases:
-  1. Unit Tests: Security functions tested
-  2. Integration Tests: Auth flows validated
-  3. Security Tests: OWASP Top 10 coverage
-  4. Penetration Tests: Annual third-party assessment
-```
-
-### Deployment Security
-- Secrets managed via Key Vault
-- Managed identities for Azure resources
-- No hardcoded credentials
-- Least privilege for service accounts
-- Automated security scanning in CI/CD
-
-## Security Best Practices for Developers
-
-1. **Never log sensitive data** (tokens, passwords, PII)
-2. **Always use parameterized queries**
-3. **Validate all inputs** (whitelist approach)
-4. **Encode all outputs** (prevent XSS)
-5. **Use secure random generators** (crypto.randomBytes)
-6. **Implement rate limiting** (prevent abuse)
-7. **Set secure HTTP headers** (CSP, X-Frame-Options)
-8. **Keep dependencies updated** (Dependabot)
-9. **Use HTTPS everywhere** (no HTTP)
-10. **Follow least privilege principle** (minimum permissions)
-
----
-
-**Last Updated**: 2024-02-03
-**Version**: 1.0
-**Owner**: Security Team
+- [Microsoft Security Best Practices](https://learn.microsoft.com/security/zero-trust/)
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [Azure Security Baseline](https://learn.microsoft.com/security/benchmark/azure/)
+- [Entra ID Security](https://learn.microsoft.com/entra/identity/)
