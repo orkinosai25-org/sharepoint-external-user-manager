@@ -124,6 +124,17 @@ See [API Specification](/docs/saas/api-spec.md) for detailed endpoint documentat
 - `POST /api/v1/libraries/{id}/users` - Invite external user
 - `GET /api/v1/subscription` - Get subscription status
 
+### Client Library & List Management (NEW)
+
+The backend now supports creating and managing document libraries and lists per client:
+
+- `GET /api/clients/{id}/libraries` - Get all libraries for a client
+- `POST /api/clients/{id}/libraries` - Create a new library for a client
+- `GET /api/clients/{id}/lists` - Get all lists for a client
+- `POST /api/clients/{id}/lists` - Create a new list for a client
+
+See [LIBRARY_LIST_API.md](./LIBRARY_LIST_API.md) for detailed documentation, examples, and usage.
+
 ## Authentication
 
 All endpoints (except tenant registration) require authentication via Azure AD Bearer tokens.
