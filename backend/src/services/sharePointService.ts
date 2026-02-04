@@ -38,6 +38,13 @@ class SharePointService {
 
   /**
    * Provision a new SharePoint site for a client
+   * 
+   * IMPORTANT NOTES:
+   * - The Graph API endpoint and parameters used here are simplified for MVP
+   * - In production, use proper SharePoint site creation APIs with full configuration
+   * - The 2-second delay is insufficient for real provisioning (can take 30+ seconds)
+   * - Implement proper polling with retry logic or use webhooks in production
+   * 
    * @param clientName - Name of the client (used for site title and URL)
    * @param siteTemplate - Type of site template (Team or Communication)
    * @param tenantDomain - SharePoint tenant domain (e.g., contoso.sharepoint.com)

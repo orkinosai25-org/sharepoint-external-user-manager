@@ -34,11 +34,12 @@ async function createClient(req: HttpRequest, context: InvocationContext): Promi
     const validatedRequest = validateBody<CreateClientRequest>(body, createClientSchema);
 
     // Create client record with initial "Provisioning" status
+    // Note: siteUrl and siteId are empty and will be populated after async provisioning
     const client = await databaseService.createClient({
       tenantId: tenantContext.tenantId,
       clientName: validatedRequest.clientName,
-      siteUrl: '', // Will be populated after provisioning
-      siteId: '', // Will be populated after provisioning
+      siteUrl: '',
+      siteId: '',
       createdBy: tenantContext.userEmail,
       status: 'Provisioning'
     });
@@ -58,8 +59,10 @@ async function createClient(req: HttpRequest, context: InvocationContext): Promi
     );
 
     // Provision SharePoint site asynchronously
-    // Note: In production, this should be done via a background job/queue
-    // For MVP, we'll do it inline but handle errors gracefully
+    // IMPORTANT: In production, this should use Azure Queue Storage, Service Bus, 
+    // or Durable Functions for reliable async processing. Using setTimeout in 
+    // Azure Functions is not reliable as the execution context may terminate.
+    // This implementation is for MVP demonstration purposes only.
     setTimeout(async () => {
       try {
         const provisionResult = await sharePointService.provisionSite(

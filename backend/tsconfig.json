@@ -28,11 +28,6 @@
     "dist",
     "**/*.spec.ts",
     "shared",
-    "src/Functions",
-    "src/Services",
-    "src/Middleware",
-    "src/Models",
-    "src/Program.cs",
     "src/**/*.cs"
   ]
 }

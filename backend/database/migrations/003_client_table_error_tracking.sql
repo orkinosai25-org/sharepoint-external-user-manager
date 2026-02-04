@@ -8,7 +8,7 @@
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Client') AND name = 'ErrorMessage')
 BEGIN
     ALTER TABLE [dbo].[Client]
-    ADD [ErrorMessage] NVARCHAR(1000) NULL;
+    ADD [ErrorMessage] NVARCHAR(MAX) NULL;
     
     PRINT 'Added ErrorMessage column to Client table';
 END
