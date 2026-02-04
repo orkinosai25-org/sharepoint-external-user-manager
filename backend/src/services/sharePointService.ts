@@ -161,7 +161,12 @@ class SharePointService {
         .select('id,name,description,webUrl,createdDateTime,lastModifiedDateTime')
         .get();
 
-      return response.value || [];
+      if (!response.value) {
+        console.warn('Graph API response missing "value" property for drives');
+        return [];
+      }
+      
+      return response.value;
     } catch (error: any) {
       console.error('Error fetching libraries:', error);
       throw new Error(`Failed to fetch libraries: ${error.message}`);
@@ -185,7 +190,12 @@ class SharePointService {
         .select('id,name,displayName,description,webUrl,createdDateTime,lastModifiedDateTime,list')
         .get();
 
-      return response.value || [];
+      if (!response.value) {
+        console.warn('Graph API response missing "value" property for lists');
+        return [];
+      }
+      
+      return response.value;
     } catch (error: any) {
       console.error('Error fetching lists:', error);
       throw new Error(`Failed to fetch lists: ${error.message}`);
