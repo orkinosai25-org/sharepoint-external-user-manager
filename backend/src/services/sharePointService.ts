@@ -145,6 +145,54 @@ class SharePointService {
   }
 
   /**
+   * Get document libraries for a SharePoint site
+   * @param siteId - SharePoint site ID
+   */
+  async getLibraries(siteId: string): Promise<any[]> {
+    if (!config.features.enableGraphIntegration) {
+      console.log('Graph integration disabled, returning mock libraries');
+      return this.getMockLibraries();
+    }
+
+    try {
+      const client = this.getGraphClient();
+      const response = await client
+        .api(`/sites/${siteId}/drives`)
+        .select('id,name,description,webUrl,createdDateTime,lastModifiedDateTime')
+        .get();
+
+      return response.value || [];
+    } catch (error: any) {
+      console.error('Error fetching libraries:', error);
+      throw new Error(`Failed to fetch libraries: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get lists for a SharePoint site
+   * @param siteId - SharePoint site ID
+   */
+  async getLists(siteId: string): Promise<any[]> {
+    if (!config.features.enableGraphIntegration) {
+      console.log('Graph integration disabled, returning mock lists');
+      return this.getMockLists();
+    }
+
+    try {
+      const client = this.getGraphClient();
+      const response = await client
+        .api(`/sites/${siteId}/lists`)
+        .select('id,name,displayName,description,webUrl,createdDateTime,lastModifiedDateTime,list')
+        .get();
+
+      return response.value || [];
+    } catch (error: any) {
+      console.error('Error fetching lists:', error);
+      throw new Error(`Failed to fetch lists: ${error.message}`);
+    }
+  }
+
+  /**
    * Generate a URL-friendly alias from client name
    * @param clientName - Original client name
    */
@@ -178,6 +226,62 @@ class SharePointService {
       siteUrl: `https://${mockTenantDomain}/sites/${alias}`,
       success: true
     };
+  }
+
+  /**
+   * Mock libraries for development/testing
+   */
+  private getMockLibraries(): any[] {
+    return [
+      {
+        id: 'mock-library-1',
+        name: 'Documents',
+        description: 'Default document library',
+        webUrl: 'https://contoso.sharepoint.com/sites/client/Shared%20Documents',
+        createdDateTime: '2024-01-01T10:00:00Z',
+        lastModifiedDateTime: '2024-01-15T14:30:00Z'
+      },
+      {
+        id: 'mock-library-2',
+        name: 'Contracts',
+        description: 'Client contracts and agreements',
+        webUrl: 'https://contoso.sharepoint.com/sites/client/Contracts',
+        createdDateTime: '2024-01-05T09:00:00Z',
+        lastModifiedDateTime: '2024-01-14T11:20:00Z'
+      }
+    ];
+  }
+
+  /**
+   * Mock lists for development/testing
+   */
+  private getMockLists(): any[] {
+    return [
+      {
+        id: 'mock-list-1',
+        name: 'Tasks',
+        displayName: 'Tasks',
+        description: 'Task tracking list',
+        webUrl: 'https://contoso.sharepoint.com/sites/client/Lists/Tasks',
+        createdDateTime: '2024-01-01T10:00:00Z',
+        lastModifiedDateTime: '2024-01-15T16:45:00Z',
+        list: {
+          template: 'genericList'
+        }
+      },
+      {
+        id: 'mock-list-2',
+        name: 'Issues',
+        displayName: 'Issues',
+        description: 'Issue tracking list',
+        webUrl: 'https://contoso.sharepoint.com/sites/client/Lists/Issues',
+        createdDateTime: '2024-01-03T11:30:00Z',
+        lastModifiedDateTime: '2024-01-14T09:15:00Z',
+        list: {
+          template: 'issueTracking'
+        }
+      }
+    ];
   }
 }
 
