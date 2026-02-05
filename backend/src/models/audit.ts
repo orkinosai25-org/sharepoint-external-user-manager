@@ -5,6 +5,8 @@
 export type AuditAction =
   | 'TenantOnboarded'
   | 'SubscriptionUpdated'
+  | 'SubscriptionActivated'
+  | 'PaymentFailed'
   | 'UserInvited'
   | 'UserRemoved'
   | 'PermissionChanged'
@@ -18,7 +20,7 @@ export type AuditAction =
   | 'SiteProvisioned'
   | 'SiteProvisioningFailed';
 
-export type ResourceType = 'Tenant' | 'Subscription' | 'ExternalUser' | 'Policy' | 'Library' | 'Client';
+export type ResourceType = 'Tenant' | 'Subscription' | 'ExternalUser' | 'Policy' | 'Library' | 'Client' | 'Invoice';
 
 export type AuditStatus = 'Success' | 'Failed';
 

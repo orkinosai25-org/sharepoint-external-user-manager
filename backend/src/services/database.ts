@@ -407,6 +407,182 @@ class DatabaseService {
       WHERE Id = @clientId AND TenantId = @tenantId
     `);
   }
+
+  // Subscription update operations
+  async updateSubscription(subscriptionId: number, updates: Partial<Subscription>): Promise<Subscription> {
+    const pool = this.ensureConnected();
+    const request = pool.request()
+      .input('subscriptionId', sql.Int, subscriptionId);
+
+    const updateFields: string[] = ['ModifiedDate = GETUTCDATE()'];
+    
+    if (updates.tier !== undefined) {
+      request.input('tier', sql.NVarChar, updates.tier);
+      updateFields.push('Tier = @tier');
+    }
+    
+    if (updates.status !== undefined) {
+      request.input('status', sql.NVarChar, updates.status);
+      updateFields.push('Status = @status');
+    }
+    
+    if (updates.startDate !== undefined) {
+      request.input('startDate', sql.DateTime2, updates.startDate);
+      updateFields.push('StartDate = @startDate');
+    }
+    
+    if (updates.endDate !== undefined) {
+      request.input('endDate', sql.DateTime2, updates.endDate);
+      updateFields.push('EndDate = @endDate');
+    }
+    
+    if (updates.trialExpiry !== undefined) {
+      request.input('trialExpiry', sql.DateTime2, updates.trialExpiry);
+      updateFields.push('TrialExpiry = @trialExpiry');
+    }
+    
+    if (updates.gracePeriodEnd !== undefined) {
+      request.input('gracePeriodEnd', sql.DateTime2, updates.gracePeriodEnd);
+      updateFields.push('GracePeriodEnd = @gracePeriodEnd');
+    }
+    
+    if (updates.maxUsers !== undefined) {
+      request.input('maxUsers', sql.Int, updates.maxUsers);
+      updateFields.push('MaxUsers = @maxUsers');
+    }
+
+    // Add Stripe fields
+    if (updates.stripeCustomerId !== undefined) {
+      request.input('stripeCustomerId', sql.NVarChar, updates.stripeCustomerId);
+      updateFields.push('StripeCustomerId = @stripeCustomerId');
+    }
+
+    if (updates.stripeSubscriptionId !== undefined) {
+      request.input('stripeSubscriptionId', sql.NVarChar, updates.stripeSubscriptionId);
+      updateFields.push('StripeSubscriptionId = @stripeSubscriptionId');
+    }
+
+    if (updates.stripePriceId !== undefined) {
+      request.input('stripePriceId', sql.NVarChar, updates.stripePriceId);
+      updateFields.push('StripePriceId = @stripePriceId');
+    }
+
+    const result = await request.query(`
+      UPDATE [dbo].[Subscription]
+      SET ${updateFields.join(', ')}
+      OUTPUT INSERTED.Id, INSERTED.TenantId, INSERTED.Tier, 
+             INSERTED.StartDate, INSERTED.EndDate, INSERTED.TrialExpiry,
+             INSERTED.GracePeriodEnd, INSERTED.Status, INSERTED.MaxUsers,
+             INSERTED.Features, INSERTED.CreatedDate, INSERTED.ModifiedDate,
+             INSERTED.StripeCustomerId, INSERTED.StripeSubscriptionId, INSERTED.StripePriceId
+      WHERE Id = @subscriptionId
+    `);
+
+    if (result.recordset.length === 0) {
+      throw new Error('Subscription not found');
+    }
+
+    const row = result.recordset[0];
+    return {
+      id: row.Id,
+      tenantId: row.TenantId,
+      tier: row.Tier,
+      startDate: row.StartDate,
+      endDate: row.EndDate,
+      trialExpiry: row.TrialExpiry,
+      gracePeriodEnd: row.GracePeriodEnd,
+      status: row.Status,
+      maxUsers: row.MaxUsers,
+      features: row.Features ? JSON.parse(row.Features) : {},
+      createdDate: row.CreatedDate,
+      modifiedDate: row.ModifiedDate,
+      stripeCustomerId: row.StripeCustomerId,
+      stripeSubscriptionId: row.StripeSubscriptionId,
+      stripePriceId: row.StripePriceId
+    };
+  }
+
+  async getSubscriptionByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | null> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('stripeCustomerId', sql.NVarChar, stripeCustomerId)
+      .query(`
+        SELECT Id as id, TenantId as tenantId, Tier as tier, 
+               StartDate as startDate, EndDate as endDate,
+               TrialExpiry as trialExpiry, GracePeriodEnd as gracePeriodEnd,
+               Status as status, MaxUsers as maxUsers, Features as features,
+               CreatedDate as createdDate, ModifiedDate as modifiedDate,
+               StripeCustomerId as stripeCustomerId, StripeSubscriptionId as stripeSubscriptionId,
+               StripePriceId as stripePriceId
+        FROM [dbo].[Subscription]
+        WHERE StripeCustomerId = @stripeCustomerId
+        ORDER BY CreatedDate DESC
+      `);
+
+    if (result.recordset.length === 0) {
+      return null;
+    }
+
+    const row = result.recordset[0];
+    return {
+      ...row,
+      features: row.features ? JSON.parse(row.features) : {}
+    };
+  }
+
+  async updateTenant(tenantId: number, updates: Partial<Tenant>): Promise<Tenant> {
+    const pool = this.ensureConnected();
+    const request = pool.request()
+      .input('tenantId', sql.Int, tenantId);
+
+    const updateFields: string[] = ['ModifiedDate = GETUTCDATE()'];
+    
+    if (updates.status !== undefined) {
+      request.input('status', sql.NVarChar, updates.status);
+      updateFields.push('Status = @status');
+    }
+    
+    if (updates.organizationName !== undefined) {
+      request.input('organizationName', sql.NVarChar, updates.organizationName);
+      updateFields.push('OrganizationName = @organizationName');
+    }
+    
+    if (updates.primaryAdminEmail !== undefined) {
+      request.input('primaryAdminEmail', sql.NVarChar, updates.primaryAdminEmail);
+      updateFields.push('PrimaryAdminEmail = @primaryAdminEmail');
+    }
+    
+    if (updates.settings !== undefined) {
+      request.input('settings', sql.NVarChar, JSON.stringify(updates.settings));
+      updateFields.push('Settings = @settings');
+    }
+
+    const result = await request.query(`
+      UPDATE [dbo].[Tenant]
+      SET ${updateFields.join(', ')}
+      OUTPUT INSERTED.Id, INSERTED.EntraIdTenantId, INSERTED.OrganizationName,
+             INSERTED.PrimaryAdminEmail, INSERTED.OnboardedDate, INSERTED.Status,
+             INSERTED.Settings, INSERTED.CreatedDate, INSERTED.ModifiedDate
+      WHERE Id = @tenantId
+    `);
+
+    if (result.recordset.length === 0) {
+      throw new Error('Tenant not found');
+    }
+
+    const row = result.recordset[0];
+    return {
+      id: row.Id,
+      entraIdTenantId: row.EntraIdTenantId,
+      organizationName: row.OrganizationName,
+      primaryAdminEmail: row.PrimaryAdminEmail,
+      onboardedDate: row.OnboardedDate,
+      status: row.Status,
+      settings: row.Settings ? JSON.parse(row.Settings) : null,
+      createdDate: row.CreatedDate,
+      modifiedDate: row.ModifiedDate
+    };
+  }
 }
 
 export const databaseService = new DatabaseService();
