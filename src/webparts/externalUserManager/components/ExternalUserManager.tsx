@@ -21,6 +21,7 @@ import { IExternalUserManagerProps } from './IExternalUserManagerProps';
 import { IExternalLibrary } from '../models/IExternalLibrary';
 import { MockDataService } from '../services/MockDataService';
 import { SharePointDataService } from '../services/SharePointDataService';
+import { BackendApiService } from '../services/BackendApiService';
 import { CreateLibraryModal } from './CreateLibraryModal';
 import { DeleteLibraryModal } from './DeleteLibraryModal';
 import { ManageUsersModal } from './ManageUsersModal';
@@ -35,6 +36,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
   const [showManageUsersModal, setShowManageUsersModal] = useState<boolean>(false);
   const [operationMessage, setOperationMessage] = useState<{ message: string; type: MessageBarType } | null>(null);
   const [dataService] = useState(() => new SharePointDataService(props.context));
+  const [backendApiService] = useState(() => new BackendApiService(props.context, props.backendApiUrl));
   
   const [selection] = useState(new Selection({
     onSelectionChanged: () => {
@@ -132,9 +134,16 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
     setTimeout(() => setOperationMessage(null), 5000);
   };
 
-  const handleAddUser = async (libraryId: string, email: string, permission: 'Read' | 'Contribute' | 'Full Control', company?: string, project?: string): Promise<void> => {
+  const handleAddUser = async (libraryId: string, email: string, permission: 'Read' | 'Edit', company?: string, project?: string): Promise<void> => {
     try {
-      await dataService.addExternalUserToLibrary(libraryId, email, permission, company, project);
+      // Get the library URL from the library ID
+      const library = libraries.find(lib => lib.id === libraryId);
+      if (!library) {
+        throw new Error('Library not found');
+      }
+      
+      // Use BackendApiService to add user (calls SaaS backend)
+      await backendApiService.addExternalUser(library.siteUrl, email, permission, company, project);
       
       // Update the external users count for the library
       setLibraries(prev => prev.map(lib => 
@@ -149,14 +158,16 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
     }
   };
 
-  const handleBulkAddUsers = async (libraryId: string, emails: string[], permission: 'Read' | 'Contribute' | 'Full Control', company?: string, project?: string): Promise<any> => {
+  const handleBulkAddUsers = async (libraryId: string, emails: string[], permission: 'Read' | 'Edit', company?: string, project?: string): Promise<any> => {
     try {
-      const results = await dataService.bulkAddExternalUsersToLibrary(libraryId, {
-        emails,
-        permission,
-        company,
-        project
-      });
+      // Get the library URL from the library ID
+      const library = libraries.find(lib => lib.id === libraryId);
+      if (!library) {
+        throw new Error('Library not found');
+      }
+      
+      // Use BackendApiService to bulk add users (calls SaaS backend)
+      const results = await backendApiService.bulkAddExternalUsers(library.siteUrl, emails, permission, company, project);
       
       // Count successful additions to update library count
       const successfulAdditions = results.filter(r => 
@@ -181,7 +192,22 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
 
   const handleRemoveUser = async (libraryId: string, userId: string): Promise<void> => {
     try {
-      await dataService.removeExternalUserFromLibrary(libraryId, userId);
+      // Get the library URL from the library ID
+      const library = libraries.find(lib => lib.id === libraryId);
+      if (!library) {
+        throw new Error('Library not found');
+      }
+      
+      // First get the user's email from the user ID
+      const users = await backendApiService.listExternalUsers(library.siteUrl);
+      const user = users.find(u => u.id === userId);
+      
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Use BackendApiService to remove user (calls SaaS backend)
+      await backendApiService.removeExternalUser(library.siteUrl, user.email);
       
       // Update the external users count for the library
       setLibraries(prev => prev.map(lib => 
@@ -207,7 +233,14 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
 
   const handleGetUsers = async (libraryId: string) => {
     try {
-      return await dataService.getExternalUsersForLibrary(libraryId);
+      // Get the library URL from the library ID
+      const library = libraries.find(lib => lib.id === libraryId);
+      if (!library) {
+        throw new Error('Library not found');
+      }
+      
+      // Use BackendApiService to get users (calls SaaS backend)
+      return await backendApiService.listExternalUsers(library.siteUrl);
     } catch (error) {
       console.error('Error getting users:', error);
       throw error;
@@ -374,8 +407,8 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
 
         <Stack.Item>
           <MessageBar messageBarType={MessageBarType.info}>
-            Create and manage document libraries with external sharing capabilities. 
-            Use PnPjs for SharePoint integration with Microsoft Graph API fallback.
+            Manage external users through the SaaS backend API. 
+            All operations are securely handled by the backend service with proper authentication and audit logging.
           </MessageBar>
         </Stack.Item>
 
