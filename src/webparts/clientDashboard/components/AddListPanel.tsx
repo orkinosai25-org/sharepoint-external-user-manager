@@ -162,7 +162,11 @@ const AddListPanel: React.FC<IAddListPanelProps> = (props) => {
             placeholder="Select a list type"
             options={listTypeOptions}
             selectedKey={listType}
-            onChange={(_, option) => setListType(option?.key as string)}
+            onChange={(_, option) => {
+              if (option?.key) {
+                setListType(option.key as string);
+              }
+            }}
             required
             disabled={isSubmitting}
             errorMessage={validationErrors.listType}

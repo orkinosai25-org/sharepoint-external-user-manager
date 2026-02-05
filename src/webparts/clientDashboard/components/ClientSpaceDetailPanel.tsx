@@ -17,9 +17,7 @@ import {
   MessageBarType,
   Link,
   Icon,
-  Label,
-  CommandBar,
-  ICommandBarItemProps
+  Label
 } from '@fluentui/react';
 import { IClient } from '../models/IClient';
 import { ILibrary, IList, IExternalUser } from '../models/IClientDetail';
@@ -87,22 +85,22 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
     setErrorMessage('');
     setSuccessMessage('');
 
+    const successMsg = `Document folder "${libraryName}" created successfully!`;
+
     try {
       // Try to create via API
       const newLibrary = await props.dataService.createLibrary(props.client.id, libraryName, description);
       
       // Add to the libraries list immediately
       setLibraries(prevLibraries => [...prevLibraries, newLibrary]);
-      
-      setSuccessMessage(`Document folder "${libraryName}" created successfully!`);
+      setSuccessMessage(successMsg);
     } catch (error) {
       console.warn('Error creating library via API, using mock data:', error);
       
       // Fallback to mock creation
       const newLibrary = MockClientDataService.createLibrary(props.client.id, libraryName, description);
       setLibraries(prevLibraries => [...prevLibraries, newLibrary]);
-      
-      setSuccessMessage(`Document folder "${libraryName}" created successfully!`);
+      setSuccessMessage(successMsg);
     }
   };
 
@@ -112,22 +110,22 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
     setErrorMessage('');
     setSuccessMessage('');
 
+    const successMsg = `Data list "${listName}" created successfully!`;
+
     try {
       // Try to create via API
       const newList = await props.dataService.createList(props.client.id, listName, listType, description);
       
       // Add to the lists array immediately
       setLists(prevLists => [...prevLists, newList]);
-      
-      setSuccessMessage(`Data list "${listName}" created successfully!`);
+      setSuccessMessage(successMsg);
     } catch (error) {
       console.warn('Error creating list via API, using mock data:', error);
       
       // Fallback to mock creation
       const newList = MockClientDataService.createList(props.client.id, listName, listType, description);
       setLists(prevLists => [...prevLists, newList]);
-      
-      setSuccessMessage(`Data list "${listName}" created successfully!`);
+      setSuccessMessage(successMsg);
     }
   };
 
