@@ -1,260 +1,316 @@
-# SharePoint External User Manager
+# SharePoint External User Manager - SaaS Platform
 
-A modern SharePoint Framework (SPFx) solution built with React and Fluent UI for managing external users, shared libraries, and client spaces with comprehensive metadata tracking.
+A modern, multi-tenant SaaS solution for managing external users, client spaces, and document access in SharePoint Online. Built with a clean separation between client-side SPFx web parts and a cloud-hosted backend API with Blazor administrative portal.
 
-## Features
+## 🏗️ Architecture
 
-- **Modern UI**: Built with Fluent UI (Fabric) components for a clean, professional interface
-- **Client Dashboard**: Firm-level dashboard for viewing and managing all client spaces
-- **Library Management**: View and manage external libraries with detailed information
-- **User Management**: Track external users and their access permissions
-- **📊 Metadata Tracking**: Company and Project metadata for external users
-- **Responsive Design**: Works across desktop and mobile devices
-- **Modular Architecture**: Ready for backend integration
-
-## 🆕 Company and Project Metadata Features
-
-### User Organization
-- **Company Tracking**: Associate external users with their companies/organizations
-- **Project Assignment**: Link users to specific projects or initiatives
-- **Visual Display**: Company and Project columns in user management interface
-
-### Management Capabilities
-- **Add Users with Metadata**: Specify company and project when inviting new users
-- **Bulk Operations**: Apply metadata to multiple users simultaneously
-- **Edit Metadata**: Update company and project information for existing users
-- **Persistent Storage**: Metadata stored in browser localStorage (demo) or SharePoint lists (production)
-
-### Use Cases
-- **Project Management**: Track which external users belong to which projects
-- **Vendor Management**: Organize users by their companies for relationship management
-- **Compliance**: Maintain records of user affiliations for audit purposes
-- **Access Reviews**: Easily identify users by company/project during reviews
-
-## Project Structure
+This solution follows a split architecture pattern:
 
 ```
-src/
-├── webparts/
-│   ├── clientDashboard/
-│   │   ├── components/
-│   │   │   ├── ClientDashboard.tsx          # Client list component
-│   │   │   ├── ClientDashboard.module.scss  # Styling
-│   │   │   └── IClientDashboardProps.ts     # Component props
-│   │   ├── models/
-│   │   │   └── IClient.ts                   # Client data model
-│   │   ├── services/
-│   │   │   ├── ClientDataService.ts         # Backend API service
-│   │   │   └── MockClientDataService.ts     # Mock data service
-│   │   ├── loc/                             # Localization files
-│   │   └── ClientDashboardWebPart.ts        # SPFx web part class
-│   └── externalUserManager/
-│       ├── components/
-│       │   ├── ExternalUserManager.tsx      # Main React component
-│       │   ├── ExternalUserManager.module.scss # Styling
-│       │   └── IExternalUserManagerProps.ts # Component props interface
-│       ├── models/
-│       │   └── IExternalLibrary.ts          # Data models
-│       ├── services/
-│       │   └── MockDataService.ts           # Mock data service
-│       ├── loc/                             # Localization files
-│       └── ExternalUserManagerWebPart.ts    # SPFx web part class
+┌─────────────────────────────────────────────────────────────────┐
+│                        Customer's SharePoint                     │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  SPFx Client Web Parts (Installed by Customer)             │ │
+│  │  - Client Dashboard                                         │ │
+│  │  - External User Manager                                    │ │
+│  │  - Library & List Management                                │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                            ↕ HTTPS API Calls
+┌─────────────────────────────────────────────────────────────────┐
+│                    SaaS Platform (Azure - Hosted by Us)         │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Blazor Portal (Marketing + Admin Dashboard)               │ │
+│  │  - Pricing & Sign-up                                        │ │
+│  │  - Onboarding Wizard                                        │ │
+│  │  - Subscription Management                                  │ │
+│  │  - Tenant Configuration                                     │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Backend API (Multi-tenant ASP.NET Core)                   │ │
+│  │  - Tenant Management                                        │ │
+│  │  - Client Space Provisioning                                │ │
+│  │  - External User Operations (via Graph API)                │ │
+│  │  - Stripe Billing Integration                               │ │
+│  │  - Audit Logging                                            │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Azure Infrastructure                                       │ │
+│  │  - Azure SQL Database (multi-tenant)                        │ │
+│  │  - Key Vault (secrets management)                           │ │
+│  │  - Application Insights (monitoring)                        │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Key Components
+## 📁 Repository Structure
 
-### Client Dashboard WebPart (NEW)
-- **Firm-level dashboard** listing all clients in a simple table
-- Shows Client Name, Site URL, Status, and Actions
-- **Non-technical language** suitable for users with no SharePoint knowledge
-- Loads data from SaaS backend API with automatic fallback to mock data
-- Quick actions: Open client site, Manage client settings
-- See [src/webparts/clientDashboard/README.md](src/webparts/clientDashboard/README.md) for details
-
-### External User Manager Component
-- Displays libraries in a responsive DetailsList
-- Shows external user counts, permissions, and ownership
-- Provides action buttons for library management
-- Includes loading states and status information
-
-### Mock Data Service
-- Provides sample data for 5 external libraries
-- Includes realistic user scenarios and permission levels
-- Ready to be replaced with actual SharePoint API calls
-
-### Features Implemented
-
-1. **Library Listing**: Clean list view of external libraries with:
-   - Library name and description
-   - Site URL and owner information
-   - External user counts
-   - Permission levels with color coding
-   - Last modified dates
-
-2. **Action Placeholders**: 
-   - Add Library button
-   - Remove selected libraries
-   - Manage Users for individual libraries
-   - Refresh data functionality
-
-3. **Selection Management**: Multi-select support with action button states
-
-4. **Responsive Design**: Mobile-friendly layout with Fluent UI components
-
-## Getting Started
-
-### Quick Setup
-For new developers, we provide setup scripts to help with environment configuration:
-
-**Windows:**
-```cmd
-setup.cmd
+```
+/
+├── src/
+│   ├── client-spfx/          # SharePoint Framework web parts (customer-installed)
+│   │   ├── webparts/         # SPFx web part components
+│   │   ├── config/           # SPFx configuration
+│   │   └── package.json      # Node.js dependencies
+│   │
+│   ├── portal-blazor/        # Blazor Web App (SaaS admin portal)
+│   │   └── README.md         # [Planned - ISSUE-08]
+│   │
+│   ├── api-dotnet/           # ASP.NET Core Web API (multi-tenant backend)
+│   │   ├── src/              # API source code (currently Node.js/Azure Functions)
+│   │   ├── database/         # SQL migrations and seeds
+│   │   └── package.json      # Dependencies
+│   │
+│   └── shared/               # Shared models, DTOs, and contracts
+│       └── README.md         # [Planned]
+│
+├── infra/
+│   └── bicep/                # Azure infrastructure as code (Bicep templates)
+│       └── main.bicep        # Main infrastructure template
+│
+├── docs/                     # Documentation
+│   └── saas/                 # SaaS architecture and API documentation
+│
+├── .github/
+│   └── workflows/            # CI/CD pipelines
+│
+└── README.md                 # This file
 ```
 
-**macOS/Linux:**
-```bash
-./setup.sh
-```
+## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js**: Version 16.x or 18.x (⚠️ SPFx 1.18.2 doesn't support Node 20+)
-- **SharePoint Framework CLI**: `npm install -g @microsoft/sharepoint-framework-yeoman-generator`
-- **Gulp CLI**: `npm install -g gulp-cli`
 
-### Installation
+- **Node.js**: Version 16.x or 18.x (for SPFx client)
+- **.NET 8 SDK**: For future Blazor portal and API refactor
+- **Azure Subscription**: For deployment
+- **Microsoft 365 Tenant**: For testing SPFx web parts
+- **Stripe Account**: For billing integration
+
+### Quick Start - SPFx Client
+
 ```bash
-# Clone and setup
-git clone <repository-url>
-cd sharepoint-external-user-manager
+# Navigate to SPFx client directory
+cd src/client-spfx
+
+# Install dependencies
 npm install
-```
 
-### Development
-```bash
-# Start development server with hot reload
+# Start development server
 npm run serve
 
-# Access at: https://localhost:4321/temp/manifests.js
-# Add to SharePoint with: ?debug=true&noredir=true&debugManifestsFile=https://localhost:4321/temp/manifests.js
-```
-
-### Build & Package
-```bash
 # Build for production
 npm run build
 
 # Create deployment package
 npm run package-solution
-
-# Package will be in sharepoint/solution/
+# Package will be in: src/client-spfx/sharepoint/solution/*.sppkg
 ```
 
-### Automated Deployment
-🚀 **GitHub Actions workflow available for automated deployment!**
-
-The project includes a complete CI/CD pipeline that automatically:
-- Builds and packages the SPFx solution
-- Deploys to SharePoint App Catalog
-- Publishes the solution for use
-
-See [GitHub Actions Workflow Documentation](.github/workflows/README.md) for setup instructions.
-
-### New Developer Onboarding
-📖 **See [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) for comprehensive setup and development instructions.**
-
-## 🚀 SaaS Backend (NEW!)
-
-The project now includes a complete multi-tenant SaaS backend built with Azure Functions!
-
-### Backend Features
-- ✅ **Multi-tenant Architecture**: Database-per-tenant isolation
-- ✅ **Azure Functions**: Serverless API with auto-scaling
-- ✅ **Subscription Management**: Trial/Pro/Enterprise tiers with licensing
-- ✅ **Authentication**: Azure AD multi-tenant with JWT validation
-- ✅ **Rate Limiting**: Per-tenant throttling and quota enforcement
-- ✅ **Audit Logging**: Comprehensive audit trail in Cosmos DB
-- ✅ **Infrastructure as Code**: Bicep templates for Azure deployment
-
-### Backend Tech Stack
-- **Runtime**: Node.js 18 LTS
-- **Framework**: Azure Functions v4
-- **Language**: TypeScript
-- **Database**: Azure Cosmos DB (metadata) + Azure SQL (tenant data)
-- **Authentication**: Azure AD OAuth 2.0
-- **Monitoring**: Application Insights
-
-### Quick Start (Backend)
+### Quick Start - Backend API
 
 ```bash
-cd backend
+# Navigate to API directory
+cd src/api-dotnet
+
+# Install dependencies
 npm install
+
+# Start local development (Azure Functions)
 npm start
 # API available at http://localhost:7071/api
 ```
 
-See [backend/README.md](./backend/README.md) for detailed setup instructions.
+### Quick Start - Blazor Portal
 
-### 📚 Complete SaaS Documentation
-
-The [`docs/saas/`](./docs/saas/) directory contains comprehensive documentation:
-
-- **[Architecture](./docs/saas/architecture.md)**: System design, components, and data flow
-- **[Data Model](./docs/saas/data-model.md)**: Database schemas and entity relationships
-- **[Security](./docs/saas/security.md)**: Authentication, authorization, and compliance
-- **[API Specification](./docs/saas/api-spec.md)**: Complete API reference with examples
-- **[Onboarding Flow](./docs/saas/onboarding.md)**: Tenant onboarding and trial management
-- **[Marketplace Plan](./docs/saas/marketplace-plan.md)**: Microsoft Commercial Marketplace integration
-
-### 📖 User Documentation
-
-- **[Solicitor Onboarding & Usage Guide](./SOLICITOR_GUIDE.md)**: Non-technical guide for legal professionals on how to use the system to manage clients and document access
-- **[Developer Guide](./DEVELOPER_GUIDE.md)**: Comprehensive setup and development instructions for developers
-
-### Deployment
-
-**Backend Infrastructure:**
 ```bash
-az deployment group create \
-  --resource-group rg-spexternal \
-  --template-file deployment/backend.bicep \
-  --parameters environment=dev
+# [Coming in ISSUE-08]
+cd src/portal-blazor
+dotnet restore
+dotnet run
 ```
 
-**CI/CD:** GitHub Actions workflow automatically deploys backend on push to main branch.
+## 📦 Build Commands
 
-See [deployment/README.md](./deployment/README.md) for complete deployment guide.
+### Build Everything
 
-## Next Steps
+From the repository root:
 
-### Immediate (MVP)
-1. ✅ Complete backend API endpoints (tenants, users, policies, audit)
-2. 🔄 Integrate SPFx web part with backend API
-3. 🔄 Add subscription status UI components
-4. 🔄 Implement end-to-end testing
+```bash
+# Build SPFx Client
+cd src/client-spfx && npm install && npm run build && cd ../..
 
-### Phase 2 (Post-MVP)
-1. Microsoft Commercial Marketplace integration
-2. Advanced features (approvals, risk flags, review campaigns)
-3. Multi-region deployment for global scale
-4. Enhanced analytics and reporting dashboards
+# Build Backend API
+cd src/api-dotnet && npm install && npm run build && cd ../..
 
-## Technology Stack
+# Build Blazor Portal (when implemented)
+# cd src/portal-blazor && dotnet build && cd ../..
+```
 
-### Frontend (SPFx)
-- **Framework**: SharePoint Framework (SPFx) 1.18.2
-- **UI Library**: Fluent UI 8.x
-- **Language**: TypeScript 4.5.5
-- **Styling**: SCSS Modules
-- **Build**: Gulp-based SPFx build pipeline
+### Run Tests
 
-### Backend (SaaS API)
-- **Runtime**: Node.js 18 LTS
-- **Framework**: Azure Functions v4
-- **Language**: TypeScript 5.3
-- **Database**: Azure Cosmos DB + Azure SQL
-- **Authentication**: Azure AD (multi-tenant)
-- **Infrastructure**: Azure (Functions, Cosmos DB, Key Vault, App Insights)
+```bash
+# SPFx Client
+cd src/client-spfx && npm test
 
-## License
+# Backend API
+cd src/api-dotnet && npm test
 
-MIT License - see LICENSE file for details.
+# Blazor Portal (when implemented)
+# cd src/portal-blazor && dotnet test
+```
+
+## 🎯 Key Features
+
+### SPFx Client (Customer-Installed)
+- ✅ **Client Dashboard**: Firm-level view of all client spaces
+- ✅ **External User Management**: Invite, remove, and track external users
+- ✅ **Library Management**: Create and manage document libraries
+- ✅ **List Management**: Create and manage SharePoint lists
+- ✅ **Metadata Tracking**: Company and project associations for external users
+- ✅ **Responsive Design**: Works on desktop and mobile
+
+### Backend API (SaaS Platform)
+- ✅ **Multi-tenant Architecture**: Complete tenant isolation
+- ✅ **Microsoft Graph Integration**: SharePoint site and user operations
+- ✅ **Stripe Billing**: Subscription management and webhooks
+- ✅ **Audit Logging**: Comprehensive activity tracking
+- ✅ **Rate Limiting**: Per-tenant throttling and quotas
+- ✅ **Authentication**: Azure AD multi-tenant with JWT validation
+
+### Blazor Portal (Coming Soon)
+- 🔄 **Pricing Page**: Display subscription tiers
+- 🔄 **Onboarding Wizard**: Streamlined tenant setup
+- 🔄 **Admin Dashboard**: Manage clients and subscriptions
+- 🔄 **Billing Integration**: Stripe checkout and subscription management
+
+## 🔒 Security
+
+- **Tenant Isolation**: Every database table includes `TenantId` for complete data separation
+- **Authentication**: Azure AD OAuth 2.0 with JWT token validation
+- **Authorization**: Role-based access control (RBAC) with Admin/User roles
+- **Secrets Management**: Azure Key Vault for production secrets
+- **Audit Trail**: All administrative actions are logged
+- **Rate Limiting**: Per-tenant throttling to prevent abuse
+
+## 📚 Documentation
+
+- **[Architecture Overview](./ARCHITECTURE.md)**: Detailed system architecture
+- **[Developer Guide](./DEVELOPER_GUIDE.md)**: Development setup and guidelines
+- **[Solicitor Guide](./SOLICITOR_GUIDE.md)**: Non-technical user guide
+- **[Technical Documentation](./TECHNICAL_DOCUMENTATION.md)**: API specifications
+- **[SaaS Documentation](./docs/saas/)**: Complete SaaS architecture docs
+  - [Architecture](./docs/saas/architecture.md)
+  - [Data Model](./docs/saas/data-model.md)
+  - [Security](./docs/saas/security.md)
+  - [API Specification](./docs/saas/api-spec.md)
+
+## 🛠️ Technology Stack
+
+### Frontend
+- **SharePoint Framework (SPFx)**: 1.18.2
+- **React**: 17.0.1
+- **Fluent UI**: 8.x
+- **TypeScript**: 4.5.5
+
+### Backend (Current)
+- **Azure Functions**: v4 (Node.js 18)
+- **TypeScript**: 5.3
+- **Azure Cosmos DB**: Metadata storage
+- **Azure SQL**: Tenant data
+
+### Backend (Target - ISSUE-02)
+- **ASP.NET Core**: .NET 8
+- **Entity Framework Core**: 8.x
+- **Azure SQL**: Multi-tenant database
+
+### Portal (Target - ISSUE-08)
+- **Blazor**: .NET 8
+- **Bootstrap**: 5.x
+- **Microsoft Identity**: Entra ID integration
+
+### Infrastructure
+- **Azure App Service**: API and portal hosting
+- **Azure SQL Database**: Data storage
+- **Azure Key Vault**: Secrets management
+- **Application Insights**: Monitoring and diagnostics
+- **Bicep**: Infrastructure as Code
+
+## 🚢 Deployment
+
+### CI/CD Pipelines
+
+GitHub Actions workflows automatically:
+- Build and test on pull requests
+- Deploy to dev environment on merge to `develop`
+- Deploy to production on merge to `main`
+
+See [`.github/workflows/README.md`](./.github/workflows/README.md) for details.
+
+### Manual Deployment
+
+```bash
+# Deploy infrastructure
+az deployment group create \
+  --resource-group rg-spexternal-dev \
+  --template-file infra/bicep/main.bicep \
+  --parameters environment=dev
+
+# Deploy SPFx package
+# Upload src/client-spfx/sharepoint/solution/*.sppkg to SharePoint App Catalog
+
+# Deploy backend API
+# GitHub Actions handles this automatically
+```
+
+See detailed deployment guide: [`deployment/README.md`](./deployment/README.md)
+
+## 📋 Roadmap
+
+### Phase 1: Foundation (Current)
+- ✅ **ISSUE-01**: Repository restructure ← **YOU ARE HERE**
+- 🔄 **ISSUE-02**: ASP.NET Core API skeleton
+- 🔄 **ISSUE-03**: Azure SQL + EF Core migrations
+- 🔄 **ISSUE-04**: Client space provisioning
+- 🔄 **ISSUE-05**: External user management backend
+- 🔄 **ISSUE-06**: Library & list management backend
+- 🔄 **ISSUE-07**: Stripe billing integration
+
+### Phase 2: Portal & Integration
+- 🔄 **ISSUE-08**: Blazor SaaS portal
+- 🔄 **ISSUE-09**: SPFx client refactor (thin SaaS client)
+- 🔄 **ISSUE-10**: Azure deployment (Bicep + CI/CD)
+- 🔄 **ISSUE-11**: Quality gates & merge protection
+
+### Phase 3: Advanced Features (Post-MVP)
+- Microsoft Commercial Marketplace integration
+- Advanced governance and compliance features
+- Multi-region deployment
+- Enhanced analytics and reporting
+
+## 🤝 Contributing
+
+This is a private project under active development. Please follow these guidelines:
+
+1. Work on issues in order (ISSUE-01 → ISSUE-11)
+2. Each issue has clear acceptance criteria
+3. All code must pass CI checks before merge
+4. No secrets in repository
+5. Use UK English for all UI text
+6. Keep language solicitor-friendly (Client, Space, Access)
+
+## 📝 License
+
+MIT License - see [LICENSE](./LICENSE) file for details.
+
+## 🆘 Support
+
+For development questions, see:
+- [Developer Guide](./DEVELOPER_GUIDE.md)
+- [Technical Documentation](./TECHNICAL_DOCUMENTATION.md)
+- [Backend README](./src/api-dotnet/README.md)
+- [SPFx Client README](./src/client-spfx/README.md) (to be created)
+
+---
+
+**Built with ❤️ for legal professionals managing client document access**
