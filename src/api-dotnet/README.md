@@ -2,7 +2,23 @@
 
 ## Overview
 
-This directory contains the Azure Functions backend for the SharePoint External User Manager SaaS solution. The backend provides a RESTful API for managing external users, libraries, policies, and licensing.
+This directory contains both the Azure Functions backend (legacy) and the new ASP.NET Core Web API for the SharePoint External User Manager SaaS solution.
+
+### Current Structure
+
+```
+api-dotnet/
+├── src/                          # Azure Functions (legacy - being migrated)
+│   ├── Functions/
+│   ├── Middleware/
+│   ├── Models/
+│   └── Services/
+└── WebApi/                       # NEW: ASP.NET Core Web API (ISSUE-02)
+    └── SharePointExternalUserManager.Api/
+        ├── Controllers/
+        ├── Program.cs
+        └── README.md             # API-specific documentation
+```
 
 ## Technology Stack
 
