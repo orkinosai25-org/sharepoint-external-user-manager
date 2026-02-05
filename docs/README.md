@@ -42,6 +42,15 @@ This directory contains comprehensive documentation for the SharePoint External 
 - **Onboarding**: Guided setup wizard and training
 - **Success Metrics**: KPIs for adoption and value realization
 
+### 📖 [Solicitor Onboarding & Usage Guide](../SOLICITOR_GUIDE.md)
+**Non-technical guide for solicitors using the system**
+
+- **Getting Started**: First-time login and dashboard overview
+- **Client Management**: Adding clients and managing workspaces
+- **Access Control**: Managing external user permissions
+- **Document Spaces**: Creating and organizing document libraries
+- **Best Practices**: Security, naming conventions, and maintenance tips
+
 ## Quick Start Guide
 
 ### For Developers

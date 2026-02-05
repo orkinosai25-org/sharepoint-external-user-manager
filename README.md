@@ -205,6 +205,11 @@ The [`docs/saas/`](./docs/saas/) directory contains comprehensive documentation:
 - **[Onboarding Flow](./docs/saas/onboarding.md)**: Tenant onboarding and trial management
 - **[Marketplace Plan](./docs/saas/marketplace-plan.md)**: Microsoft Commercial Marketplace integration
 
+### 📖 User Documentation
+
+- **[Solicitor Onboarding & Usage Guide](./SOLICITOR_GUIDE.md)**: Non-technical guide for legal professionals on how to use the system to manage clients and document access
+- **[Developer Guide](./DEVELOPER_GUIDE.md)**: Comprehensive setup and development instructions for developers
+
 ### Deployment
 
 **Backend Infrastructure:**
