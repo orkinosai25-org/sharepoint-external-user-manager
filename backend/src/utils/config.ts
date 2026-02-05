@@ -33,6 +33,11 @@ export interface Config {
     enableGraphIntegration: boolean;
     enableAuditLogging: boolean;
   };
+  stripe: {
+    secretKey: string;
+    publishableKey: string;
+    webhookSecret: string;
+  };
 }
 
 class ConfigService {
@@ -69,6 +74,11 @@ class ConfigService {
       features: {
         enableGraphIntegration: process.env.ENABLE_GRAPH_INTEGRATION === 'true',
         enableAuditLogging: process.env.ENABLE_AUDIT_LOGGING !== 'false'
+      },
+      stripe: {
+        secretKey: process.env.STRIPE_SECRET_KEY || '',
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || ''
       }
     };
   }

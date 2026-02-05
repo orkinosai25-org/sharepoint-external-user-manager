@@ -23,6 +23,10 @@ export interface Subscription {
   features: SubscriptionFeatures;
   createdDate: Date;
   modifiedDate: Date;
+  // Stripe integration fields
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripePriceId?: string;
 }
 
 export interface SubscriptionFeatures {
