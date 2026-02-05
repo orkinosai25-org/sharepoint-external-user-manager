@@ -1,0 +1,26 @@
+.clientDashboard {
+  padding: 20px;
+  background-color: #ffffff;
+  
+  .clientList {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+  }
+
+  // Status badge colors
+  .statusActive {
+    color: #107c10;
+  }
+
+  .statusProvisioning {
+    color: #0078d4;
+  }
+
+  .statusError {
+    color: #d13438;
+  }
+
+  .statusUnknown {
+    color: #8a8886;
+  }
+}
