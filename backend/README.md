@@ -324,5 +324,7 @@ MIT License - see [LICENSE](/LICENSE) file
 ## Support
 
 - **Documentation:** [/docs/saas/](/docs/saas/)
+- **Pricing & Plans:** [PRICING_AND_PLANS.md](./PRICING_AND_PLANS.md)
+- **Stripe Setup:** [STRIPE_SETUP.md](./STRIPE_SETUP.md)
 - **Issues:** Create GitHub issue
 - **Email:** support@spexternal.com

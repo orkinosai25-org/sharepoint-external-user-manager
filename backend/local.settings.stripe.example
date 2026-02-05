@@ -1,0 +1,58 @@
+# Azure Functions Configuration
+AzureWebJobsStorage=UseDevelopmentStorage=true
+FUNCTIONS_WORKER_RUNTIME=node
+
+# Database Configuration
+SQL_SERVER=your-sql-server.database.windows.net
+SQL_DATABASE=spexternal-db
+SQL_USER=your-db-user
+SQL_PASSWORD=your-db-password
+
+# Azure AD Authentication
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-client-secret
+AZURE_AD_AUDIENCE=your-client-id
+AZURE_AD_ISSUER=https://sts.windows.net/your-tenant-id/
+
+# Key Vault (Optional)
+KEY_VAULT_URL=https://your-keyvault.vault.azure.net/
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:4321,https://your-app.azurewebsites.net
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=60000
+
+# Feature Flags
+ENABLE_GRAPH_INTEGRATION=true
+ENABLE_AUDIT_LOGGING=true
+
+# Stripe Configuration
+# Get these from Stripe Dashboard -> Developers -> API Keys
+# Use test keys (sk_test_...) for development, live keys (sk_live_...) for production
+STRIPE_SECRET_KEY=sk_test_51AbCdEfGhIjKlMnOpQrStUvWxYz1234567890
+STRIPE_PUBLISHABLE_KEY=pk_test_51AbCdEfGhIjKlMnOpQrStUvWxYz1234567890
+STRIPE_WEBHOOK_SECRET=whsec_1234567890abcdefghijklmnopqrstuvwxyz
+
+# Stripe Product IDs (optional - defaults will be used if not set)
+# Create products in Stripe Dashboard -> Products
+STRIPE_PRODUCT_ID_STARTER=prod_StarterPlan123
+STRIPE_PRODUCT_ID_PROFESSIONAL=prod_ProfessionalPlan456
+STRIPE_PRODUCT_ID_BUSINESS=prod_BusinessPlan789
+
+# Stripe Price IDs (optional - defaults will be used if not set)
+# Create prices for each product in Stripe Dashboard
+# Starter Plan Prices
+STRIPE_PRICE_ID_STARTER_MONTHLY=price_StarterMonthly123
+STRIPE_PRICE_ID_STARTER_ANNUAL=price_StarterAnnual456
+
+# Professional Plan Prices
+STRIPE_PRICE_ID_PROFESSIONAL_MONTHLY=price_ProfessionalMonthly123
+STRIPE_PRICE_ID_PROFESSIONAL_ANNUAL=price_ProfessionalAnnual456
+
+# Business Plan Prices
+STRIPE_PRICE_ID_BUSINESS_MONTHLY=price_BusinessMonthly123
+STRIPE_PRICE_ID_BUSINESS_ANNUAL=price_BusinessAnnual456
+
+# Note: Enterprise plan is not managed through Stripe (custom contracts)
