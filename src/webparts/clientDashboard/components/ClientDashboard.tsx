@@ -272,18 +272,26 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
             )}
 
             {/* Summary */}
-            {clients.length > 0 && (
-              <Stack horizontal horizontalAlign="space-between" styles={{ root: { marginTop: 16, padding: '12px 0', borderTop: '1px solid #edebe9' } }}>
-                <Text variant="medium">
-                  Total Clients: <strong>{clients.length}</strong>
-                </Text>
-                <Text variant="medium">
-                  Active: <strong>{clients.filter(c => c.status === 'Active').length}</strong> | 
-                  Provisioning: <strong>{clients.filter(c => c.status === 'Provisioning').length}</strong> | 
-                  Error: <strong>{clients.filter(c => c.status === 'Error').length}</strong>
-                </Text>
-              </Stack>
-            )}
+            {clients.length > 0 && (() => {
+              // Calculate status counts in a single pass
+              const statusCounts = clients.reduce((acc, client) => {
+                acc[client.status] = (acc[client.status] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+
+              return (
+                <Stack horizontal horizontalAlign="space-between" styles={{ root: { marginTop: 16, padding: '12px 0', borderTop: '1px solid #edebe9' } }}>
+                  <Text variant="medium">
+                    Total Clients: <strong>{clients.length}</strong>
+                  </Text>
+                  <Text variant="medium">
+                    Active: <strong>{statusCounts.Active || 0}</strong> |
+                    Provisioning: <strong>{statusCounts.Provisioning || 0}</strong> |
+                    Error: <strong>{statusCounts.Error || 0}</strong>
+                  </Text>
+                </Stack>
+              );
+            })()}
           </>
         )}
       </Stack>
