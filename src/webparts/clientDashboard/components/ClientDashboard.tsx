@@ -20,6 +20,7 @@ import { IClientDashboardProps } from './IClientDashboardProps';
 import { IClient, ClientStatus } from '../models/IClient';
 import { ClientDataService } from '../services/ClientDataService';
 import { MockClientDataService } from '../services/MockClientDataService';
+import AddClientPanel from './AddClientPanel';
 import styles from './ClientDashboard.module.scss';
 
 const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
@@ -27,6 +28,8 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [operationMessage, setOperationMessage] = useState<{ message: string; type: MessageBarType } | null>(null);
   const [dataService] = useState(() => new ClientDataService(props.context));
+  const [isAddPanelOpen, setIsAddPanelOpen] = useState<boolean>(false);
+  const [provisioningClientIds, setProvisioningClientIds] = useState<Set<number>>(new Set());
 
   const loadClients = useCallback(async (useMockData: boolean = false) => {
     setLoading(true);
@@ -44,6 +47,13 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
       }
       
       setClients(clientsData);
+      
+      // Check for provisioning clients and start polling
+      const provisioningClients = clientsData.filter(c => c.status === 'Provisioning');
+      if (provisioningClients.length > 0) {
+        const ids = new Set(provisioningClients.map(c => c.id));
+        setProvisioningClientIds(ids);
+      }
       
       if (!useMockData && clientsData.length === 0) {
         setOperationMessage({
@@ -69,6 +79,102 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
     // Try to load real data first, fallback to mock data if needed
     loadClients(false);
   }, [loadClients]);
+
+  // Poll for provisioning status updates
+  useEffect(() => {
+    if (provisioningClientIds.size === 0) {
+      return undefined;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        // Fetch updated status for provisioning clients
+        const updatedClients = await dataService.getClients();
+        setClients(updatedClients);
+
+        // Check if any clients have finished provisioning
+        const stillProvisioning = updatedClients.filter(c => c.status === 'Provisioning');
+        const newProvisioningIds = new Set(stillProvisioning.map(c => c.id));
+
+        // If the provisioning set has changed, show appropriate messages
+        if (newProvisioningIds.size !== provisioningClientIds.size) {
+          const finishedClients = Array.from(provisioningClientIds).filter(
+            id => !newProvisioningIds.has(id)
+          );
+
+          if (finishedClients.length > 0) {
+            const finishedClientsSet = new Set(finishedClients);
+            const finishedClient = updatedClients.find(c => finishedClientsSet.has(c.id));
+            if (finishedClient) {
+              if (finishedClient.status === 'Active') {
+                setOperationMessage({
+                  message: `Client "${finishedClient.clientName}" is now ready to use!`,
+                  type: MessageBarType.success
+                });
+              } else if (finishedClient.status === 'Error') {
+                setOperationMessage({
+                  message: `Failed to create workspace for "${finishedClient.clientName}". ${finishedClient.errorMessage || 'Please try again or contact support.'}`,
+                  type: MessageBarType.error
+                });
+              }
+            }
+          }
+        }
+
+        setProvisioningClientIds(newProvisioningIds);
+
+        // Stop polling if no clients are provisioning
+        if (newProvisioningIds.size === 0) {
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.error('Error polling client status:', error);
+        // Don't show error message for polling failures
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [provisioningClientIds, dataService]);
+
+  const handleAddClient = async (clientName: string): Promise<void> => {
+    try {
+      // Try to create the client via the API
+      const newClient = await dataService.createClient(clientName);
+      
+      setOperationMessage({
+        message: `Client "${clientName}" is being created. This may take a few moments...`,
+        type: MessageBarType.info
+      });
+
+      // Add to provisioning set if status is Provisioning
+      if (newClient.status === 'Provisioning') {
+        setProvisioningClientIds(prev => new Set(prev).add(newClient.id));
+      }
+
+      // Refresh the client list
+      await loadClients(false);
+    } catch (error) {
+      console.error('Error creating client:', error);
+      
+      // Show user-friendly error message
+      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred';
+      
+      // If it's a connection error, provide specific guidance
+      if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+        setOperationMessage({
+          message: 'Unable to connect to the service. Please check your network connection and try again.',
+          type: MessageBarType.error
+        });
+      } else {
+        setOperationMessage({
+          message: `Failed to add client: ${errorMsg}`,
+          type: MessageBarType.error
+        });
+      }
+      
+      throw error; // Re-throw so the panel can handle it
+    }
+  };
 
   const getStatusColor = (status: ClientStatus): string => {
     switch (status) {
@@ -170,6 +276,12 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
 
   const commandBarItems: ICommandBarItemProps[] = [
     {
+      key: 'addClient',
+      text: 'Add Client',
+      iconProps: { iconName: 'Add' },
+      onClick: () => setIsAddPanelOpen(true)
+    },
+    {
       key: 'refresh',
       text: 'Refresh',
       iconProps: { iconName: 'Refresh' },
@@ -181,6 +293,7 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
       iconProps: { iconName: 'Info' },
       onClick: () => {
         alert('Client Dashboard Help:\n\n' +
+          '• Click "Add Client" to create a new client workspace\n' +
           '• View all your firm\'s clients in one place\n' +
           '• Click "Open" to visit the client\'s site\n' +
           '• Click "Manage" to configure client settings\n' +
@@ -246,6 +359,12 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
           </>
         )}
       </Stack>
+
+      <AddClientPanel
+        isOpen={isAddPanelOpen}
+        onDismiss={() => setIsAddPanelOpen(false)}
+        onClientAdded={handleAddClient}
+      />
     </div>
   );
 };
