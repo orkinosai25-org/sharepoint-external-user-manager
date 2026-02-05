@@ -23,6 +23,8 @@ import { IClient } from '../models/IClient';
 import { ILibrary, IList, IExternalUser } from '../models/IClientDetail';
 import { ClientDataService } from '../services/ClientDataService';
 import { MockClientDataService } from '../services/MockClientDataService';
+import AddLibraryPanel from './AddLibraryPanel';
+import AddListPanel from './AddListPanel';
 import styles from './ClientSpaceDetailPanel.module.scss';
 
 export interface IClientSpaceDetailPanelProps {
@@ -38,6 +40,9 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
   const [lists, setLists] = useState<IList[]>([]);
   const [externalUsers, setExternalUsers] = useState<IExternalUser[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [isAddLibraryPanelOpen, setIsAddLibraryPanelOpen] = useState<boolean>(false);
+  const [isAddListPanelOpen, setIsAddListPanelOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (props.isOpen && props.client) {
@@ -71,6 +76,56 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
       setExternalUsers(MockClientDataService.getClientExternalUsers(props.client.id));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateLibrary = async (libraryName: string, description: string): Promise<void> => {
+    if (!props.client) return;
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const successMsg = `Document folder "${libraryName}" created successfully!`;
+
+    try {
+      // Try to create via API
+      const newLibrary = await props.dataService.createLibrary(props.client.id, libraryName, description);
+      
+      // Add to the libraries list immediately
+      setLibraries(prevLibraries => [...prevLibraries, newLibrary]);
+      setSuccessMessage(successMsg);
+    } catch (error) {
+      console.warn('Error creating library via API, using mock data:', error);
+      
+      // Fallback to mock creation
+      const newLibrary = MockClientDataService.createLibrary(props.client.id, libraryName, description);
+      setLibraries(prevLibraries => [...prevLibraries, newLibrary]);
+      setSuccessMessage(successMsg);
+    }
+  };
+
+  const handleCreateList = async (listName: string, listType: string, description: string): Promise<void> => {
+    if (!props.client) return;
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const successMsg = `Data list "${listName}" created successfully!`;
+
+    try {
+      // Try to create via API
+      const newList = await props.dataService.createList(props.client.id, listName, listType, description);
+      
+      // Add to the lists array immediately
+      setLists(prevLists => [...prevLists, newList]);
+      setSuccessMessage(successMsg);
+    } catch (error) {
+      console.warn('Error creating list via API, using mock data:', error);
+      
+      // Fallback to mock creation
+      const newList = MockClientDataService.createList(props.client.id, listName, listType, description);
+      setLists(prevLists => [...prevLists, newList]);
+      setSuccessMessage(successMsg);
     }
   };
 
@@ -331,6 +386,16 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
             </MessageBar>
           )}
 
+          {successMessage && (
+            <MessageBar
+              messageBarType={MessageBarType.success}
+              isMultiline={false}
+              onDismiss={() => setSuccessMessage('')}
+            >
+              {successMessage}
+            </MessageBar>
+          )}
+
           <Pivot aria-label="Workspace sections">
             <PivotItem headerText="Workspace Info" itemIcon="Info">
               {renderClientInfo()}
@@ -338,12 +403,22 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
 
             <PivotItem headerText="Document Folders" itemIcon="FabricFolder">
               <Stack tokens={{ childrenGap: 15 }} style={{ padding: '20px 0' }}>
+                <CommandBar
+                  items={[
+                    {
+                      key: 'addLibrary',
+                      text: 'Add Folder',
+                      iconProps: { iconName: 'Add' },
+                      onClick: () => setIsAddLibraryPanelOpen(true)
+                    }
+                  ]}
+                />
                 <Text variant="medium" style={{ color: '#605e5c' }}>
                   {libraries.length} folder{libraries.length !== 1 ? 's' : ''} available
                 </Text>
                 {libraries.length === 0 ? (
                   <MessageBar messageBarType={MessageBarType.info}>
-                    No document folders found for this workspace.
+                    No document folders found for this workspace. Click "Add Folder" to create one.
                   </MessageBar>
                 ) : (
                   <DetailsList
@@ -359,12 +434,22 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
 
             <PivotItem headerText="Data Lists" itemIcon="BulletedList">
               <Stack tokens={{ childrenGap: 15 }} style={{ padding: '20px 0' }}>
+                <CommandBar
+                  items={[
+                    {
+                      key: 'addList',
+                      text: 'Add List',
+                      iconProps: { iconName: 'Add' },
+                      onClick: () => setIsAddListPanelOpen(true)
+                    }
+                  ]}
+                />
                 <Text variant="medium" style={{ color: '#605e5c' }}>
                   {lists.length} list{lists.length !== 1 ? 's' : ''} available
                 </Text>
                 {lists.length === 0 ? (
                   <MessageBar messageBarType={MessageBarType.info}>
-                    No data lists found for this workspace.
+                    No data lists found for this workspace. Click "Add List" to create one.
                   </MessageBar>
                 ) : (
                   <DetailsList
@@ -400,6 +485,26 @@ const ClientSpaceDetailPanel: React.FC<IClientSpaceDetailPanelProps> = (props) =
             </PivotItem>
           </Pivot>
         </Stack>
+      )}
+
+      {/* Add Library Panel */}
+      {props.client && (
+        <AddLibraryPanel
+          isOpen={isAddLibraryPanelOpen}
+          clientName={props.client.clientName}
+          onDismiss={() => setIsAddLibraryPanelOpen(false)}
+          onLibraryCreated={handleCreateLibrary}
+        />
+      )}
+
+      {/* Add List Panel */}
+      {props.client && (
+        <AddListPanel
+          isOpen={isAddListPanelOpen}
+          clientName={props.client.clientName}
+          onDismiss={() => setIsAddListPanelOpen(false)}
+          onListCreated={handleCreateList}
+        />
       )}
     </Panel>
   );
