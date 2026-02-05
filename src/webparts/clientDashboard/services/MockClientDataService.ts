@@ -145,6 +145,39 @@ export class MockClientDataService {
   }
 
   /**
+   * Create a new library (mock implementation)
+   */
+  public static createLibrary(clientId: number, libraryName: string, description: string): ILibrary {
+    return {
+      id: `lib-${clientId}-${Date.now()}`,
+      name: libraryName.replace(/\s+/g, ''),
+      displayName: libraryName,
+      description: description,
+      webUrl: `https://contoso.sharepoint.com/sites/client-${clientId}/${libraryName.replace(/\s+/g, '')}`,
+      createdDateTime: new Date().toISOString(),
+      lastModifiedDateTime: new Date().toISOString(),
+      itemCount: 0
+    };
+  }
+
+  /**
+   * Create a new list (mock implementation)
+   */
+  public static createList(clientId: number, listName: string, listType: string, description: string): IList {
+    return {
+      id: `list-${clientId}-${Date.now()}`,
+      name: listName.replace(/\s+/g, ''),
+      displayName: listName,
+      description: description,
+      webUrl: `https://contoso.sharepoint.com/sites/client-${clientId}/Lists/${listName.replace(/\s+/g, '')}`,
+      createdDateTime: new Date().toISOString(),
+      lastModifiedDateTime: new Date().toISOString(),
+      itemCount: 0,
+      listTemplate: listType
+    };
+  }
+
+  /**
    * Get mock external users for a client
    */
   public static getClientExternalUsers(clientId: number): IExternalUser[] {

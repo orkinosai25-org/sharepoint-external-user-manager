@@ -194,6 +194,73 @@ export class ClientDataService {
   }
 
   /**
+   * Create a new library for a client
+   */
+  public async createLibrary(clientId: number, libraryName: string, description: string): Promise<ILibrary> {
+    try {
+      const token = await this.getAccessToken();
+      
+      const response = await fetch(`${this.baseUrl}/clients/${clientId}/libraries`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          name: libraryName,
+          description: description
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create library: ${response.status} ${response.statusText}. ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data as ILibrary;
+    } catch (error) {
+      console.error('Error creating library:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new list for a client
+   */
+  public async createList(clientId: number, listName: string, listType: string, description: string): Promise<IList> {
+    try {
+      const token = await this.getAccessToken();
+      
+      const response = await fetch(`${this.baseUrl}/clients/${clientId}/lists`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          name: listName,
+          listTemplate: listType,
+          description: description
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create list: ${response.status} ${response.statusText}. ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data as IList;
+    } catch (error) {
+      console.error('Error creating list:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get access token for API authentication
    * In a real implementation, this would use MSAL or AAD authentication
    */
