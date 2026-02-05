@@ -103,7 +103,8 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
           );
 
           if (finishedClients.length > 0) {
-            const finishedClient = updatedClients.find(c => finishedClients.indexOf(c.id) !== -1);
+            const finishedClientsSet = new Set(finishedClients);
+            const finishedClient = updatedClients.find(c => finishedClientsSet.has(c.id));
             if (finishedClient) {
               if (finishedClient.status === 'Active') {
                 setOperationMessage({
@@ -156,7 +157,7 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
       console.error('Error creating client:', error);
       
       // Show user-friendly error message
-      const errorMsg = error.message || 'An unexpected error occurred';
+      const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred';
       
       // If it's a connection error, provide specific guidance
       if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {

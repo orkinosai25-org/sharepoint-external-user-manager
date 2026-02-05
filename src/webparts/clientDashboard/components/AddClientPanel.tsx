@@ -16,7 +16,7 @@ import {
 export interface IAddClientPanelProps {
   isOpen: boolean;
   onDismiss: () => void;
-  onClientAdded: (clientName: string) => void;
+  onClientAdded: (clientName: string) => Promise<void>;
 }
 
 const AddClientPanel: React.FC<IAddClientPanelProps> = (props) => {
@@ -37,7 +37,7 @@ const AddClientPanel: React.FC<IAddClientPanelProps> = (props) => {
     }
 
     if (clientName.trim().length > 100) {
-      setErrorMessage('Client name must be less than 100 characters.');
+      setErrorMessage('Client name must not exceed 100 characters.');
       return;
     }
 
@@ -51,7 +51,8 @@ const AddClientPanel: React.FC<IAddClientPanelProps> = (props) => {
       // Close the panel on success
       handleClose();
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to add client. Please try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to add client. Please try again.';
+      setErrorMessage(errorMsg);
       setIsSubmitting(false);
     }
   };
