@@ -31,8 +31,8 @@ export interface IManageUsersModalProps {
   isOpen: boolean;
   library: IExternalLibrary | null;
   onClose: () => void;
-  onAddUser: (libraryId: string, email: string, permission: 'Read' | 'Contribute' | 'Full Control', company?: string, project?: string) => Promise<void>;
-  onBulkAddUsers: (libraryId: string, emails: string[], permission: 'Read' | 'Contribute' | 'Full Control', company?: string, project?: string) => Promise<any>;
+  onAddUser: (libraryId: string, email: string, permission: 'Read' | 'Edit', company?: string, project?: string) => Promise<void>;
+  onBulkAddUsers: (libraryId: string, emails: string[], permission: 'Read' | 'Edit', company?: string, project?: string) => Promise<any>;
   onRemoveUser: (libraryId: string, userId: string) => Promise<void>;
   onGetUsers: (libraryId: string) => Promise<IExternalUser[]>;
   onSearchUsers: (query: string) => Promise<IExternalUser[]>;
@@ -42,7 +42,7 @@ export interface IManageUsersModalProps {
 export interface IAddUserFormData {
   email: string;
   emails: string; // For bulk mode
-  permission: 'Read' | 'Contribute' | 'Full Control';
+  permission: 'Read' | 'Edit';
   isBulkMode: boolean;
   company: string;
   project: string;
@@ -295,7 +295,7 @@ export const ManageUsersModal: React.FC<IManageUsersModalProps> = ({
     if (option) {
       setAddUserForm(prev => ({
         ...prev,
-        permission: option.key as 'Read' | 'Contribute' | 'Full Control'
+        permission: option.key as 'Read' | 'Edit'
       }));
     }
   };
@@ -480,8 +480,7 @@ export const ManageUsersModal: React.FC<IManageUsersModalProps> = ({
 
   const permissionOptions: IDropdownOption[] = [
     { key: 'Read', text: 'Read' },
-    { key: 'Contribute', text: 'Contribute' },
-    { key: 'Full Control', text: 'Full Control' }
+    { key: 'Edit', text: 'Edit' }
   ];
 
   const modalProps = {

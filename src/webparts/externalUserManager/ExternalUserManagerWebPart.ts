@@ -13,6 +13,7 @@ import { IExternalUserManagerProps } from './components/IExternalUserManagerProp
 
 export interface IExternalUserManagerWebPartProps {
   description: string;
+  backendApiUrl: string;
 }
 
 export default class ExternalUserManagerWebPart extends BaseClientSideWebPart<IExternalUserManagerWebPartProps> {
@@ -22,7 +23,8 @@ export default class ExternalUserManagerWebPart extends BaseClientSideWebPart<IE
       ExternalUserManager,
       {
         description: this.properties.description,
-        context: this.context
+        context: this.context,
+        backendApiUrl: this.properties.backendApiUrl || 'http://localhost:7071/api'
       }
     );
 
@@ -50,6 +52,11 @@ export default class ExternalUserManagerWebPart extends BaseClientSideWebPart<IE
               groupFields: [
                 PropertyPaneTextField('description', {
                   label: strings.DescriptionFieldLabel
+                }),
+                PropertyPaneTextField('backendApiUrl', {
+                  label: 'Backend API URL',
+                  description: 'URL of the SaaS backend API (e.g., https://your-function-app.azurewebsites.net/api)',
+                  placeholder: 'http://localhost:7071/api'
                 })
               ]
             }
