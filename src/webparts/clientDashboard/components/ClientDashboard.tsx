@@ -21,6 +21,7 @@ import { IClient, ClientStatus } from '../models/IClient';
 import { ClientDataService } from '../services/ClientDataService';
 import { MockClientDataService } from '../services/MockClientDataService';
 import AddClientPanel from './AddClientPanel';
+import ClientSpaceDetailPanel from './ClientSpaceDetailPanel';
 import styles from './ClientDashboard.module.scss';
 
 const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
@@ -30,6 +31,8 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
   const [dataService] = useState(() => new ClientDataService(props.context));
   const [isAddPanelOpen, setIsAddPanelOpen] = useState<boolean>(false);
   const [provisioningClientIds, setProvisioningClientIds] = useState<Set<number>>(new Set());
+  const [selectedClient, setSelectedClient] = useState<IClient | null>(null);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState<boolean>(false);
 
   const loadClients = useCallback(async (useMockData: boolean = false) => {
     setLoading(true);
@@ -195,9 +198,9 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
   };
 
   const handleManage = (client: IClient): void => {
-    // Navigate to the client management page
-    // In a real implementation, this could open a panel or navigate to a details page
-    alert(`Manage functionality for "${client.clientName}" will be implemented. This will allow you to manage users, libraries, and settings for this client.`);
+    // Open the detail panel for the selected client
+    setSelectedClient(client);
+    setIsDetailPanelOpen(true);
   };
 
   const columns: IColumn[] = [
@@ -364,6 +367,16 @@ const ClientDashboard: React.FC<IClientDashboardProps> = (props) => {
         isOpen={isAddPanelOpen}
         onDismiss={() => setIsAddPanelOpen(false)}
         onClientAdded={handleAddClient}
+      />
+
+      <ClientSpaceDetailPanel
+        isOpen={isDetailPanelOpen}
+        client={selectedClient}
+        dataService={dataService}
+        onDismiss={() => {
+          setIsDetailPanelOpen(false);
+          setSelectedClient(null);
+        }}
       />
     </div>
   );
