@@ -55,6 +55,7 @@ jobs:
         echo "✅ Node.js version verified"
         
     - name: Install dependencies
+      working-directory: src/client-spfx
       run: |
         echo "Installing npm dependencies..."
         echo "Node.js version: $(node --version)"
@@ -62,11 +63,13 @@ jobs:
         npm ci --no-optional --legacy-peer-deps
         
     - name: Build solution
+      working-directory: src/client-spfx
       run: |
         echo "Building SPFx solution..."
         npm run build
         
     - name: Package solution
+      working-directory: src/client-spfx
       run: |
         echo "Packaging SPFx solution for deployment..."
         npm run package-solution
@@ -75,7 +78,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: spfx-package
-        path: sharepoint/solution/*.sppkg
+        path: src/client-spfx/sharepoint/solution/*.sppkg
         retention-days: 30
 
   deploy:

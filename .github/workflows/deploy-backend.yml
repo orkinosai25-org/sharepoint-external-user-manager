@@ -6,13 +6,13 @@ on:
       - main
       - develop
     paths:
-      - 'backend/**'
+      - 'src/api-dotnet/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
 env:
   AZURE_FUNCTIONAPP_NAME: spexternal-func-dev
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend/src'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'src/api-dotnet/src'
   DOTNET_VERSION: '8.0.x'
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
       - name: 'Run tests'
         shell: bash
         run: |
-          pushd './backend/tests'
+          pushd './src/api-dotnet/tests'
           # TODO: Add when tests are created
           # dotnet test --no-build --verbosity normal
           popd
