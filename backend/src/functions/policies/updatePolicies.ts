@@ -13,6 +13,7 @@ import { handleError, createSuccessResponse } from '../../middleware/errorHandle
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { UpdatePolicyRequest, PolicyResponse } from '../../models/policy';
 import { ForbiddenError } from '../../models/common';
+import { enforceFeatureAccess } from '../../services/plan-enforcement';
 
 async function updatePolicies(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
@@ -40,14 +41,8 @@ async function updatePolicies(req: HttpRequest, context: InvocationContext): Pro
     // Check if advanced policies feature is available for certain policy types
     const advancedPolicyTypes = ['RequireApproval', 'ReviewCampaigns'];
     if (advancedPolicyTypes.includes(validatedRequest.policyType)) {
-      try {
-        checkFeatureAccess(tenantContext, 'advancedPolicies');
-      } catch (error) {
-        throw new ForbiddenError(
-          'Advanced policies not available',
-          `Policy type "${validatedRequest.policyType}" requires Pro or Enterprise tier`
-        );
-      }
+      // Use new plan enforcement service
+      enforceFeatureAccess(tenantContext, 'customPolicies');
     }
 
     // Update policy

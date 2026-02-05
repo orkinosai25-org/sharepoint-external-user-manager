@@ -15,6 +15,7 @@ import { handleError } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { InviteUserRequest, ExternalUserResponse } from '../../models/user';
 import { ApiResponse } from '../../models/common';
+import { enforceExternalUserLimit } from '../../services/plan-enforcement';
 
 async function inviteUser(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
@@ -39,6 +40,10 @@ async function inviteUser(req: HttpRequest, context: InvocationContext): Promise
 
     // Check permissions - requires EXTERNAL_USERS_WRITE permission
     requirePermission(tenantContext, Permissions.EXTERNAL_USERS_WRITE, 'invite external users');
+
+    // Enforce external user limit based on plan
+    const currentUserCount = await databaseService.getExternalUserCount(tenantContext.tenantId);
+    enforceExternalUserLimit(tenantContext, currentUserCount);
 
     // Parse and validate request body
     requestBody = await req.json() as any;
