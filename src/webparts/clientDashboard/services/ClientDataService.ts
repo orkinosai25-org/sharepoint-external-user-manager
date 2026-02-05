@@ -45,6 +45,68 @@ export class ClientDataService {
   }
 
   /**
+   * Create a new client
+   */
+  public async createClient(clientName: string): Promise<IClient> {
+    try {
+      // Get the current user's access token
+      const token = await this.getAccessToken();
+      
+      const response = await fetch(`${this.baseUrl}/clients`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          clientName: clientName
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create client: ${response.status} ${response.statusText}. ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data as IClient;
+    } catch (error) {
+      console.error('Error creating client:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a single client by ID
+   */
+  public async getClient(clientId: number): Promise<IClient> {
+    try {
+      // Get the current user's access token
+      const token = await this.getAccessToken();
+      
+      const response = await fetch(`${this.baseUrl}/clients/${clientId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch client: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data as IClient;
+    } catch (error) {
+      console.error('Error fetching client:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get access token for API authentication
    * In a real implementation, this would use MSAL or AAD authentication
    */
