@@ -1,0 +1,19 @@
+.clientSpaceDetailPanel {
+  :global {
+    .ms-Panel-main {
+      background-color: #ffffff;
+    }
+
+    .ms-Pivot {
+      margin-top: 10px;
+    }
+
+    .ms-DetailsList {
+      .ms-DetailsRow {
+        &:hover {
+          background-color: #f3f2f1;
+        }
+      }
+    }
+  }
+}

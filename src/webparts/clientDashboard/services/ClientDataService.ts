@@ -4,6 +4,7 @@
 
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { IClient } from '../models/IClient';
+import { ILibrary, IList, IExternalUser } from '../models/IClientDetail';
 
 export class ClientDataService {
   private context: WebPartContext;
@@ -102,6 +103,92 @@ export class ClientDataService {
       return data as IClient;
     } catch (error) {
       console.error('Error fetching client:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get libraries for a specific client
+   */
+  public async getClientLibraries(clientId: number): Promise<ILibrary[]> {
+    try {
+      const token = await this.getAccessToken();
+      
+      const response = await fetch(`${this.baseUrl}/clients/${clientId}/libraries`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch libraries: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data as ILibrary[];
+    } catch (error) {
+      console.error('Error fetching client libraries:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get lists for a specific client
+   */
+  public async getClientLists(clientId: number): Promise<IList[]> {
+    try {
+      const token = await this.getAccessToken();
+      
+      const response = await fetch(`${this.baseUrl}/clients/${clientId}/lists`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch lists: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data as IList[];
+    } catch (error) {
+      console.error('Error fetching client lists:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get external users for a specific client
+   */
+  public async getClientExternalUsers(clientId: number): Promise<IExternalUser[]> {
+    try {
+      const token = await this.getAccessToken();
+      
+      // Note: The backend endpoint is /external-users with filtering
+      // In a real implementation, we would filter by client's libraries
+      const response = await fetch(`${this.baseUrl}/external-users?clientId=${clientId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch external users: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data as IExternalUser[];
+    } catch (error) {
+      console.error('Error fetching external users:', error);
       throw error;
     }
   }
