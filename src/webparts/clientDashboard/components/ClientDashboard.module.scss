@@ -1,0 +1,42 @@
+.clientDashboard {
+  padding: 20px;
+  background-color: #ffffff;
+  min-height: 400px;
+
+  .clientList {
+    border: 1px solid #edebe9;
+    border-radius: 2px;
+
+    :global {
+      .ms-DetailsHeader {
+        background-color: #f3f2f1;
+        padding-top: 10px;
+        padding-bottom: 10px;
+      }
+
+      .ms-DetailsRow {
+        border-bottom: 1px solid #edebe9;
+
+        &:hover {
+          background-color: #f3f2f1;
+        }
+      }
+
+      .ms-DetailsRow-cell {
+        display: flex;
+        align-items: center;
+        padding: 12px 8px;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .clientDashboard {
+    padding: 10px;
+
+    .clientList {
+      font-size: 14px;
+    }
+  }
+}

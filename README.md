@@ -1,10 +1,11 @@
 # SharePoint External User Manager
 
-A modern SharePoint Framework (SPFx) web part built with React and Fluent UI for managing external users and shared libraries with comprehensive metadata tracking.
+A modern SharePoint Framework (SPFx) solution built with React and Fluent UI for managing external users, shared libraries, and client spaces with comprehensive metadata tracking.
 
 ## Features
 
 - **Modern UI**: Built with Fluent UI (Fabric) components for a clean, professional interface
+- **Client Dashboard**: Firm-level dashboard for viewing and managing all client spaces
 - **Library Management**: View and manage external libraries with detailed information
 - **User Management**: Track external users and their access permissions
 - **📊 Metadata Tracking**: Company and Project metadata for external users
@@ -35,20 +36,40 @@ A modern SharePoint Framework (SPFx) web part built with React and Fluent UI for
 ```
 src/
 ├── webparts/
+│   ├── clientDashboard/
+│   │   ├── components/
+│   │   │   ├── ClientDashboard.tsx          # Client list component
+│   │   │   ├── ClientDashboard.module.scss  # Styling
+│   │   │   └── IClientDashboardProps.ts     # Component props
+│   │   ├── models/
+│   │   │   └── IClient.ts                   # Client data model
+│   │   ├── services/
+│   │   │   ├── ClientDataService.ts         # Backend API service
+│   │   │   └── MockClientDataService.ts     # Mock data service
+│   │   ├── loc/                             # Localization files
+│   │   └── ClientDashboardWebPart.ts        # SPFx web part class
 │   └── externalUserManager/
 │       ├── components/
-│       │   ├── ExternalUserManager.tsx       # Main React component
+│       │   ├── ExternalUserManager.tsx      # Main React component
 │       │   ├── ExternalUserManager.module.scss # Styling
-│       │   └── IExternalUserManagerProps.ts  # Component props interface
+│       │   └── IExternalUserManagerProps.ts # Component props interface
 │       ├── models/
-│       │   └── IExternalLibrary.ts           # Data models
+│       │   └── IExternalLibrary.ts          # Data models
 │       ├── services/
-│       │   └── MockDataService.ts            # Mock data service
-│       ├── loc/                              # Localization files
-│       └── ExternalUserManagerWebPart.ts     # SPFx web part class
+│       │   └── MockDataService.ts           # Mock data service
+│       ├── loc/                             # Localization files
+│       └── ExternalUserManagerWebPart.ts    # SPFx web part class
 ```
 
 ## Key Components
+
+### Client Dashboard WebPart (NEW)
+- **Firm-level dashboard** listing all clients in a simple table
+- Shows Client Name, Site URL, Status, and Actions
+- **Non-technical language** suitable for users with no SharePoint knowledge
+- Loads data from SaaS backend API with automatic fallback to mock data
+- Quick actions: Open client site, Manage client settings
+- See [src/webparts/clientDashboard/README.md](src/webparts/clientDashboard/README.md) for details
 
 ### External User Manager Component
 - Displays libraries in a responsive DetailsList

@@ -9,10 +9,19 @@
           "manifest": "./src/webparts/externalUserManager/ExternalUserManagerWebPart.manifest.json"
         }
       ]
+    },
+    "client-dashboard-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/clientDashboard/ClientDashboardWebPart.js",
+          "manifest": "./src/webparts/clientDashboard/ClientDashboardWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
   "localizedResources": {
-    "ExternalUserManagerWebPartStrings": "lib/webparts/externalUserManager/loc/{locale}.js"
+    "ExternalUserManagerWebPartStrings": "lib/webparts/externalUserManager/loc/{locale}.js",
+    "ClientDashboardWebPartStrings": "lib/webparts/clientDashboard/loc/{locale}.js"
   }
 }
