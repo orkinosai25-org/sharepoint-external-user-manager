@@ -47,6 +47,7 @@ jobs:
         echo "✅ Node.js version verified"
         
     - name: Install dependencies
+      working-directory: src/client-spfx
       run: |
         echo "Installing npm dependencies..."
         echo "Node.js version: $(node --version)"
@@ -54,6 +55,7 @@ jobs:
         npm ci --no-optional --legacy-peer-deps
         
     - name: Run linting (if available)
+      working-directory: src/client-spfx
       run: |
         echo "Running ESLint..."
         if npm run lint --silent > /dev/null 2>&1; then
@@ -64,16 +66,19 @@ jobs:
       continue-on-error: true
         
     - name: Build solution
+      working-directory: src/client-spfx
       run: |
         echo "Building SPFx solution..."
         npm run build
         
     - name: Package solution
+      working-directory: src/client-spfx
       run: |
         echo "Packaging SPFx solution..."
         npm run package-solution
         
     - name: Verify package creation
+      working-directory: src/client-spfx
       run: |
         echo "Verifying package creation..."
         if [ -f "sharepoint/solution/*.sppkg" ]; then
@@ -90,7 +95,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: test-spfx-package
-        path: sharepoint/solution/*.sppkg
+        path: src/client-spfx/sharepoint/solution/*.sppkg
         retention-days: 7
         
     - name: Build Summary

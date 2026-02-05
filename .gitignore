@@ -102,7 +102,17 @@ obj
 # Backup files
 *.backup
 
-# Backend Azure Functions
-backend/local.settings.json
-backend/dist/
-backend/.funcignore
+# Backend API
+src/api-dotnet/local.settings.json
+src/api-dotnet/dist/
+src/api-dotnet/.funcignore
+
+# SPFx Client
+src/client-spfx/dist/
+src/client-spfx/lib/
+src/client-spfx/temp/
+src/client-spfx/sharepoint/
+
+# Blazor Portal
+src/portal-blazor/bin/
+src/portal-blazor/obj/
