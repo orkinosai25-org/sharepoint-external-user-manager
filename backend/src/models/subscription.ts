@@ -3,8 +3,12 @@
  */
 
 import { SubscriptionStatus } from './common';
+import { PlanTier } from './plan';
 
 export type SubscriptionTier = 'Free' | 'Pro' | 'Enterprise';
+
+// Alias for new plan tier system (backward compatible)
+export type { PlanTier };
 
 export interface Subscription {
   id: number;
@@ -86,3 +90,28 @@ export const RATE_LIMITS: Record<SubscriptionTier, { requestsPerMinute: number; 
   Pro: { requestsPerMinute: 100, burst: 150 },
   Enterprise: { requestsPerMinute: 500, burst: 1000 }
 };
+
+/**
+ * Map legacy subscription tier to new plan tier
+ */
+export function mapSubscriptionToPlanTier(tier: SubscriptionTier): PlanTier {
+  const mapping: Record<SubscriptionTier, PlanTier> = {
+    'Free': 'Starter',
+    'Pro': 'Professional',
+    'Enterprise': 'Enterprise'
+  };
+  return mapping[tier];
+}
+
+/**
+ * Map new plan tier to legacy subscription tier (for backward compatibility)
+ */
+export function mapPlanToSubscriptionTier(tier: PlanTier): SubscriptionTier {
+  const mapping: Record<PlanTier, SubscriptionTier> = {
+    'Starter': 'Free',
+    'Professional': 'Pro',
+    'Business': 'Enterprise',
+    'Enterprise': 'Enterprise'
+  };
+  return mapping[tier];
+}

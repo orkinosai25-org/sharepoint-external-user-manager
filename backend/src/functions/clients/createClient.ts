@@ -13,6 +13,7 @@ import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { CreateClientRequest, ClientResponse } from '../../models/client';
+import { enforceClientSpaceLimit } from '../../services/plan-enforcement';
 
 async function createClient(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
@@ -32,6 +33,10 @@ async function createClient(req: HttpRequest, context: InvocationContext): Promi
 
     // Check permissions - only FirmAdmin can create clients
     requirePermission(tenantContext, Permissions.CLIENTS_WRITE, 'create clients');
+
+    // Enforce client space limit based on plan
+    const currentClientCount = await databaseService.getClientCount(tenantContext.tenantId);
+    enforceClientSpaceLimit(tenantContext, currentClientCount);
 
     // Parse and validate request body
     const body = await req.json() as any;
