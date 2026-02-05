@@ -160,8 +160,8 @@ export class BackendApiService {
         permissions: this.mapUIPermissionToBackend(permission),
         message: `You have been invited to access the SharePoint library.`,
         metadata: {
-          company: company || undefined,
-          project: project || undefined
+          company,
+          project
         }
       };
 
@@ -223,10 +223,12 @@ export class BackendApiService {
 
   /**
    * Map backend permission level to UI permission (Read/Edit)
+   * Backend uses: Read, Contribute, Edit, FullControl
+   * UI simplified to: Read, Edit
    */
   private mapBackendPermissionToUI(permission: string): 'Read' | 'Contribute' | 'Full Control' {
-    // Backend uses Read, Contribute, Edit, FullControl
-    // UI simplified to Read/Edit, but we need to map back to existing UI model
+    // Note: Returning old model format for compatibility with existing IExternalUser interface
+    // which is used throughout the codebase. Display layer handles Read/Edit only.
     switch (permission) {
       case 'Read':
         return 'Read';
@@ -267,8 +269,7 @@ export class BackendApiService {
             return {
               email,
               status: 'failed',
-              message: error.message,
-              error: error.message
+              message: error.message
             };
           }
         })
