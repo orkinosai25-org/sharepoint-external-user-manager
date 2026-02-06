@@ -12,7 +12,7 @@ using SharePointExternalUserManager.Api.Data;
 namespace SharePointExternalUserManager.Api.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260206121511_InitialCreate")]
+    [Migration("20260206121956_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

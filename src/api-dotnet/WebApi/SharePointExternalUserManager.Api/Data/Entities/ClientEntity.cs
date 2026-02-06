@@ -42,6 +42,7 @@ public class ClientEntity
     [MaxLength(500)]
     public string? SharePointSiteUrl { get; set; }
 
+    [Required]
     [MaxLength(50)]
     public string ProvisioningStatus { get; set; } = "Pending";
 

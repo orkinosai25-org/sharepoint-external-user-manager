@@ -31,6 +31,7 @@ public class TenantEntity
 
     public DateTime OnboardedDate { get; set; } = DateTime.UtcNow;
 
+    [Required]
     [MaxLength(50)]
     public string Status { get; set; } = "Active";
 
