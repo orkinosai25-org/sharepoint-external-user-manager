@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using SharePointExternalUserManager.Api.Data;
+using SharePointExternalUserManager.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"))
     .EnableTokenAcquisitionToCallDownstreamApi()
+    .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
     .AddInMemoryTokenCaches();
+
+// Register services
+builder.Services.AddScoped<ISharePointService, SharePointService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
