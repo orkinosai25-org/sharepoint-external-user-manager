@@ -215,7 +215,7 @@ SharePointExternalUserManager.Api/
 │   │   ├── SubscriptionEntity.cs    # Subscription entity model
 │   │   └── AuditLogEntity.cs        # Audit log entity model
 │   ├── Migrations/                  # EF Core migrations
-│   │   └── 20260206121511_InitialCreate.cs
+│   │   └── 20260206121956_InitialCreate.cs
 │   └── ApplicationDbContext.cs      # EF Core DbContext
 ├── Program.cs                        # Application startup and configuration
 ├── appsettings.json                 # Production configuration
