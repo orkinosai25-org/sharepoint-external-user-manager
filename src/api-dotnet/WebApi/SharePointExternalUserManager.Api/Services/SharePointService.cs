@@ -117,7 +117,7 @@ public class SharePointService : ISharePointService
         // Limit length to 50 characters
         if (alias.Length > 50)
         {
-            alias = alias.Substring(0, 50);
+            alias = alias[..50];
         }
 
         return alias;

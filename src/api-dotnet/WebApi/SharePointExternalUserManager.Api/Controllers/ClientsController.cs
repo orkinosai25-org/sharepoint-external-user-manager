@@ -145,10 +145,10 @@ public class ClientsController : ControllerBase
         }
 
         // Check if client reference already exists for this tenant
-        var existingClient = await _context.Clients
-            .FirstOrDefaultAsync(c => c.TenantId == tenant.Id && c.ClientReference == request.ClientReference);
+        var clientExists = await _context.Clients
+            .AnyAsync(c => c.TenantId == tenant.Id && c.ClientReference == request.ClientReference);
 
-        if (existingClient != null)
+        if (clientExists)
         {
             return Conflict(ApiResponse<object>.ErrorResponse(
                 "CLIENT_EXISTS",
