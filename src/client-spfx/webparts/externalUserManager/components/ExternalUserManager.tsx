@@ -22,6 +22,9 @@ import { IExternalLibrary } from '../models/IExternalLibrary';
 import { MockDataService } from '../services/MockDataService';
 import { SharePointDataService } from '../services/SharePointDataService';
 import { BackendApiService } from '../services/BackendApiService';
+import { SaaSApiClient, ITenantStatus, ISubscriptionStatus } from '../../../shared/services/SaaSApiClient';
+import { TenantConnectionStatus } from '../../../shared/components/TenantConnectionStatus';
+import { SubscriptionBanner } from '../../../shared/components/SubscriptionBanner';
 import { CreateLibraryModal } from './CreateLibraryModal';
 import { DeleteLibraryModal } from './DeleteLibraryModal';
 import { ManageUsersModal } from './ManageUsersModal';
@@ -37,12 +40,44 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
   const [operationMessage, setOperationMessage] = useState<{ message: string; type: MessageBarType } | null>(null);
   const [dataService] = useState(() => new SharePointDataService(props.context));
   const [backendApiService] = useState(() => new BackendApiService(props.context, props.backendApiUrl));
+  const [saasApiClient] = useState(() => new SaaSApiClient(props.context, props.backendApiUrl));
+  
+  // Tenant and subscription status
+  const [tenantStatus, setTenantStatus] = useState<ITenantStatus | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<ISubscriptionStatus | null>(null);
+  const [checkingTenant, setCheckingTenant] = useState<boolean>(true);
+  const [tenantError, setTenantError] = useState<string | null>(null);
   
   const [selection] = useState(new Selection({
     onSelectionChanged: () => {
       setSelectedLibraries(selection.getSelection() as IExternalLibrary[]);
     }
   }));
+
+  // Check tenant and subscription status on mount
+  useEffect(() => {
+    const checkTenantAndSubscription = async () => {
+      try {
+        setCheckingTenant(true);
+        setTenantError(null);
+        
+        const tenant = await saasApiClient.checkTenantStatus();
+        setTenantStatus(tenant);
+        
+        if (tenant.isActive) {
+          const subscription = await saasApiClient.getSubscriptionStatus();
+          setSubscriptionStatus(subscription);
+        }
+      } catch (error) {
+        console.error('Error checking tenant status:', error);
+        setTenantError(error.message);
+      } finally {
+        setCheckingTenant(false);
+      }
+    };
+
+    checkTenantAndSubscription();
+  }, [saasApiClient]);
 
   const loadLibraries = useCallback(async (useMockData: boolean = false) => {
     setLoading(true);
@@ -396,6 +431,22 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
   return (
     <div className={styles.externalUserManager}>
       <Stack tokens={{ childrenGap: 20 }}>
+        {/* Tenant Connection Status Banner */}
+        <TenantConnectionStatus
+          isConnected={tenantStatus?.isActive || false}
+          isLoading={checkingTenant}
+          error={tenantError}
+          portalUrl={props.portalUrl}
+        />
+
+        {/* Subscription Status Banner */}
+        {subscriptionStatus && (
+          <SubscriptionBanner
+            subscription={subscriptionStatus}
+            portalUrl={props.portalUrl}
+          />
+        )}
+
         <Stack.Item>
           <Text variant="xxLarge" styles={{ root: { fontWeight: 'semibold' } }}>
             External User Manager

@@ -1,99 +1,26 @@
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { IExternalUser } from '../models/IExternalLibrary';
 import { AuditLogger } from './AuditLogger';
+import { SaaSApiClient } from '../../../shared/services/SaaSApiClient';
 
 /**
  * Backend API Service for External User Management
  * 
  * This service connects the SPFx UI to the SaaS backend API.
  * All external user operations go through the backend API endpoints.
+ * 
+ * Note: Now uses the shared SaaSApiClient for consistent authentication
+ * and error handling across all webparts.
  */
 export class BackendApiService {
   private context: WebPartContext;
   private auditLogger: AuditLogger;
-  private backendUrl: string;
+  private apiClient: SaaSApiClient;
 
   constructor(context: WebPartContext, backendUrl?: string) {
     this.context = context;
     this.auditLogger = new AuditLogger(context);
-    
-    // Use provided backend URL or default to localhost for development
-    this.backendUrl = backendUrl || 'http://localhost:7071/api';
-  }
-
-  /**
-   * Get access token for backend API authentication
-   */
-  private async getAccessToken(): Promise<string> {
-    try {
-      // Use the SPFx context to get an access token for the backend API
-      // This assumes the backend is registered as an Azure AD application
-      const tokenProvider = await this.context.aadTokenProviderFactory.getTokenProvider();
-      
-      // For now, use a placeholder token. In production, this should be configured
-      // with the actual backend API application ID
-      const token = await tokenProvider.getToken('https://graph.microsoft.com');
-      
-      return token;
-    } catch (error) {
-      this.auditLogger.logError('getAccessToken', 'Failed to get access token', error);
-      throw new Error('Authentication failed. Please ensure you are signed in.');
-    }
-  }
-
-  /**
-   * Make authenticated API request to backend
-   */
-  private async apiRequest<T>(
-    endpoint: string,
-    method: 'GET' | 'POST' | 'DELETE' = 'GET',
-    body?: any
-  ): Promise<T> {
-    try {
-      const token = await this.getAccessToken();
-      
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      const requestInit: RequestInit = {
-        method,
-        headers
-      };
-
-      if (body) {
-        requestInit.body = JSON.stringify(body);
-      }
-
-      const url = `${this.backendUrl}${endpoint}`;
-      this.auditLogger.logInfo('apiRequest', `Making ${method} request to ${url}`);
-
-      const response = await fetch(url, requestInit);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(errorData.message || `API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Backend returns responses in format: { success: true, data: {...}, meta: {...} }
-      if (data.success && data.data) {
-        return data.data;
-      }
-      
-      return data;
-    } catch (error) {
-      this.auditLogger.logError('apiRequest', `API request failed: ${endpoint}`, error);
-      
-      // Provide user-friendly error messages
-      if (error.message.includes('Failed to fetch')) {
-        throw new Error('Unable to connect to the backend service. Please check your network connection or contact your administrator.');
-      }
-      
-      throw error;
-    }
+    this.apiClient = new SaaSApiClient(context, backendUrl);
   }
 
   /**
@@ -108,7 +35,7 @@ export class BackendApiService {
         library: libraryUrl
       });
 
-      const response = await this.apiRequest<any>(
+      const response = await this.apiClient.request<any>(
         `/external-users?${params.toString()}`,
         'GET'
       );
@@ -165,7 +92,7 @@ export class BackendApiService {
         }
       };
 
-      await this.apiRequest(
+      await this.apiClient.request(
         '/external-users',
         'POST',
         requestBody
@@ -194,7 +121,7 @@ export class BackendApiService {
         library: libraryUrl
       };
 
-      await this.apiRequest(
+      await this.apiClient.request(
         '/external-users',
         'DELETE',
         requestBody
