@@ -217,12 +217,14 @@ public class SharePointService : ISharePointService
                             Email = email,
                             DisplayName = displayName,
                             PermissionLevel = GetPermissionLevelFromRoles(permission.Roles),
-                            InvitedDate = permission.InheritedFrom?.Id == null 
-                                ? DateTime.UtcNow 
-                                : DateTime.UtcNow.AddDays(-30), // Approximate for inherited
+                            // Graph API doesn't expose creation date for permissions
+                            // Use a fixed date to indicate historical/unknown invite date
+                            InvitedDate = DateTime.UtcNow.Date.AddDays(-90),
                             InvitedBy = "System", // Graph API doesn't always provide this
                             LastAccessDate = null, // Not available via Graph permissions
-                            Status = permission.HasPassword == false ? "Invited" : "Active"
+                            // Status based on whether the invitation has been accepted
+                            // HasPassword indicates the user has set up their account
+                            Status = permission.HasPassword == true ? "Active" : "Invited"
                         });
                     }
                 }
