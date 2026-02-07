@@ -1,0 +1,316 @@
+@page "/onboarding"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Options
+@attribute [Authorize]
+@inject Services.ApiClient ApiClient
+@inject IOptions<Models.StripeSettings> StripeSettings
+@inject NavigationManager Navigation
+@inject ILogger<Onboarding> Logger
+
+<PageTitle>Onboarding - SharePoint External User Manager</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Welcome to SharePoint External User Manager</h1>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Progress Steps -->
+            <div class="progress-steps mb-5">
+                <div class="step @(currentStep >= 1 ? "active" : "") @(currentStep > 1 ? "completed" : "")">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Sign In</div>
+                </div>
+                <div class="step @(currentStep >= 2 ? "active" : "") @(currentStep > 2 ? "completed" : "")">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Choose Plan</div>
+                </div>
+                <div class="step @(currentStep >= 3 ? "active" : "") @(currentStep > 3 ? "completed" : "")">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Payment</div>
+                </div>
+                <div class="step @(currentStep >= 4 ? "active" : "")">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Complete</div>
+                </div>
+            </div>
+
+            @if (currentStep == 1)
+            {
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>✓ You're Signed In!</h3>
+                        <p class="mt-3">You've successfully authenticated with Microsoft Entra ID.</p>
+                        <AuthorizeView>
+                            <Authorized>
+                                <p><strong>Account:</strong> @context.User.Identity?.Name</p>
+                            </Authorized>
+                        </AuthorizeView>
+                        <button class="btn btn-primary mt-3" @onclick="NextStep">Continue</button>
+                    </div>
+                </div>
+            }
+            else if (currentStep == 2)
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <h3>Choose Your Subscription Plan</h3>
+                        
+                        @if (isLoadingPlans)
+                        {
+                            <div class="text-center my-4">
+                                <div class="spinner-border" role="status"></div>
+                                <p>Loading plans...</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group mt-3">
+                                @foreach (var plan in availablePlans.Where(p => !p.IsEnterprise))
+                                {
+                                    <div class="list-group-item @(selectedPlan == plan.Name ? "active" : "")"
+                                         style="cursor: pointer;"
+                                         @onclick="() => SelectPlanHandler(plan.Name)">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="mb-1">@plan.Name</h5>
+                                                <p class="mb-1">@plan.Description</p>
+                                                <small>
+                                                    @plan.Limits.MaxClientSpaces Client Spaces, 
+                                                    @plan.Limits.MaxExternalUsers External Users
+                                                </small>
+                                            </div>
+                                            <div class="text-end">
+                                                <strong class="fs-4">£@plan.MonthlyPrice</strong>
+                                                <small class="d-block">/month</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mt-3">
+                                <button class="btn btn-primary" 
+                                        @onclick="NextStep" 
+                                        disabled="@(string.IsNullOrEmpty(selectedPlan))">
+                                    Continue to Payment
+                                </button>
+                                <button class="btn btn-secondary ms-2" @onclick="PreviousStep">Back</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (currentStep == 3)
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <h3>Complete Your Subscription</h3>
+                        <p>You've selected the <strong>@selectedPlan</strong> plan.</p>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @errorMessage
+                            </div>
+                        }
+
+                        @if (isProcessing)
+                        {
+                            <div class="text-center my-4">
+                                <div class="spinner-border" role="status"></div>
+                                <p>Redirecting to payment...</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mt-3">
+                                <button class="btn btn-primary" @onclick="ProcessCheckout">
+                                    Proceed to Stripe Checkout
+                                </button>
+                                <button class="btn btn-secondary ms-2" @onclick="PreviousStep">Back</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (currentStep == 4)
+            {
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="text-success">✓ Onboarding Complete!</h3>
+                        <p class="mt-3">Your subscription is now active.</p>
+                        <a href="/dashboard" class="btn btn-primary mt-3">Go to Dashboard</a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .progress-steps {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        margin-bottom: 2rem;
+    }
+
+    .progress-steps::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 10%;
+        right: 10%;
+        height: 2px;
+        background: #e0e0e0;
+        z-index: -1;
+    }
+
+    .step {
+        text-align: center;
+        flex: 1;
+    }
+
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-weight: bold;
+        border: 2px solid #e0e0e0;
+    }
+
+    .step.active .step-circle {
+        background: #0078d4;
+        color: white;
+        border-color: #0078d4;
+    }
+
+    .step.completed .step-circle {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+
+    .step-label {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .step.active .step-label {
+        color: #0078d4;
+        font-weight: 600;
+    }
+</style>
+
+@code {
+    private int currentStep = 1;
+    private string? selectedPlan;
+    private bool isLoadingPlans = true;
+    private bool isProcessing = false;
+    private string? errorMessage;
+    private List<Models.SubscriptionPlan> availablePlans = new();
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "plan")]
+    public string? PreselectedPlan { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // If user comes from pricing page with a preselected plan
+        if (!string.IsNullOrEmpty(PreselectedPlan))
+        {
+            selectedPlan = PreselectedPlan;
+            currentStep = 2; // Skip to plan selection step
+        }
+
+        // Load available plans
+        try
+        {
+            var response = await ApiClient.GetPlansAsync(includeEnterprise: false);
+            if (response != null && response.Plans.Any())
+            {
+                availablePlans = response.Plans.Where(p => !p.IsEnterprise).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load plans during onboarding");
+        }
+        finally
+        {
+            isLoadingPlans = false;
+        }
+    }
+
+    private void NextStep()
+    {
+        if (currentStep < 4)
+        {
+            currentStep++;
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 1)
+        {
+            currentStep--;
+        }
+    }
+
+    private void SelectPlanHandler(string planName)
+    {
+        selectedPlan = planName;
+    }
+
+    private async Task ProcessCheckout()
+    {
+        if (string.IsNullOrEmpty(selectedPlan))
+        {
+            errorMessage = "Please select a plan";
+            return;
+        }
+
+        isProcessing = true;
+        errorMessage = null;
+
+        try
+        {
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            var request = new Models.CreateCheckoutSessionRequest
+            {
+                PlanTier = selectedPlan,
+                IsAnnual = false,
+                SuccessUrl = $"{baseUrl}/onboarding/success",
+                CancelUrl = $"{baseUrl}/onboarding"
+            };
+
+            var response = await ApiClient.CreateCheckoutSessionAsync(request);
+            if (response != null && !string.IsNullOrEmpty(response.CheckoutUrl))
+            {
+                // Redirect to Stripe checkout
+                Navigation.NavigateTo(response.CheckoutUrl, forceLoad: true);
+            }
+            else
+            {
+                errorMessage = "Failed to create checkout session";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create checkout session");
+            errorMessage = "An error occurred. Please try again.";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

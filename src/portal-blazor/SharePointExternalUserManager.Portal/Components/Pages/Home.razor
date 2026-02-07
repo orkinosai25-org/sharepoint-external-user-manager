@@ -1,0 +1,87 @@
+﻿@page "/"
+
+<PageTitle>SharePoint External User Manager</PageTitle>
+
+<div class="hero-section">
+    <h1 class="display-4">SharePoint External User Manager</h1>
+    <p class="lead">Manage external users, client spaces, and document access in SharePoint Online with ease.</p>
+    
+    <div class="mt-4">
+        <AuthorizeView>
+            <Authorized>
+                <a href="/dashboard" class="btn btn-primary btn-lg me-2">Go to Dashboard</a>
+                <a href="/pricing" class="btn btn-outline-secondary btn-lg">View Pricing</a>
+            </Authorized>
+            <NotAuthorized>
+                <a href="/pricing" class="btn btn-primary btn-lg me-2">View Pricing</a>
+                <a href="MicrosoftIdentity/Account/SignIn" class="btn btn-outline-secondary btn-lg">Sign In</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <span class="bi bi-people-fill"></span> Manage External Users
+                </h5>
+                <p class="card-text">
+                    Easily invite, manage, and remove external users with granular permission control.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <span class="bi bi-folder-fill"></span> Client Spaces
+                </h5>
+                <p class="card-text">
+                    Create dedicated SharePoint sites for each client with isolated access and documents.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <span class="bi bi-shield-check"></span> Secure & Compliant
+                </h5>
+                <p class="card-text">
+                    Multi-tenant architecture with complete tenant isolation and comprehensive audit logging.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-section {
+        text-align: center;
+        padding: 3rem 0;
+    }
+
+    .card {
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .card-title {
+        color: #0078d4;
+        font-weight: 600;
+    }
+
+    .card-title .bi {
+        margin-right: 0.5rem;
+    }
+</style>

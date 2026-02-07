@@ -1,0 +1,265 @@
+@page "/pricing"
+@inject Services.ApiClient ApiClient
+@inject ILogger<Pricing> Logger
+
+<PageTitle>Pricing - SharePoint External User Manager</PageTitle>
+
+<div class="pricing-header">
+    <h1 class="display-4">Choose Your Plan</h1>
+    <p class="lead">Simple, transparent pricing that scales with your business</p>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Loading plans...</p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>Error:</strong> @errorMessage
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mt-3">
+        @foreach (var plan in plans)
+        {
+            <div class="col">
+                <div class="card h-100 @(plan.Name == "Professional" ? "border-primary shadow" : "")">
+                    @if (plan.Name == "Professional")
+                    {
+                        <div class="card-header bg-primary text-white text-center">
+                            <strong>MOST POPULAR</strong>
+                        </div>
+                    }
+                    <div class="card-body d-flex flex-column">
+                        <h3 class="card-title">@plan.Name</h3>
+                        <p class="card-text text-muted">@plan.Description</p>
+                        
+                        <div class="pricing-amount my-3">
+                            <h2 class="display-5">
+                                @if (plan.IsEnterprise)
+                                {
+                                    <span>Custom</span>
+                                }
+                                else
+                                {
+                                    <span>£@(showAnnual ? plan.AnnualPrice / 12 : plan.MonthlyPrice)</span>
+                                    <small class="text-muted fs-6">/month</small>
+                                }
+                            </h2>
+                            @if (!plan.IsEnterprise && showAnnual)
+                            {
+                                <small class="text-muted">Billed annually at £@plan.AnnualPrice</small>
+                            }
+                        </div>
+
+                        <ul class="list-unstyled mb-4 flex-grow-1">
+                            @if (plan.Limits.MaxClientSpaces.HasValue)
+                            {
+                                <li class="mb-2">
+                                    <span class="bi bi-check-circle-fill text-success"></span>
+                                    @plan.Limits.MaxClientSpaces Client Spaces
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="mb-2">
+                                    <span class="bi bi-check-circle-fill text-success"></span>
+                                    Unlimited Client Spaces
+                                </li>
+                            }
+
+                            @if (plan.Limits.MaxExternalUsers.HasValue)
+                            {
+                                <li class="mb-2">
+                                    <span class="bi bi-check-circle-fill text-success"></span>
+                                    @plan.Limits.MaxExternalUsers External Users
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="mb-2">
+                                    <span class="bi bi-check-circle-fill text-success"></span>
+                                    Unlimited External Users
+                                </li>
+                            }
+
+                            @foreach (var feature in plan.Features.Take(3))
+                            {
+                                <li class="mb-2">
+                                    <span class="bi bi-check-circle-fill text-success"></span>
+                                    @feature
+                                </li>
+                            }
+                        </ul>
+
+                        @if (plan.IsEnterprise)
+                        {
+                            <a href="mailto:sales@example.com" class="btn btn-outline-primary w-100">
+                                Contact Sales
+                            </a>
+                        }
+                        else
+                        {
+                            <AuthorizeView>
+                                <Authorized>
+                                    <button class="btn @(plan.Name == "Professional" ? "btn-primary" : "btn-outline-primary") w-100"
+                                            @onclick="() => SelectPlan(plan.Name)">
+                                        Select @plan.Name
+                                    </button>
+                                </Authorized>
+                                <NotAuthorized>
+                                    <a href="MicrosoftIdentity/Account/SignIn" class="btn @(plan.Name == "Professional" ? "btn-primary" : "btn-outline-primary") w-100">
+                                        Sign In to Subscribe
+                                    </a>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="text-center mt-4">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn @(!showAnnual ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="() => showAnnual = false">
+                Monthly
+            </button>
+            <button type="button" class="btn @(showAnnual ? "btn-primary" : "btn-outline-primary")"
+                    @onclick="() => showAnnual = true">
+                Annual (Save 17%)
+            </button>
+        </div>
+    </div>
+}
+
+<style>
+    .pricing-header {
+        text-align: center;
+        padding: 2rem 0;
+    }
+
+    .pricing-amount {
+        text-align: center;
+        border-top: 1px solid #e0e0e0;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 1rem 0;
+    }
+
+    .card {
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+    .border-primary {
+        border-width: 2px !important;
+    }
+</style>
+
+@code {
+    private List<Models.SubscriptionPlan> plans = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+    private bool showAnnual = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await ApiClient.GetPlansAsync(includeEnterprise: true);
+            if (response != null && response.Plans.Any())
+            {
+                plans = response.Plans;
+            }
+            else
+            {
+                // Fallback to default plans if API fails
+                plans = GetDefaultPlans();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load pricing plans");
+            // Use default plans on error
+            plans = GetDefaultPlans();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectPlan(string planName)
+    {
+        // Navigate to onboarding with the selected plan
+        var navigationManager = (Microsoft.AspNetCore.Components.NavigationManager)
+            Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService(((Microsoft.AspNetCore.Components.ComponentBase)this).GetType()
+                    .GetProperty("Services", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.GetValue(this) as IServiceProvider ?? throw new InvalidOperationException(),
+                typeof(Microsoft.AspNetCore.Components.NavigationManager));
+        navigationManager.NavigateTo($"/onboarding?plan={planName}");
+    }
+
+    private List<Models.SubscriptionPlan> GetDefaultPlans()
+    {
+        return new List<Models.SubscriptionPlan>
+        {
+            new()
+            {
+                Name = "Starter",
+                Description = "Perfect for small teams getting started",
+                MonthlyPrice = 29,
+                AnnualPrice = 290,
+                Currency = "GBP",
+                IsEnterprise = false,
+                Limits = new() { MaxClientSpaces = 5, MaxExternalUsers = 50 },
+                Features = new() { "Community Support", "Basic Audit Logs", "Email Notifications" }
+            },
+            new()
+            {
+                Name = "Professional",
+                Description = "For growing businesses",
+                MonthlyPrice = 99,
+                AnnualPrice = 990,
+                Currency = "GBP",
+                IsEnterprise = false,
+                Limits = new() { MaxClientSpaces = 20, MaxExternalUsers = 250 },
+                Features = new() { "Email Support", "Advanced Audit Logs", "Priority Updates" }
+            },
+            new()
+            {
+                Name = "Business",
+                Description = "Advanced features for larger organisations",
+                MonthlyPrice = 299,
+                AnnualPrice = 2990,
+                Currency = "GBP",
+                IsEnterprise = false,
+                Limits = new() { MaxClientSpaces = 100, MaxExternalUsers = 1000 },
+                Features = new() { "Priority Support", "Custom Branding", "API Access" }
+            },
+            new()
+            {
+                Name = "Enterprise",
+                Description = "Unlimited scale with dedicated support",
+                MonthlyPrice = 999,
+                AnnualPrice = 9990,
+                Currency = "GBP",
+                IsEnterprise = true,
+                Limits = new() { MaxClientSpaces = null, MaxExternalUsers = null },
+                Features = new() { "Dedicated Support", "SLA Guarantee", "Custom Integration" }
+            }
+        };
+    }
+}

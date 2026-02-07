@@ -1,0 +1,34 @@
+@page "/onboarding/success"
+@attribute [Authorize]
+
+<PageTitle>Success - SharePoint External User Manager</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white text-center">
+                    <h3><span class="bi bi-check-circle-fill"></span> Payment Successful!</h3>
+                </div>
+                <div class="card-body text-center">
+                    <p class="lead">Thank you for subscribing to SharePoint External User Manager.</p>
+                    <p>Your subscription is now being activated. This usually takes just a few moments.</p>
+                    
+                    <div class="my-4">
+                        <h5>Next Steps:</h5>
+                        <ol class="text-start">
+                            <li>Go to your Dashboard to view your subscription status</li>
+                            <li>Create your first Client Space</li>
+                            <li>Install the SPFx package in your SharePoint tenant</li>
+                            <li>Start managing external users!</li>
+                        </ol>
+                    </div>
+
+                    <a href="/dashboard" class="btn btn-primary btn-lg">
+                        <span class="bi bi-speedometer2"></span> Go to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

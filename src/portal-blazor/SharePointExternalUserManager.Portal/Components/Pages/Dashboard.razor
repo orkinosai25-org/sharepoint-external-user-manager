@@ -1,0 +1,396 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject Services.ApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILogger<Dashboard> Logger
+
+<PageTitle>Dashboard - SharePoint External User Manager</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Dashboard</h1>
+        </div>
+    </div>
+
+    <!-- Subscription Status Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            @if (isLoadingSubscription)
+            {
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="spinner-border" role="status"></div>
+                        <p class="mt-2">Loading subscription...</p>
+                    </div>
+                </div>
+            }
+            else if (subscription != null)
+            {
+                <div class="card @(subscription.IsActive ? "border-success" : "border-warning")">
+                    <div class="card-header @(subscription.IsActive ? "bg-success" : "bg-warning") text-white">
+                        <h5 class="mb-0">
+                            <span class="bi bi-credit-card"></span> Subscription Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6>Plan</h6>
+                                <p class="lead">@subscription.Tier</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Status</h6>
+                                <p class="lead">
+                                    <span class="badge bg-@(subscription.IsActive ? "success" : "warning")">
+                                        @subscription.Status
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Client Spaces</h6>
+                                <p class="lead">
+                                    @clients.Count 
+                                    @if (subscription.Limits.MaxClientSpaces.HasValue)
+                                    {
+                                        <span>/ @subscription.Limits.MaxClientSpaces</span>
+                                    }
+                                </p>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>External Users Limit</h6>
+                                <p class="lead">
+                                    @if (subscription.Limits.MaxExternalUsers.HasValue)
+                                    {
+                                        @subscription.Limits.MaxExternalUsers
+                                    }
+                                    else
+                                    {
+                                        <span>Unlimited</span>
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                        @if (!subscription.IsActive)
+                        {
+                            <div class="alert alert-warning mt-3">
+                                <strong>Action Required:</strong> Your subscription is not active. 
+                                <a href="/onboarding">Complete onboarding</a> to activate.
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Client Spaces Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <span class="bi bi-folder-fill"></span> Client Spaces
+                        </h5>
+                        <button class="btn btn-light btn-sm" @onclick="ShowCreateClientModal">
+                            <span class="bi bi-plus-circle"></span> Create Client Space
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (isLoadingClients)
+                    {
+                        <div class="text-center my-4">
+                            <div class="spinner-border" role="status"></div>
+                            <p class="mt-2">Loading client spaces...</p>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(clientsError))
+                    {
+                        <div class="alert alert-danger">
+                            @clientsError
+                        </div>
+                    }
+                    else if (!clients.Any())
+                    {
+                        <div class="text-center my-5">
+                            <span class="bi bi-folder-plus" style="font-size: 3rem; color: #ccc;"></span>
+                            <p class="mt-3">No client spaces yet. Create your first one to get started!</p>
+                            <button class="btn btn-primary" @onclick="ShowCreateClientModal">
+                                <span class="bi bi-plus-circle"></span> Create Client Space
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Client Reference</th>
+                                        <th>Client Name</th>
+                                        <th>Status</th>
+                                        <th>SharePoint Site</th>
+                                        <th>Created Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var client in clients)
+                                    {
+                                        <tr>
+                                            <td>@client.ClientReference</td>
+                                            <td>@client.ClientName</td>
+                                            <td>
+                                                <span class="badge bg-@GetStatusBadgeClass(client.ProvisioningStatus)">
+                                                    @client.ProvisioningStatus
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(client.SharePointSiteUrl))
+                                                {
+                                                    <a href="@client.SharePointSiteUrl" target="_blank">
+                                                        Open Site <span class="bi bi-box-arrow-up-right"></span>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Pending</span>
+                                                }
+                                            </td>
+                                            <td>@client.CreatedDate.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        @onclick="() => ViewClient(client.Id)">
+                                                    <span class="bi bi-eye"></span> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPFx Installation Section -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <span class="bi bi-download"></span> Install SPFx Client
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>To use the SharePoint External User Manager web parts in your SharePoint tenant, install the SPFx package:</p>
+                    <ol>
+                        <li>Download the latest <code>.sppkg</code> package file</li>
+                        <li>Go to your SharePoint Admin Center → More features → Apps</li>
+                        <li>Open the App Catalog</li>
+                        <li>Upload the <code>.sppkg</code> file</li>
+                        <li>Check "Make this solution available to all sites in the organization"</li>
+                        <li>Click "Deploy"</li>
+                    </ol>
+                    <a href="https://github.com/orkinosai25-org/sharepoint-external-user-manager/releases" 
+                       class="btn btn-info" target="_blank">
+                        <span class="bi bi-download"></span> Download SPFx Package
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Client Modal -->
+@if (showCreateModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Client Space</h5>
+                    <button type="button" class="btn-close" @onclick="HideCreateClientModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(createError))
+                    {
+                        <div class="alert alert-danger">
+                            @createError
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Client Reference *</label>
+                        <input type="text" class="form-control" @bind="newClientReference" 
+                               placeholder="e.g., CLI-001" />
+                        <small class="form-text text-muted">Unique identifier for this client</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Client Name *</label>
+                        <input type="text" class="form-control" @bind="newClientName" 
+                               placeholder="e.g., Smith & Associates" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" @bind="newClientDescription" 
+                                  rows="3" placeholder="Optional description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideCreateClientModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateClient" disabled="@isCreatingClient">
+                        @if (isCreatingClient)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                            <span> Creating...</span>
+                        }
+                        else
+                        {
+                            <span>Create Client Space</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .modal.show {
+        display: block;
+    }
+</style>
+
+@code {
+    private bool isLoadingSubscription = true;
+    private bool isLoadingClients = true;
+    private bool showCreateModal = false;
+    private bool isCreatingClient = false;
+    private string? clientsError;
+    private string? createError;
+    
+    private Models.SubscriptionStatusResponse? subscription;
+    private List<Models.ClientResponse> clients = new();
+
+    private string newClientReference = string.Empty;
+    private string newClientName = string.Empty;
+    private string newClientDescription = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSubscriptionStatus();
+        await LoadClients();
+    }
+
+    private async Task LoadSubscriptionStatus()
+    {
+        isLoadingSubscription = true;
+        try
+        {
+            subscription = await ApiClient.GetSubscriptionStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load subscription status");
+        }
+        finally
+        {
+            isLoadingSubscription = false;
+        }
+    }
+
+    private async Task LoadClients()
+    {
+        isLoadingClients = true;
+        clientsError = null;
+        try
+        {
+            clients = await ApiClient.GetClientsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load clients");
+            clientsError = "Failed to load client spaces. Please try refreshing the page.";
+        }
+        finally
+        {
+            isLoadingClients = false;
+        }
+    }
+
+    private void ShowCreateClientModal()
+    {
+        newClientReference = string.Empty;
+        newClientName = string.Empty;
+        newClientDescription = string.Empty;
+        createError = null;
+        showCreateModal = true;
+    }
+
+    private void HideCreateClientModal()
+    {
+        showCreateModal = false;
+    }
+
+    private async Task CreateClient()
+    {
+        createError = null;
+
+        if (string.IsNullOrWhiteSpace(newClientReference) || string.IsNullOrWhiteSpace(newClientName))
+        {
+            createError = "Client Reference and Client Name are required";
+            return;
+        }
+
+        isCreatingClient = true;
+        try
+        {
+            var request = new Models.CreateClientRequest
+            {
+                ClientReference = newClientReference.Trim(),
+                ClientName = newClientName.Trim(),
+                Description = string.IsNullOrWhiteSpace(newClientDescription) ? null : newClientDescription.Trim()
+            };
+
+            var result = await ApiClient.CreateClientAsync(request);
+            if (result != null)
+            {
+                // Refresh client list
+                await LoadClients();
+                HideCreateClientModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create client");
+            createError = "Failed to create client space. Please try again.";
+        }
+        finally
+        {
+            isCreatingClient = false;
+        }
+    }
+
+    private void ViewClient(int clientId)
+    {
+        Navigation.NavigateTo($"/clients/{clientId}");
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Completed" => "success",
+            "Provisioning" => "warning",
+            "Failed" => "danger",
+            _ => "secondary"
+        };
+    }
+}
