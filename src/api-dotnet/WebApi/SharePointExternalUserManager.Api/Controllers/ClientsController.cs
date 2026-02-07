@@ -6,6 +6,7 @@ using SharePointExternalUserManager.Api.Data.Entities;
 using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
 using SharePointExternalUserManager.Functions.Models.Clients;
+using SharePointExternalUserManager.Functions.Models.ExternalUsers;
 
 namespace SharePointExternalUserManager.Api.Controllers;
 
@@ -301,5 +302,241 @@ public class ClientsController : ControllerBase
             nameof(GetClient),
             new { id = client.Id },
             ApiResponse<ClientResponse>.SuccessResponse(clientResponse));
+    }
+
+    /// <summary>
+    /// Get all external users for a client site
+    /// </summary>
+    [HttpGet("{id}/external-users")]
+    public async Task<IActionResult> GetExternalUsers(int id)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+        var userId = User.FindFirst("oid")?.Value;
+        var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+
+        if (string.IsNullOrEmpty(tenantIdClaim))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing tenant claim"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        // Get external users from SharePoint
+        var externalUsers = await _sharePointService.GetExternalUsersAsync(client.SharePointSiteId);
+
+        _logger.LogInformation(
+            "Retrieved {Count} external users for client {ClientId}",
+            externalUsers.Count,
+            client.Id);
+
+        return Ok(ApiResponse<List<ExternalUserDto>>.SuccessResponse(externalUsers));
+    }
+
+    /// <summary>
+    /// Invite an external user to a client site
+    /// </summary>
+    [HttpPost("{id}/external-users")]
+    public async Task<IActionResult> InviteExternalUser(int id, [FromBody] InviteExternalUserRequest request)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+        var userId = User.FindFirst("oid")?.Value;
+        var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        if (string.IsNullOrEmpty(tenantIdClaim) || string.IsNullOrEmpty(userId))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing authentication claims"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        // Validate permission level
+        var validPermissions = new[] { "Read", "Edit", "Write", "Contribute" };
+        if (!validPermissions.Contains(request.PermissionLevel, StringComparer.OrdinalIgnoreCase))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "INVALID_PERMISSION",
+                $"Permission level must be one of: {string.Join(", ", validPermissions)}"));
+        }
+
+        // Invite the external user
+        var (success, user, errorMessage) = await _sharePointService.InviteExternalUserAsync(
+            client.SharePointSiteId,
+            request.Email,
+            request.DisplayName,
+            request.PermissionLevel,
+            request.Message,
+            userEmail ?? userId);
+
+        if (!success)
+        {
+            _logger.LogError(
+                "Failed to invite external user {Email} to client {ClientId}: {Error}",
+                request.Email,
+                client.Id,
+                errorMessage);
+
+            // Log failure
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                userId,
+                userEmail,
+                "EXTERNAL_USER_INVITE_FAILED",
+                "Client",
+                client.Id.ToString(),
+                $"Failed to invite {request.Email}: {errorMessage}",
+                ipAddress,
+                correlationId,
+                "Failed");
+
+            return StatusCode(500, ApiResponse<object>.ErrorResponse(
+                "INVITE_FAILED",
+                errorMessage ?? "Failed to invite external user"));
+        }
+
+        _logger.LogInformation(
+            "Successfully invited external user {Email} to client {ClientId} with {PermissionLevel} permissions",
+            request.Email,
+            client.Id,
+            request.PermissionLevel);
+
+        // Log successful invitation
+        await _auditLogService.LogActionAsync(
+            tenant.Id,
+            userId,
+            userEmail,
+            "EXTERNAL_USER_INVITED",
+            "Client",
+            client.Id.ToString(),
+            $"Invited external user {request.Email} with {request.PermissionLevel} permissions",
+            ipAddress,
+            correlationId,
+            "Success");
+
+        return Ok(ApiResponse<ExternalUserDto>.SuccessResponse(user!));
+    }
+
+    /// <summary>
+    /// Remove an external user from a client site
+    /// </summary>
+    [HttpDelete("{id}/external-users/{email}")]
+    public async Task<IActionResult> RemoveExternalUser(int id, string email)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+        var userId = User.FindFirst("oid")?.Value;
+        var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        if (string.IsNullOrEmpty(tenantIdClaim) || string.IsNullOrEmpty(userId))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing authentication claims"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        // Remove the external user
+        var (success, errorMessage) = await _sharePointService.RemoveExternalUserAsync(
+            client.SharePointSiteId,
+            email);
+
+        if (!success)
+        {
+            _logger.LogError(
+                "Failed to remove external user {Email} from client {ClientId}: {Error}",
+                email,
+                client.Id,
+                errorMessage);
+
+            // Log failure
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                userId,
+                userEmail,
+                "EXTERNAL_USER_REMOVE_FAILED",
+                "Client",
+                client.Id.ToString(),
+                $"Failed to remove {email}: {errorMessage}",
+                ipAddress,
+                correlationId,
+                "Failed");
+
+            return StatusCode(500, ApiResponse<object>.ErrorResponse(
+                "REMOVE_FAILED",
+                errorMessage ?? "Failed to remove external user"));
+        }
+
+        _logger.LogInformation(
+            "Successfully removed external user {Email} from client {ClientId}",
+            email,
+            client.Id);
+
+        // Log successful removal
+        await _auditLogService.LogActionAsync(
+            tenant.Id,
+            userId,
+            userEmail,
+            "EXTERNAL_USER_REMOVED",
+            "Client",
+            client.Id.ToString(),
+            $"Removed external user {email}",
+            ipAddress,
+            correlationId,
+            "Success");
+
+        return Ok(ApiResponse<object>.SuccessResponse(new
+        {
+            message = $"External user {email} removed successfully"
+        }));
     }
 }
