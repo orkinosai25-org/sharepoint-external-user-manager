@@ -169,6 +169,47 @@ Authorization: Bearer <JWT_TOKEN>
 }
 ```
 
+#### GET /clients
+Returns all client spaces for the authenticated tenant.
+
+#### POST /clients
+Create a new client space with SharePoint site provisioning.
+
+**Request Body**:
+```json
+{
+  "clientReference": "CLIENT-001",
+  "clientName": "Acme Corporation",
+  "description": "Client space for Acme Corp legal matters"
+}
+```
+
+#### GET /clients/{id}
+Get details of a specific client.
+
+#### GET /clients/{id}/external-users
+List all external users (guests) for a client site.
+
+#### POST /clients/{id}/external-users
+Invite an external user to a client site with specified permissions.
+
+**Request Body**:
+```json
+{
+  "email": "partner@external.com",
+  "displayName": "John Partner",
+  "permissionLevel": "Read",
+  "message": "Welcome to our collaboration space"
+}
+```
+
+**Permission Levels**: "Read", "Edit", "Write", "Contribute"
+
+#### DELETE /clients/{id}/external-users/{email}
+Remove an external user's access from a client site.
+
+For detailed API documentation, see [EXTERNAL_USER_API_DOCS.md](../../EXTERNAL_USER_API_DOCS.md).
+
 ## Multi-Tenant Isolation
 
 The API enforces tenant isolation by:
