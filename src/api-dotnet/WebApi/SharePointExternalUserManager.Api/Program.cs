@@ -23,6 +23,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Register services
 builder.Services.AddScoped<ISharePointService, SharePointService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IStripeService, StripeService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
