@@ -2,6 +2,8 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using SharePointExternalUserManager.Api.Data.Entities;
 using SharePointExternalUserManager.Functions.Models.ExternalUsers;
+using SharePointExternalUserManager.Functions.Models.Libraries;
+using SharePointExternalUserManager.Functions.Models.Lists;
 
 namespace SharePointExternalUserManager.Api.Services;
 
@@ -39,6 +41,26 @@ public interface ISharePointService
     Task<(bool Success, string? ErrorMessage)> RemoveExternalUserAsync(
         string siteId,
         string email);
+
+    /// <summary>
+    /// Get all document libraries for a client site
+    /// </summary>
+    Task<List<LibraryResponse>> GetLibrariesAsync(string siteId);
+
+    /// <summary>
+    /// Create a new document library in a client site
+    /// </summary>
+    Task<LibraryResponse> CreateLibraryAsync(string siteId, string name, string? description);
+
+    /// <summary>
+    /// Get all lists for a client site
+    /// </summary>
+    Task<List<ListResponse>> GetListsAsync(string siteId);
+
+    /// <summary>
+    /// Create a new list in a client site
+    /// </summary>
+    Task<ListResponse> CreateListAsync(string siteId, string name, string? description, string? template);
 }
 
 public class SharePointService : ISharePointService
@@ -432,5 +454,271 @@ public class SharePointService : ISharePointService
             "owner" or "fullcontrol" => new List<string> { "owner" },
             _ => null
         };
+    }
+
+    public async Task<List<LibraryResponse>> GetLibrariesAsync(string siteId)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving libraries for site {SiteId}", siteId);
+
+            // Get all drives (document libraries) for the site
+            var drives = await _graphClient.Sites[siteId].Drives.GetAsync();
+
+            if (drives?.Value == null)
+            {
+                return new List<LibraryResponse>();
+            }
+
+            var libraries = drives.Value
+                .Where(d => d.DriveType == "documentLibrary")
+                .Select(drive => new LibraryResponse
+                {
+                    Id = drive.Id ?? string.Empty,
+                    Name = drive.Name ?? string.Empty,
+                    DisplayName = drive.Name ?? string.Empty,
+                    Description = drive.Description ?? string.Empty,
+                    WebUrl = drive.WebUrl ?? string.Empty,
+                    CreatedDateTime = drive.CreatedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                    LastModifiedDateTime = drive.LastModifiedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                    ItemCount = 0 // Graph API doesn't provide item count in drive resource
+                })
+                .ToList();
+
+            _logger.LogInformation("Found {Count} libraries for site {SiteId}", libraries.Count, siteId);
+
+            return libraries;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving libraries for site {SiteId}", siteId);
+            return new List<LibraryResponse>();
+        }
+    }
+
+    public async Task<LibraryResponse> CreateLibraryAsync(string siteId, string name, string? description)
+    {
+        try
+        {
+            _logger.LogInformation("Creating library '{Name}' in site {SiteId}", name, siteId);
+
+            // Create a new list with documentLibrary template
+            var newList = new List
+            {
+                DisplayName = name,
+                Description = description,
+                AdditionalData = new Dictionary<string, object>
+                {
+                    ["list"] = new Dictionary<string, object>
+                    {
+                        ["template"] = "documentLibrary"
+                    }
+                }
+            };
+
+            var createdList = await _graphClient.Sites[siteId].Lists.PostAsync(newList);
+
+            if (createdList == null)
+            {
+                throw new Exception("Failed to create library - no response from Graph API");
+            }
+
+            _logger.LogInformation("Successfully created library '{Name}' with ID {ListId}", name, createdList.Id);
+
+            // Return the library response
+            return new LibraryResponse
+            {
+                Id = createdList.Id ?? string.Empty,
+                Name = createdList.Name ?? name,
+                DisplayName = createdList.DisplayName ?? name,
+                Description = createdList.Description ?? description ?? string.Empty,
+                WebUrl = createdList.WebUrl ?? string.Empty,
+                CreatedDateTime = createdList.CreatedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                LastModifiedDateTime = createdList.LastModifiedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                ItemCount = 0
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating library '{Name}' in site {SiteId}", name, siteId);
+            throw;
+        }
+    }
+
+    public async Task<List<ListResponse>> GetListsAsync(string siteId)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving lists for site {SiteId}", siteId);
+
+            // Get all lists for the site
+            var lists = await _graphClient.Sites[siteId].Lists.GetAsync();
+
+            if (lists?.Value == null)
+            {
+                return new List<ListResponse>();
+            }
+
+            var listResponses = lists.Value
+                // Filter out document libraries and system lists
+                .Where(l => !IsDocumentLibrary(l) && !IsSystemList(l.DisplayName))
+                .Select(list => new ListResponse
+                {
+                    Id = list.Id ?? string.Empty,
+                    Name = list.Name ?? string.Empty,
+                    DisplayName = list.DisplayName ?? string.Empty,
+                    Description = list.Description ?? string.Empty,
+                    WebUrl = list.WebUrl ?? string.Empty,
+                    CreatedDateTime = list.CreatedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                    LastModifiedDateTime = list.LastModifiedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                    ItemCount = 0, // Graph API doesn't provide item count by default
+                    ListTemplate = GetListTemplate(list)
+                })
+                .ToList();
+
+            _logger.LogInformation("Found {Count} lists for site {SiteId}", listResponses.Count, siteId);
+
+            return listResponses;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving lists for site {SiteId}", siteId);
+            return new List<ListResponse>();
+        }
+    }
+
+    public async Task<ListResponse> CreateListAsync(string siteId, string name, string? description, string? template)
+    {
+        try
+        {
+            _logger.LogInformation("Creating list '{Name}' with template '{Template}' in site {SiteId}", 
+                name, template ?? "genericList", siteId);
+
+            // Validate and map the template
+            var listTemplate = MapListTemplate(template);
+
+            // Create a new list
+            var newList = new List
+            {
+                DisplayName = name,
+                Description = description,
+                AdditionalData = new Dictionary<string, object>
+                {
+                    ["list"] = new Dictionary<string, object>
+                    {
+                        ["template"] = listTemplate
+                    }
+                }
+            };
+
+            var createdList = await _graphClient.Sites[siteId].Lists.PostAsync(newList);
+
+            if (createdList == null)
+            {
+                throw new Exception("Failed to create list - no response from Graph API");
+            }
+
+            _logger.LogInformation("Successfully created list '{Name}' with ID {ListId}", name, createdList.Id);
+
+            // Return the list response
+            return new ListResponse
+            {
+                Id = createdList.Id ?? string.Empty,
+                Name = createdList.Name ?? name,
+                DisplayName = createdList.DisplayName ?? name,
+                Description = createdList.Description ?? description ?? string.Empty,
+                WebUrl = createdList.WebUrl ?? string.Empty,
+                CreatedDateTime = createdList.CreatedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                LastModifiedDateTime = createdList.LastModifiedDateTime?.UtcDateTime ?? DateTime.UtcNow,
+                ItemCount = 0,
+                ListTemplate = GetListTemplate(createdList)
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating list '{Name}' in site {SiteId}", name, siteId);
+            throw;
+        }
+    }
+
+    private static string MapListTemplate(string? template)
+    {
+        if (string.IsNullOrEmpty(template))
+        {
+            return "genericList";
+        }
+
+        // Map template names to SharePoint list template types
+        return template.ToLowerInvariant() switch
+        {
+            "genericlist" => "genericList",
+            "documentlibrary" => "documentLibrary",
+            "survey" => "survey",
+            "links" => "links",
+            "announcements" => "announcements",
+            "contacts" => "contacts",
+            "events" => "events",
+            "tasks" => "tasks",
+            "issuetracking" => "issueTracking",
+            "customlist" => "customList",
+            _ => "genericList" // Default to generic list for unknown templates
+        };
+    }
+
+    private static bool IsSystemList(string? displayName)
+    {
+        if (string.IsNullOrEmpty(displayName))
+        {
+            return false;
+        }
+
+        // Filter out common system lists
+        var systemLists = new[]
+        {
+            "Form Templates",
+            "Site Assets",
+            "Site Pages",
+            "Style Library",
+            "Master Page Gallery",
+            "App Packages",
+            "Solution Gallery"
+        };
+
+        return systemLists.Any(s => displayName.Contains(s, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsDocumentLibrary(List list)
+    {
+        // Check if the list is a document library by checking the AdditionalData
+        if (list.AdditionalData != null && list.AdditionalData.TryGetValue("list", out var listInfo))
+        {
+            if (listInfo is IDictionary<string, object> listDict && 
+                listDict.TryGetValue("template", out var template))
+            {
+                var templateStr = template?.ToString() ?? string.Empty;
+                return templateStr.Equals("documentLibrary", StringComparison.OrdinalIgnoreCase) ||
+                       templateStr.Equals("webPageLibrary", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        // Also check the Name property as document libraries often have specific names
+        var name = list.Name ?? string.Empty;
+        return name.Equals("Documents", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("Shared Documents", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetListTemplate(List list)
+    {
+        // Try to get the template from AdditionalData
+        if (list.AdditionalData != null && list.AdditionalData.TryGetValue("list", out var listInfo))
+        {
+            if (listInfo is IDictionary<string, object> listDict && 
+                listDict.TryGetValue("template", out var template))
+            {
+                return template?.ToString() ?? "genericList";
+            }
+        }
+
+        return "genericList";
     }
 }
