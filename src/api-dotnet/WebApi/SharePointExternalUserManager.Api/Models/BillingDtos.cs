@@ -1,5 +1,3 @@
-using SharePointExternalUserManager.Api.Models;
-
 namespace SharePointExternalUserManager.Api.Models;
 
 /// <summary>

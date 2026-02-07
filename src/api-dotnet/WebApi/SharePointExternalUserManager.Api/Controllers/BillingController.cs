@@ -451,17 +451,30 @@ public class BillingController : ControllerBase
         var invoice = stripeEvent.Data.Object as Invoice;
         if (invoice == null) return;
 
-        // Get subscription ID from metadata or expand
-        var subscriptionId = invoice.Metadata?.GetValueOrDefault("subscription_id");
+        // The Subscription property is expandable - it's either a string ID or can be expanded to a Subscription object
+        // We need to extract the ID properly
+        string? subscriptionId = null;
+        
+        try
+        {
+            // Try to get subscription ID from the raw JSON data
+            var jsonInvoice = stripeEvent.Data.RawObject;
+            if (jsonInvoice.ContainsKey("subscription") && jsonInvoice["subscription"] != null)
+            {
+                subscriptionId = jsonInvoice["subscription"] as string;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract subscription ID from invoice. CorrelationId: {CorrelationId}", correlationId);
+            return;
+        }
         
         if (string.IsNullOrEmpty(subscriptionId))
         {
-            // Try to get from the raw JSON data
-            var jsonInvoice = stripeEvent.Data.RawObject;
-            subscriptionId = jsonInvoice.GetValueOrDefault("subscription") as string;
+            _logger.LogWarning("Subscription ID not found in invoice. CorrelationId: {CorrelationId}", correlationId);
+            return;
         }
-        
-        if (string.IsNullOrEmpty(subscriptionId)) return;
 
         // Find subscription and update status
         var subscription = await _context.Subscriptions
@@ -485,17 +498,30 @@ public class BillingController : ControllerBase
         var invoice = stripeEvent.Data.Object as Invoice;
         if (invoice == null) return;
 
-        // Get subscription ID from metadata or expand
-        var subscriptionId = invoice.Metadata?.GetValueOrDefault("subscription_id");
+        // The Subscription property is expandable - it's either a string ID or can be expanded to a Subscription object
+        // We need to extract the ID properly
+        string? subscriptionId = null;
+        
+        try
+        {
+            // Try to get subscription ID from the raw JSON data
+            var jsonInvoice = stripeEvent.Data.RawObject;
+            if (jsonInvoice.ContainsKey("subscription") && jsonInvoice["subscription"] != null)
+            {
+                subscriptionId = jsonInvoice["subscription"] as string;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract subscription ID from invoice. CorrelationId: {CorrelationId}", correlationId);
+            return;
+        }
         
         if (string.IsNullOrEmpty(subscriptionId))
         {
-            // Try to get from the raw JSON data
-            var jsonInvoice = stripeEvent.Data.RawObject;
-            subscriptionId = jsonInvoice.GetValueOrDefault("subscription") as string;
+            _logger.LogWarning("Subscription ID not found in invoice. CorrelationId: {CorrelationId}", correlationId);
+            return;
         }
-        
-        if (string.IsNullOrEmpty(subscriptionId)) return;
 
         // Find subscription and update status
         var subscription = await _context.Subscriptions

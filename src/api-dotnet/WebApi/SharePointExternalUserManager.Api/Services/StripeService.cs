@@ -235,9 +235,10 @@ public class StripeService : IStripeService
 
         if (string.IsNullOrEmpty(priceId))
         {
-            _logger.LogWarning("Price ID not configured for {PlanTier} {Interval}", planTier, isAnnual ? "annual" : "monthly");
-            // Return default placeholder value
-            return $"price_{planTier.ToString().ToLower()}_{(isAnnual ? "annual" : "monthly")}";
+            var errorMsg = $"Price ID not configured for {planTier} {(isAnnual ? "annual" : "monthly")}. " +
+                          $"Please set {configKey} in configuration.";
+            _logger.LogError(errorMsg);
+            throw new InvalidOperationException(errorMsg);
         }
 
         return priceId;

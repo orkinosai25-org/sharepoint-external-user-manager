@@ -108,26 +108,11 @@ public class PlanEnforcementService : IPlanEnforcementService
 
     public async Task<(bool Allowed, int Current, int? Limit)> CanAddExternalUserAsync(int tenantId, int clientId)
     {
-        var plan = await GetTenantPlanAsync(tenantId);
-        if (plan == null)
-        {
-            return (false, 0, 0);
-        }
-
-        // For now, we'll implement a simple check
-        // In the future, this can query actual external user counts from SharePoint
-        // or from a separate ExternalUsers table if implemented
-        
-        // Enterprise has unlimited external users
-        if (plan.Limits.IsUnlimited || plan.Limits.MaxExternalUsers == null)
-        {
-            return (true, 0, null);
-        }
-
-        var limit = plan.Limits.MaxExternalUsers.Value;
-        // For now, assume we're under the limit
-        // This should be properly implemented when external user tracking is added
-        return (true, 0, limit);
+        // TODO: This method requires external user tracking to be implemented
+        // For now, we cannot accurately enforce external user limits
+        throw new NotImplementedException(
+            "External user limit enforcement requires external user tracking to be implemented first. " +
+            "This will be addressed when the external user management system is integrated.");
     }
 
     public async Task EnforceFeatureAccessAsync(int tenantId, string featureName)
