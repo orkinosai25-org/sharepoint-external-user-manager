@@ -208,6 +208,111 @@ Invite an external user to a client site with specified permissions.
 #### DELETE /clients/{id}/external-users/{email}
 Remove an external user's access from a client site.
 
+#### GET /clients/{id}/libraries
+Get all document libraries for a client site.
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "library-guid",
+      "name": "Documents",
+      "displayName": "Documents",
+      "description": "Default document library",
+      "webUrl": "https://contoso.sharepoint.com/sites/client/Documents",
+      "createdDateTime": "2026-02-06T10:00:00Z",
+      "lastModifiedDateTime": "2026-02-06T14:30:00Z",
+      "itemCount": 0
+    }
+  ]
+}
+```
+
+#### POST /clients/{id}/libraries
+Create a new document library in a client site.
+
+**Request Body**:
+```json
+{
+  "name": "Client Documents",
+  "description": "Documents for the client project"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "library-guid",
+    "name": "Client Documents",
+    "displayName": "Client Documents",
+    "description": "Documents for the client project",
+    "webUrl": "https://contoso.sharepoint.com/sites/client/Client%20Documents",
+    "createdDateTime": "2026-02-06T15:00:00Z",
+    "lastModifiedDateTime": "2026-02-06T15:00:00Z",
+    "itemCount": 0
+  }
+}
+```
+
+#### GET /clients/{id}/lists
+Get all lists for a client site (excludes document libraries).
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "list-guid",
+      "name": "Tasks",
+      "displayName": "Tasks",
+      "description": "Task tracking list",
+      "webUrl": "https://contoso.sharepoint.com/sites/client/Lists/Tasks",
+      "createdDateTime": "2026-02-06T10:00:00Z",
+      "lastModifiedDateTime": "2026-02-06T16:45:00Z",
+      "itemCount": 0,
+      "listTemplate": "tasks"
+    }
+  ]
+}
+```
+
+#### POST /clients/{id}/lists
+Create a new list in a client site.
+
+**Request Body**:
+```json
+{
+  "name": "Project Tasks",
+  "description": "Tasks for the client project",
+  "template": "tasks"
+}
+```
+
+**Valid Templates**: `genericList`, `tasks`, `contacts`, `events`, `links`, `announcements`, `survey`, `issueTracking`, `customList`
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "list-guid",
+    "name": "Project Tasks",
+    "displayName": "Project Tasks",
+    "description": "Tasks for the client project",
+    "webUrl": "https://contoso.sharepoint.com/sites/client/Lists/ProjectTasks",
+    "createdDateTime": "2026-02-06T15:30:00Z",
+    "lastModifiedDateTime": "2026-02-06T15:30:00Z",
+    "itemCount": 0,
+    "listTemplate": "tasks"
+  }
+}
+```
+
 For detailed API documentation, see [EXTERNAL_USER_API_DOCS.md](../../EXTERNAL_USER_API_DOCS.md).
 
 ## Multi-Tenant Isolation
@@ -332,6 +437,17 @@ Located in `/Data/Entities/`:
 - [x] TenantId on all child tables
 - [x] Indexes on TenantId + timestamps
 - [x] Connection string configuration
+
+### ISSUE-06 (Library & List Management)
+- [x] Library and list DTO models created
+- [x] SharePointService methods implemented for libraries and lists
+- [x] GET /clients/{id}/libraries endpoint
+- [x] POST /clients/{id}/libraries endpoint
+- [x] GET /clients/{id}/lists endpoint
+- [x] POST /clients/{id}/lists endpoint
+- [x] Tenant isolation enforced for all endpoints
+- [x] Audit logging for library and list creation
+- [x] API builds successfully
 
 ## Security Considerations
 

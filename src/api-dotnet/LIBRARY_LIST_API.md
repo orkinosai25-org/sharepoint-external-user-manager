@@ -220,6 +220,19 @@ The endpoints use Microsoft Graph API to interact with SharePoint:
 - **Document Libraries:** Created using the `/sites/{siteId}/lists` endpoint with `template: 'documentLibrary'`
 - **Lists:** Created using the `/sites/{siteId}/lists` endpoint with the specified template type
 
+### Implementation Status
+
+✅ **TypeScript Azure Functions** - Located in `/src/api-dotnet/src/functions/clients/`
+  - `getClientLibraries.ts`
+  - `createClientLibrary.ts`
+  - `getClientLists.ts`
+  - `createClientList.ts`
+
+✅ **C# ASP.NET Core Web API** - Located in `/src/api-dotnet/WebApi/SharePointExternalUserManager.Api/`
+  - `ClientsController.cs` - Contains all library/list endpoints
+  - `SharePointService.cs` - Microsoft Graph integration for library/list operations
+  - Models in `/src/api-dotnet/src/Models/Libraries/` and `/src/api-dotnet/src/Models/Lists/`
+
 ### Mock Mode
 
 When Graph integration is disabled (development/testing), the service returns mock data:
