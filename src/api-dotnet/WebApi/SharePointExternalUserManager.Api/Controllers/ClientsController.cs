@@ -7,6 +7,8 @@ using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
 using SharePointExternalUserManager.Functions.Models.Clients;
 using SharePointExternalUserManager.Functions.Models.ExternalUsers;
+using SharePointExternalUserManager.Functions.Models.Libraries;
+using SharePointExternalUserManager.Functions.Models.Lists;
 
 namespace SharePointExternalUserManager.Api.Controllers;
 
@@ -538,5 +540,286 @@ public class ClientsController : ControllerBase
         {
             message = $"External user {email} removed successfully"
         }));
+    }
+
+    /// <summary>
+    /// Get all document libraries for a client site
+    /// </summary>
+    [HttpGet("{id}/libraries")]
+    public async Task<IActionResult> GetLibraries(int id)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+
+        if (string.IsNullOrEmpty(tenantIdClaim))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing tenant claim"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        // Get libraries from SharePoint
+        var libraries = await _sharePointService.GetLibrariesAsync(client.SharePointSiteId);
+
+        _logger.LogInformation(
+            "Retrieved {Count} libraries for client {ClientId}",
+            libraries.Count,
+            client.Id);
+
+        return Ok(ApiResponse<List<LibraryResponse>>.SuccessResponse(libraries));
+    }
+
+    /// <summary>
+    /// Create a new document library in a client site
+    /// </summary>
+    [HttpPost("{id}/libraries")]
+    public async Task<IActionResult> CreateLibrary(int id, [FromBody] CreateLibraryRequest request)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+        var userId = User.FindFirst("oid")?.Value;
+        var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        if (string.IsNullOrEmpty(tenantIdClaim) || string.IsNullOrEmpty(userId))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing authentication claims"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        if (client.ProvisioningStatus != "Provisioned")
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_ACTIVE",
+                "Client site is not in an active state"));
+        }
+
+        // Create the library
+        try
+        {
+            var library = await _sharePointService.CreateLibraryAsync(
+                client.SharePointSiteId,
+                request.Name,
+                request.Description);
+
+            _logger.LogInformation(
+                "Successfully created library '{LibraryName}' for client {ClientId}",
+                request.Name,
+                client.Id);
+
+            // Log the library creation
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                userId,
+                userEmail,
+                "LIBRARY_CREATED",
+                "Client",
+                client.Id.ToString(),
+                $"Created library '{request.Name}'",
+                ipAddress,
+                correlationId,
+                "Success");
+
+            return Ok(ApiResponse<LibraryResponse>.SuccessResponse(library));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to create library '{LibraryName}' for client {ClientId}",
+                request.Name,
+                client.Id);
+
+            // Log failure
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                userId,
+                userEmail,
+                "LIBRARY_CREATE_FAILED",
+                "Client",
+                client.Id.ToString(),
+                $"Failed to create library '{request.Name}': {ex.Message}",
+                ipAddress,
+                correlationId,
+                "Failed");
+
+            return StatusCode(500, ApiResponse<object>.ErrorResponse(
+                "CREATE_FAILED",
+                ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Get all lists for a client site
+    /// </summary>
+    [HttpGet("{id}/lists")]
+    public async Task<IActionResult> GetLists(int id)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+
+        if (string.IsNullOrEmpty(tenantIdClaim))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing tenant claim"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        // Get lists from SharePoint
+        var lists = await _sharePointService.GetListsAsync(client.SharePointSiteId);
+
+        _logger.LogInformation(
+            "Retrieved {Count} lists for client {ClientId}",
+            lists.Count,
+            client.Id);
+
+        return Ok(ApiResponse<List<ListResponse>>.SuccessResponse(lists));
+    }
+
+    /// <summary>
+    /// Create a new list in a client site
+    /// </summary>
+    [HttpPost("{id}/lists")]
+    public async Task<IActionResult> CreateList(int id, [FromBody] CreateListRequest request)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        var tenantIdClaim = User.FindFirst("tid")?.Value;
+        var userId = User.FindFirst("oid")?.Value;
+        var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        if (string.IsNullOrEmpty(tenantIdClaim) || string.IsNullOrEmpty(userId))
+            return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing authentication claims"));
+
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+        if (tenant == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
+
+        // Get the client and verify tenant ownership
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenant.Id);
+
+        if (client == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("CLIENT_NOT_FOUND", "Client not found"));
+
+        if (string.IsNullOrEmpty(client.SharePointSiteId))
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_PROVISIONED",
+                "Client site has not been provisioned yet"));
+        }
+
+        if (client.ProvisioningStatus != "Provisioned")
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(
+                "SITE_NOT_ACTIVE",
+                "Client site is not in an active state"));
+        }
+
+        // Create the list
+        try
+        {
+            var list = await _sharePointService.CreateListAsync(
+                client.SharePointSiteId,
+                request.Name,
+                request.Description,
+                request.Template);
+
+            _logger.LogInformation(
+                "Successfully created list '{ListName}' for client {ClientId}",
+                request.Name,
+                client.Id);
+
+            // Log the list creation
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                userId,
+                userEmail,
+                "LIST_CREATED",
+                "Client",
+                client.Id.ToString(),
+                $"Created list '{request.Name}' with template '{request.Template ?? "genericList"}'",
+                ipAddress,
+                correlationId,
+                "Success");
+
+            return Ok(ApiResponse<ListResponse>.SuccessResponse(list));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to create list '{ListName}' for client {ClientId}",
+                request.Name,
+                client.Id);
+
+            // Log failure
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                userId,
+                userEmail,
+                "LIST_CREATE_FAILED",
+                "Client",
+                client.Id.ToString(),
+                $"Failed to create list '{request.Name}': {ex.Message}",
+                ipAddress,
+                correlationId,
+                "Failed");
+
+            return StatusCode(500, ApiResponse<object>.ErrorResponse(
+                "CREATE_FAILED",
+                ex.Message));
+        }
     }
 }
