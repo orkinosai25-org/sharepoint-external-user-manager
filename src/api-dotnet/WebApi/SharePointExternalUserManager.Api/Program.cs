@@ -24,6 +24,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddScoped<ISharePointService, SharePointService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
+builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
