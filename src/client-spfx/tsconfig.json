@@ -33,7 +33,9 @@
     "jsx": "react"
   },
   "include": [
-    "src/**/*"
+    "webparts/**/*",
+    "shared/**/*",
+    "types.d.ts"
   ],
   "exclude": [
     "node_modules",
