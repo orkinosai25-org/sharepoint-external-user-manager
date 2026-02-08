@@ -26,7 +26,10 @@ param sqlAdminPassword string
 // Variables
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var functionAppName = '${appName}-func-${environment}-${uniqueSuffix}'
+var apiAppName = '${appName}-api-${environment}-${uniqueSuffix}'
+var portalAppName = '${appName}-portal-${environment}-${uniqueSuffix}'
 var appServicePlanName = '${appName}-plan-${environment}'
+var apiAppServicePlanName = '${appName}-api-plan-${environment}'
 var storageAccountName = '${appName}st${environment}${take(uniqueSuffix, 6)}'
 var appInsightsName = '${appName}-ai-${environment}'
 var keyVaultName = '${appName}-kv-${environment}-${take(uniqueSuffix, 6)}'
@@ -58,7 +61,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
-// App Service Plan (Consumption)
+// App Service Plan (Consumption) for Functions
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: appServicePlanName
   location: location
@@ -67,6 +70,20 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
     tier: 'Dynamic'
   }
   properties: {}
+}
+
+// App Service Plan for API and Portal
+resource apiAppServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+  name: apiAppServicePlanName
+  location: location
+  sku: {
+    name: environment == 'prod' ? 'S1' : 'B1'
+    tier: environment == 'prod' ? 'Standard' : 'Basic'
+  }
+  kind: 'linux'
+  properties: {
+    reserved: true
+  }
 }
 
 // Application Insights
@@ -302,7 +319,89 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   }
 }
 
-// Grant Function App access to Key Vault
+// API App Service
+resource apiApp 'Microsoft.Web/sites@2023-01-01' = {
+  name: apiAppName
+  location: location
+  kind: 'app,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: apiAppServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'DOTNETCORE|8.0'
+      appSettings: [
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
+        }
+        {
+          name: 'KeyVaultUri'
+          value: keyVault.properties.vaultUri
+        }
+        {
+          name: 'SqlServer__MasterConnection'
+          value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=master-db;Authentication=Active Directory Default;Encrypt=True;'
+        }
+        {
+          name: 'CosmosDb__Endpoint'
+          value: cosmosDbAccount.properties.documentEndpoint
+        }
+        {
+          name: 'CosmosDb__DatabaseName'
+          value: 'SharedMetadata'
+        }
+      ]
+      ftpsState: 'Disabled'
+      minTlsVersion: '1.2'
+      cors: {
+        allowedOrigins: [
+          'https://portal.azure.com'
+          'https://*.sharepoint.com'
+          'https://${portalAppName}.azurewebsites.net'
+        ]
+        supportCredentials: true
+      }
+    }
+    httpsOnly: true
+  }
+}
+
+// Blazor Portal App Service
+resource portalApp 'Microsoft.Web/sites@2023-01-01' = {
+  name: portalAppName
+  location: location
+  kind: 'app,linux'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: apiAppServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'DOTNETCORE|8.0'
+      appSettings: [
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
+        }
+        {
+          name: 'KeyVaultUri'
+          value: keyVault.properties.vaultUri
+        }
+        {
+          name: 'ApiBaseUrl'
+          value: 'https://${apiApp.properties.defaultHostName}'
+        }
+      ]
+      ftpsState: 'Disabled'
+      minTlsVersion: '1.2'
+    }
+    httpsOnly: true
+  }
+}
+
+// Grant Apps access to Key Vault
 resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2023-07-01' = {
   parent: keyVault
   name: 'add'
@@ -318,6 +417,26 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2023-07-
           ]
         }
       }
+      {
+        tenantId: subscription().tenantId
+        objectId: apiApp.identity.principalId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+        }
+      }
+      {
+        tenantId: subscription().tenantId
+        objectId: portalApp.identity.principalId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+        }
+      }
     ]
   }
 }
@@ -325,7 +444,12 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2023-07-
 // Outputs
 output functionAppName string = functionApp.name
 output functionAppUrl string = 'https://${functionApp.properties.defaultHostName}'
+output apiAppName string = apiApp.name
+output apiAppUrl string = 'https://${apiApp.properties.defaultHostName}'
+output portalAppName string = portalApp.name
+output portalAppUrl string = 'https://${portalApp.properties.defaultHostName}'
 output keyVaultName string = keyVault.name
 output sqlServerName string = sqlServer.name
 output cosmosDbAccountName string = cosmosDbAccount.name
 output appInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey
+output appInsightsConnectionString string = appInsights.properties.ConnectionString
