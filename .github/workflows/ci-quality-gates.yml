@@ -1,0 +1,381 @@
+# CI Quality Gates Workflow
+# 
+# This workflow enforces quality standards on all pull requests to main branch
+# Ensures code builds successfully, tests pass, and security checks complete
+# before allowing merge.
+#
+# Triggers on:
+# - Pull requests to main branch
+# - Push to main branch (for verification)
+#
+# Jobs:
+# 1. SPFx Client - Build & Lint
+# 2. Azure Functions API - Build, Lint & Test
+# 3. .NET API - Build & Test
+# 4. .NET Blazor Portal - Build & Test
+# 5. Security Scan - Secret scanning & dependency check
+
+name: CI Quality Gates
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Cancel in-progress runs when a new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimum required permissions for workflow
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  #############################################################################
+  # Job 1: Build and Lint SPFx Client
+  #############################################################################
+  spfx-build-lint:
+    name: SPFx Client - Build & Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.19.0'
+        cache: 'npm'
+        cache-dependency-path: 'src/client-spfx/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: src/client-spfx
+      run: npm ci --no-optional --legacy-peer-deps
+      
+    - name: Run ESLint
+      working-directory: src/client-spfx
+      run: |
+        echo "Running ESLint..."
+        if npm run lint --if-present; then
+          echo "✅ Linting passed"
+        else
+          echo "❌ Linting failed"
+          exit 1
+        fi
+        
+    - name: Build SPFx solution
+      working-directory: src/client-spfx
+      run: npm run build
+        
+    - name: Package SPFx solution
+      working-directory: src/client-spfx
+      run: npm run package-solution
+        
+    - name: Verify package created
+      working-directory: src/client-spfx
+      run: |
+        if ls sharepoint/solution/*.sppkg 1> /dev/null 2>&1; then
+          echo "✅ SPFx package created successfully"
+          ls -lh sharepoint/solution/*.sppkg
+        else
+          echo "❌ SPFx package not found"
+          exit 1
+        fi
+
+  #############################################################################
+  # Job 2: Build, Lint and Test Azure Functions API (Node.js/TypeScript)
+  #############################################################################
+  azure-functions-build-test:
+    name: Azure Functions API - Build, Lint & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: 'src/api-dotnet/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: src/api-dotnet
+      run: npm ci
+      
+    - name: Run ESLint
+      working-directory: src/api-dotnet
+      run: |
+        echo "Running ESLint..."
+        if npm run lint --if-present; then
+          echo "✅ Linting passed"
+        else
+          echo "❌ Linting failed"
+          exit 1
+        fi
+        
+    - name: Build TypeScript
+      working-directory: src/api-dotnet
+      run: npm run build
+      
+    - name: Run tests
+      working-directory: src/api-dotnet
+      run: |
+        echo "Running Jest tests..."
+        if npm test --if-present -- --passWithNoTests; then
+          echo "✅ Tests passed"
+        else
+          echo "❌ Tests failed"
+          exit 1
+        fi
+
+  #############################################################################
+  # Job 3: Build and Test .NET API
+  #############################################################################
+  dotnet-api-build-test:
+    name: .NET API - Build & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Display .NET version
+      run: dotnet --version
+      
+    - name: Restore dependencies
+      working-directory: src/api-dotnet/WebApi/SharePointExternalUserManager.Api
+      run: dotnet restore
+      
+    - name: Build .NET API
+      working-directory: src/api-dotnet/WebApi/SharePointExternalUserManager.Api
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Run tests
+      working-directory: src/api-dotnet/WebApi/SharePointExternalUserManager.Api
+      run: |
+        echo "Running .NET tests..."
+        if [ -d "../../../tests" ] || [ -d "../../../../tests" ]; then
+          dotnet test --no-build --verbosity normal --configuration Release
+        else
+          echo "ℹ️  No .NET tests found - skipping (tests will be added in future issues)"
+        fi
+      continue-on-error: false
+
+  #############################################################################
+  # Job 4: Build and Test Blazor Portal
+  #############################################################################
+  blazor-portal-build-test:
+    name: Blazor Portal - Build & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Display .NET version
+      run: dotnet --version
+      
+    - name: Restore dependencies
+      working-directory: src/portal-blazor/SharePointExternalUserManager.Portal
+      run: dotnet restore
+      
+    - name: Build Blazor Portal
+      working-directory: src/portal-blazor/SharePointExternalUserManager.Portal
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Run tests
+      working-directory: src/portal-blazor/SharePointExternalUserManager.Portal
+      run: |
+        echo "Running Blazor tests..."
+        if [ -d "../../../tests" ] || [ -d "../../../../tests" ]; then
+          dotnet test --no-build --verbosity normal --configuration Release
+        else
+          echo "ℹ️  No Blazor tests found - skipping (tests will be added in future issues)"
+        fi
+      continue-on-error: false
+
+  #############################################################################
+  # Job 5: Security Scanning
+  #############################################################################
+  security-scan:
+    name: Security Scan - Secrets & Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better secret detection
+      
+    # Check for accidentally committed secrets
+    - name: Secret Scanning with TruffleHog
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --only-verified
+      continue-on-error: true  # Don't block on unverified findings
+      
+    # Check for dependency vulnerabilities in Node.js projects
+    - name: Setup Node.js for dependency check
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        
+    - name: Audit SPFx dependencies
+      working-directory: src/client-spfx
+      run: |
+        echo "Checking SPFx dependencies for vulnerabilities..."
+        npm audit --audit-level=moderate || echo "⚠️  Vulnerabilities found - review before merging"
+      continue-on-error: true  # Don't block on moderate vulnerabilities
+      
+    - name: Audit Azure Functions dependencies
+      working-directory: src/api-dotnet
+      run: |
+        echo "Checking Azure Functions dependencies for vulnerabilities..."
+        npm audit --audit-level=moderate || echo "⚠️  Vulnerabilities found - review before merging"
+      continue-on-error: true  # Don't block on moderate vulnerabilities
+      
+    # Check for dependency vulnerabilities in .NET projects
+    - name: Setup .NET for dependency check
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: .NET Vulnerability Scan
+      run: |
+        echo "Checking .NET dependencies for vulnerabilities..."
+        
+        # Scan .NET API
+        if [ -d "src/api-dotnet/WebApi/SharePointExternalUserManager.Api" ]; then
+          echo "Scanning .NET API..."
+          dotnet list src/api-dotnet/WebApi/SharePointExternalUserManager.Api package --vulnerable --include-transitive || echo "⚠️  Vulnerabilities found - review before merging"
+        fi
+        
+        # Scan Blazor Portal
+        if [ -d "src/portal-blazor/SharePointExternalUserManager.Portal" ]; then
+          echo "Scanning Blazor Portal..."
+          dotnet list src/portal-blazor/SharePointExternalUserManager.Portal package --vulnerable --include-transitive || echo "⚠️  Vulnerabilities found - review before merging"
+        fi
+      continue-on-error: true  # Don't block on vulnerabilities
+
+  #############################################################################
+  # Job 6: Quality Summary
+  #############################################################################
+  quality-summary:
+    name: Quality Gates Summary
+    runs-on: ubuntu-latest
+    needs: [spfx-build-lint, azure-functions-build-test, dotnet-api-build-test, blazor-portal-build-test, security-scan]
+    if: always()
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Generate Summary
+      run: |
+        echo "## 🛡️ CI Quality Gates Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Pull Request**: #${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch**: ${{ github.head_ref || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by**: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Quality Checks" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check job statuses
+        SPFX_STATUS="${{ needs.spfx-build-lint.result }}"
+        FUNCTIONS_STATUS="${{ needs.azure-functions-build-test.result }}"
+        API_STATUS="${{ needs.dotnet-api-build-test.result }}"
+        PORTAL_STATUS="${{ needs.blazor-portal-build-test.result }}"
+        SECURITY_STATUS="${{ needs.security-scan.result }}"
+        
+        echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        # SPFx
+        if [ "$SPFX_STATUS" = "success" ]; then
+          echo "| SPFx Client | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| SPFx Client | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Azure Functions
+        if [ "$FUNCTIONS_STATUS" = "success" ]; then
+          echo "| Azure Functions API | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Azure Functions API | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # .NET API
+        if [ "$API_STATUS" = "success" ]; then
+          echo "| .NET API | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| .NET API | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Blazor Portal
+        if [ "$PORTAL_STATUS" = "success" ]; then
+          echo "| Blazor Portal | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Blazor Portal | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Security
+        if [ "$SECURITY_STATUS" = "success" ]; then
+          echo "| Security Scan | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Security Scan | ⚠️  Review Needed |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Overall status
+        if [ "$SPFX_STATUS" = "success" ] && [ "$FUNCTIONS_STATUS" = "success" ] && [ "$API_STATUS" = "success" ] && [ "$PORTAL_STATUS" = "success" ]; then
+          echo "### ✅ All quality gates passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This pull request meets all quality standards and is ready for review." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ❌ Quality gates failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please fix the failing checks before merging." >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+    
+    - name: Check all required jobs passed
+      if: |
+        needs.spfx-build-lint.result != 'success' ||
+        needs.azure-functions-build-test.result != 'success' ||
+        needs.dotnet-api-build-test.result != 'success' ||
+        needs.blazor-portal-build-test.result != 'success'
+      run: |
+        echo "❌ One or more quality gates failed"
+        exit 1
