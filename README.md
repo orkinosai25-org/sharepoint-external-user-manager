@@ -189,9 +189,12 @@ cd src/api-dotnet && npm test
 - **Tenant Isolation**: Every database table includes `TenantId` for complete data separation
 - **Authentication**: Azure AD OAuth 2.0 with JWT token validation
 - **Authorization**: Role-based access control (RBAC) with Admin/User roles
-- **Secrets Management**: Azure Key Vault for production secrets
+- **Secrets Management**: Azure Key Vault for production secrets (never commit secrets to repo)
 - **Audit Trail**: All administrative actions are logged
 - **Rate Limiting**: Per-tenant throttling to prevent abuse
+- **Quality Gates**: Automated secret scanning and dependency vulnerability checks
+
+**Security Best Practices**: See [`docs/SECURITY_NOTES.md`](./docs/SECURITY_NOTES.md) for detailed security guidelines.
 
 ## 📚 Documentation
 
@@ -204,6 +207,12 @@ cd src/api-dotnet && npm test
 - **[Deployment Guide](./docs/DEPLOYMENT.md)**: Complete deployment instructions
 - **[Infrastructure Guide](./infra/bicep/README.md)**: Azure Bicep templates and setup
 - **[ISSUE-10 Quick Reference](./ISSUE_10_QUICK_REFERENCE.md)**: Deployment commands
+- **[Release Checklist](./docs/RELEASE_CHECKLIST.md)**: Pre-release verification steps
+
+### Quality & Security
+- **[Branch Protection](./docs/BRANCH_PROTECTION.md)**: GitHub branch protection configuration
+- **[Security Notes](./docs/SECURITY_NOTES.md)**: Security best practices and requirements
+- **[Workflows README](./.github/workflows/README.md)**: CI/CD pipeline documentation
 
 ### User Guides
 - **[Solicitor Guide](./SOLICITOR_GUIDE.md)**: Non-technical user guide
@@ -272,19 +281,34 @@ For detailed deployment instructions, see:
 ### CI/CD Pipelines
 
 GitHub Actions workflows automatically:
+- ✅ **Quality gates on PRs** - All builds, tests, and security checks must pass
 - Build and test on pull requests
 - Deploy to dev environment on merge to `develop`
 - Deploy to production on merge to `main`
 
-**Workflows:**
+**Quality Gate Workflows** (Required for Merge):
+- `ci-quality-gates.yml` - **Comprehensive CI checks** (SPFx, API, Portal, Security)
+  - Blocks merge if builds fail
+  - Blocks merge if tests fail
+  - Runs secret scanning and dependency checks
+
+**Build Workflows:**
 - `build-api.yml` - Builds ASP.NET Core API
 - `build-blazor.yml` - Builds Blazor Portal
 - `test-build.yml` - Builds SPFx Client
+
+**Deployment Workflows:**
 - `deploy-dev.yml` - Deploys to dev environment
 - `deploy-backend.yml` - Deploys Azure Functions
 - `deploy-spfx.yml` - Deploys SPFx to SharePoint
 
 See [`.github/workflows/README.md`](./.github/workflows/README.md) for details.
+
+**Branch Protection:**
+- Main branch is protected with required status checks
+- All CI quality gates must pass before merge
+- At least 1 code review approval required
+- See [`docs/BRANCH_PROTECTION.md`](./docs/BRANCH_PROTECTION.md) for configuration
 
 ### Manual Deployment
 
@@ -307,19 +331,19 @@ See detailed deployment guide: [`deployment/README.md`](./deployment/README.md)
 ## 📋 Roadmap
 
 ### Phase 1: Foundation (Current)
-- ✅ **ISSUE-01**: Repository restructure ← **YOU ARE HERE**
-- 🔄 **ISSUE-02**: ASP.NET Core API skeleton
-- 🔄 **ISSUE-03**: Azure SQL + EF Core migrations
-- 🔄 **ISSUE-04**: Client space provisioning
-- 🔄 **ISSUE-05**: External user management backend
-- 🔄 **ISSUE-06**: Library & list management backend
-- 🔄 **ISSUE-07**: Stripe billing integration
+- ✅ **ISSUE-01**: Repository restructure
+- ✅ **ISSUE-02**: ASP.NET Core API skeleton
+- ✅ **ISSUE-03**: Azure SQL + EF Core migrations
+- ✅ **ISSUE-04**: Client space provisioning
+- ✅ **ISSUE-05**: External user management backend
+- ✅ **ISSUE-06**: Library & list management backend
+- ✅ **ISSUE-07**: Stripe billing integration
 
 ### Phase 2: Portal & Integration
-- 🔄 **ISSUE-08**: Blazor SaaS portal
-- 🔄 **ISSUE-09**: SPFx client refactor (thin SaaS client)
-- 🔄 **ISSUE-10**: Azure deployment (Bicep + CI/CD)
-- 🔄 **ISSUE-11**: Quality gates & merge protection
+- ✅ **ISSUE-08**: Blazor SaaS portal
+- ✅ **ISSUE-09**: SPFx client refactor (thin SaaS client)
+- ✅ **ISSUE-10**: Azure deployment (Bicep + CI/CD)
+- ✅ **ISSUE-11**: Quality gates & merge protection ← **JUST COMPLETED**
 
 ### Phase 3: Advanced Features (Post-MVP)
 - Microsoft Commercial Marketplace integration
