@@ -375,7 +375,7 @@ export const ManageUsersModal: React.FC<IManageUsersModalProps> = ({
     },
     {
       key: 'permissions',
-      name: 'Permissions',
+      name: 'Access Level',
       fieldName: 'permissions',
       minWidth: 120,
       maxWidth: 150,
@@ -615,7 +615,7 @@ export const ManageUsersModal: React.FC<IManageUsersModalProps> = ({
                         {!addUserForm.isBulkMode && (
                           <Stack.Item>
                             <Dropdown
-                              label="Permission Level *"
+                              label="Access Level *"
                               options={permissionOptions}
                               selectedKey={addUserForm.permission}
                               onChange={handlePermissionChange}
@@ -630,7 +630,7 @@ export const ManageUsersModal: React.FC<IManageUsersModalProps> = ({
                     {addUserForm.isBulkMode && (
                       <Stack.Item>
                         <Dropdown
-                          label="Permission Level for all users *"
+                          label="Access Level for all users *"
                           options={permissionOptions}
                           selectedKey={addUserForm.permission}
                           onChange={handlePermissionChange}

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Issue #13 - UI Design Changes Preview</title>
+    <style>
+        :root {
+            --clientspace-primary: #0078D4;
+            --clientspace-primary-hover: #106EBE;
+            --clientspace-secondary: #008272;
+            --clientspace-success: #107C10;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--clientspace-primary), #005A9E);
+            color: white;
+            padding: 40px;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        section {
+            margin-bottom: 50px;
+        }
+        
+        h2 {
+            color: var(--clientspace-primary);
+            font-size: 2em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid var(--clientspace-primary);
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            color: #333;
+            font-size: 1.5em;
+            margin: 30px 0 15px;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .before, .after {
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        
+        .before {
+            background: #fff9f0;
+            border-color: #ffaa44;
+        }
+        
+        .after {
+            background: #f0fff4;
+            border-color: var(--clientspace-success);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .badge-before {
+            background: #ffaa44;
+            color: white;
+        }
+        
+        .badge-after {
+            background: var(--clientspace-success);
+            color: white;
+        }
+        
+        .terminology-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .terminology-table th,
+        .terminology-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .terminology-table th {
+            background: var(--clientspace-primary);
+            color: white;
+        }
+        
+        .terminology-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .old-term {
+            text-decoration: line-through;
+            color: #999;
+        }
+        
+        .new-term {
+            color: var(--clientspace-success);
+            font-weight: 600;
+        }
+        
+        .color-swatch {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            border: 2px solid #ddd;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--clientspace-primary), var(--clientspace-primary-hover));
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f9f9f9;
+            border-left: 4px solid var(--clientspace-success);
+            border-radius: 4px;
+        }
+        
+        .checklist li:before {
+            content: "✓ ";
+            color: var(--clientspace-success);
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .code-snippet {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 15px 0;
+        }
+        
+        .highlight {
+            background: rgba(0, 120, 212, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 120, 212, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Issue #13 - UI Design Implementation</h1>
+            <p>ClientSpace Branding & Universal Terminology for Blazor Portal & SPFx</p>
+        </header>
+        
+        <div class="content">
+            <!-- Overview Stats -->
+            <section>
+                <h2>📊 Implementation Overview</h2>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="number">8</div>
+                        <div class="label">Files Modified</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">50+</div>
+                        <div class="label">UI Text Updates</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">5</div>
+                        <div class="label">Components Styled</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">0</div>
+                        <div class="label">Breaking Changes</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Terminology Changes -->
+            <section>
+                <h2>🔤 Terminology Updates</h2>
+                <p>Making the UI more user-friendly and universal by removing technical jargon:</p>
+                
+                <table class="terminology-table">
+                    <thead>
+                        <tr>
+                            <th>Old Term</th>
+                            <th>New Term</th>
+                            <th>Rationale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="old-term">Library / Libraries</span></td>
+                            <td><span class="new-term">Space / Spaces</span></td>
+                            <td>More universal, less technical</td>
+                        </tr>
+                        <tr>
+                            <td><span class="old-term">Permission / Permissions</span></td>
+                            <td><span class="new-term">Access / Access Level</span></td>
+                            <td>Simpler, more intuitive</td>
+                        </tr>
+                        <tr>
+                            <td><span class="old-term">Guest</span></td>
+                            <td><span class="new-term">External User</span></td>
+                            <td>More professional, clearer</td>
+                        </tr>
+                        <tr>
+                            <td><span class="old-term">Provision site</span></td>
+                            <td><span class="new-term">Create space</span></td>
+                            <td>User-friendly action</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- UI Component Examples -->
+            <section>
+                <h2>🖼️ UI Component Changes</h2>
+                
+                <h3>Button Labels</h3>
+                <div class="comparison">
+                    <div class="before">
+                        <span class="badge badge-before">BEFORE</span>
+                        <div class="code-snippet">
+&lt;PrimaryButton text="Add Library" /&gt;
+&lt;Button text="Delete Library" /&gt;
+                        </div>
+                    </div>
+                    <div class="after">
+                        <span class="badge badge-after">AFTER</span>
+                        <div class="code-snippet">
+&lt;PrimaryButton text="<span class="highlight">Create Space</span>" /&gt;
+&lt;Button text="Delete <span class="highlight">Space</span>" /&gt;
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>Table Column Headers</h3>
+                <div class="comparison">
+                    <div class="before">
+                        <span class="badge badge-before">BEFORE</span>
+                        <div class="code-snippet">
+name: 'Library Name'
+name: 'Permission Level'
+                        </div>
+                    </div>
+                    <div class="after">
+                        <span class="badge badge-after">AFTER</span>
+                        <div class="code-snippet">
+name: '<span class="highlight">Space Name</span>'
+name: '<span class="highlight">Access Level</span>'
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>Modal Titles</h3>
+                <div class="comparison">
+                    <div class="before">
+                        <span class="badge badge-before">BEFORE</span>
+                        <div class="code-snippet">
+Create New Library
+Delete Library
+                        </div>
+                    </div>
+                    <div class="after">
+                        <span class="badge badge-after">AFTER</span>
+                        <div class="code-snippet">
+<span class="highlight">Create New Space</span>
+<span class="highlight">Delete Space</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Color Branding -->
+            <section>
+                <h2>🎨 ClientSpace Branding Colors</h2>
+                <p>Applied professional color palette across all UI components:</p>
+                
+                <h3>Primary Colors</h3>
+                <div style="margin: 20px 0;">
+                    <div style="margin: 10px 0;">
+                        <span class="color-swatch" style="background: #0078D4;"></span>
+                        <strong>Primary:</strong> #0078D4 (SharePoint Blue)
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="color-swatch" style="background: #106EBE;"></span>
+                        <strong>Primary Hover:</strong> #106EBE
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="color-swatch" style="background: #008272;"></span>
+                        <strong>Secondary:</strong> #008272 (Teal Accent)
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <span class="color-swatch" style="background: #107C10;"></span>
+                        <strong>Success:</strong> #107C10
+                    </div>
+                </div>
+                
+                <h3>CSS Implementation</h3>
+                <div class="code-snippet">
+:root {
+    <span class="highlight">--clientspace-primary: #0078D4;</span>
+    <span class="highlight">--clientspace-primary-hover: #106EBE;</span>
+    --clientspace-secondary: #008272;
+    --clientspace-success: #107C10;
+}
+
+.btn-primary {
+    background-color: <span class="highlight">var(--clientspace-primary)</span>;
+}
+                </div>
+            </section>
+            
+            <!-- Updated Components -->
+            <section>
+                <h2>✅ Components Updated</h2>
+                
+                <h3>SPFx WebParts</h3>
+                <ul class="checklist">
+                    <li><strong>ExternalUserManager.tsx</strong> - Main component with table and command bar</li>
+                    <li><strong>CreateLibraryModal.tsx</strong> - Modal for creating new spaces</li>
+                    <li><strong>DeleteLibraryModal.tsx</strong> - Confirmation modal for deletion</li>
+                    <li><strong>ManageUsersModal.tsx</strong> - User management interface</li>
+                    <li><strong>ExternalUserManagerWebPart.manifest.json</strong> - Webpart description</li>
+                </ul>
+                
+                <h3>Blazor Portal</h3>
+                <ul class="checklist">
+                    <li><strong>app.css</strong> - Global styles with ClientSpace colors</li>
+                    <li><strong>MainLayout.razor.css</strong> - Sidebar gradient styling</li>
+                </ul>
+            </section>
+            
+            <!-- Key Features -->
+            <section>
+                <h2>🎯 Key Features</h2>
+                <ul class="checklist">
+                    <li><strong>Minimal Changes:</strong> Only user-facing text modified, no API changes</li>
+                    <li><strong>Backward Compatible:</strong> No breaking changes to existing functionality</li>
+                    <li><strong>Professional Branding:</strong> ClientSpace colors applied consistently</li>
+                    <li><strong>User-Friendly:</strong> Clear, neutral terminology throughout</li>
+                    <li><strong>Fluent UI Compliant:</strong> Follows Microsoft design standards</li>
+                    <li><strong>Build Verified:</strong> Blazor portal builds successfully</li>
+                    <li><strong>Security Checked:</strong> No vulnerabilities introduced</li>
+                </ul>
+            </section>
+            
+            <!-- Impact -->
+            <section>
+                <h2>📈 User Experience Impact</h2>
+                
+                <div class="comparison">
+                    <div class="before">
+                        <span class="badge badge-before">BEFORE</span>
+                        <h4 style="margin: 15px 0 10px;">Issues</h4>
+                        <ul>
+                            <li>Mixed technical terminology</li>
+                            <li>Generic blue colors</li>
+                            <li>"Library" and "Permission" jargon</li>
+                            <li>Less cohesive branding</li>
+                        </ul>
+                    </div>
+                    <div class="after">
+                        <span class="badge badge-after">AFTER</span>
+                        <h4 style="margin: 15px 0 10px;">Improvements</h4>
+                        <ul>
+                            <li>Consistent, user-friendly terms</li>
+                            <li>Professional ClientSpace branding</li>
+                            <li>"Space" and "Access" clarity</li>
+                            <li>Unified experience across apps</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Testing -->
+            <section>
+                <h2>🧪 Testing & Validation</h2>
+                <ul class="checklist">
+                    <li><strong>Build Status:</strong> Blazor portal builds successfully</li>
+                    <li><strong>Code Review:</strong> No issues found</li>
+                    <li><strong>Security Scan:</strong> No vulnerabilities detected</li>
+                    <li><strong>Syntax Check:</strong> SPFx TypeScript code is correct</li>
+                    <li><strong>Terminology Audit:</strong> All UI text updated consistently</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

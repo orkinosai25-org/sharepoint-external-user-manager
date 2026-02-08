@@ -152,7 +152,7 @@ export const DeleteLibraryModal: React.FC<IDeleteLibraryModalProps> = ({
         <Stack tokens={{ childrenGap: 20 }}>
           <Stack.Item>
             <Text variant="xLarge" styles={{ root: { fontWeight: 'semibold', color: '#d13438' } }}>
-              Delete {isMultipleLibraries ? 'Libraries' : 'Library'}
+              Delete {isMultipleLibraries ? 'Spaces' : 'Space'}
             </Text>
             <Text variant="medium" styles={{ root: { color: '#666', marginTop: '8px' } }}>
               This action cannot be undone. All content and settings will be permanently deleted.
@@ -162,7 +162,7 @@ export const DeleteLibraryModal: React.FC<IDeleteLibraryModalProps> = ({
           {/* Libraries to be deleted */}
           <Stack.Item>
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 'semibold' } }}>
-              {isMultipleLibraries ? 'Libraries to be deleted:' : 'Library to be deleted:'}
+              {isMultipleLibraries ? 'Spaces to be deleted:' : 'Space to be deleted:'}
             </Text>
             {libraries.map(library => (
               <Stack 
@@ -199,8 +199,8 @@ export const DeleteLibraryModal: React.FC<IDeleteLibraryModalProps> = ({
             <Stack.Item>
               <MessageBar messageBarType={MessageBarType.warning}>
                 <strong>Warning:</strong> {totalExternalUsers} external user{totalExternalUsers !== 1 ? 's' : ''} 
-                {isMultipleLibraries ? ' have' : ' has'} access to {isMultipleLibraries ? 'these libraries' : 'this library'}. 
-                They will lose access when the {isMultipleLibraries ? 'libraries are' : 'library is'} deleted.
+                {isMultipleLibraries ? ' have' : ' has'} access to {isMultipleLibraries ? 'these spaces' : 'this space'}. 
+                They will lose access when the {isMultipleLibraries ? 'spaces are' : 'space is'} deleted.
               </MessageBar>
             </Stack.Item>
           )}
@@ -216,7 +216,7 @@ export const DeleteLibraryModal: React.FC<IDeleteLibraryModalProps> = ({
           {/* Confirmation checkboxes */}
           <Stack.Item>
             <Checkbox
-              label={`I understand that all content in ${isMultipleLibraries ? 'these libraries' : 'this library'} will be permanently deleted`}
+              label={`I understand that all content in ${isMultipleLibraries ? 'these spaces' : 'this space'} will be permanently deleted`}
               checked={acknowledgeDataLoss}
               onChange={(_, checked) => setAcknowledgeDataLoss(checked || false)}
               disabled={isDeleting}
@@ -243,7 +243,7 @@ export const DeleteLibraryModal: React.FC<IDeleteLibraryModalProps> = ({
           <Stack.Item>
             <Stack horizontal tokens={{ childrenGap: 10 }}>
               <PrimaryButton
-                text={isDeleting ? 'Deleting...' : `Delete ${isMultipleLibraries ? 'Libraries' : 'Library'}`}
+                text={isDeleting ? 'Deleting...' : `Delete ${isMultipleLibraries ? 'Spaces' : 'Space'}`}
                 onClick={handleDelete}
                 disabled={!canDelete}
                 iconProps={isDeleting ? undefined : { iconName: 'Delete' }}
@@ -271,7 +271,7 @@ export const DeleteLibraryModal: React.FC<IDeleteLibraryModalProps> = ({
           {isDeleting && Object.keys(deletionProgress).length > 0 && (
             <Stack.Item>
               <MessageBar messageBarType={MessageBarType.info}>
-                Deleting {libraries.length} librar{libraries.length !== 1 ? 'ies' : 'y'}...
+                Deleting {libraries.length} space{libraries.length !== 1 ? 's' : ''}...
                 <br />
                 Completed: {Object.keys(deletionProgress).filter(id => deletionProgress[id] === 'completed').length}
                 {Object.keys(deletionProgress).some(id => deletionProgress[id] === 'failed') && 

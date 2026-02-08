@@ -11,7 +11,7 @@
     "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
     "group": { "default": "Advanced" },
     "title": { "default": "External User Manager" },
-    "description": { "default": "Manage external users and libraries in SharePoint" },
+    "description": { "default": "Manage external users and spaces in SharePoint" },
     "officeFabricIconFontName": "People",
     "properties": {
       "description": "External User Manager"
