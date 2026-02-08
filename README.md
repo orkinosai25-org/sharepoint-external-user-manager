@@ -195,11 +195,22 @@ cd src/api-dotnet && npm test
 
 ## 📚 Documentation
 
+### Getting Started
+- **[README](./README.md)**: Quick start and overview (this file)
 - **[Architecture Overview](./ARCHITECTURE.md)**: Detailed system architecture
 - **[Developer Guide](./DEVELOPER_GUIDE.md)**: Development setup and guidelines
+
+### Deployment
+- **[Deployment Guide](./docs/DEPLOYMENT.md)**: Complete deployment instructions
+- **[Infrastructure Guide](./infra/bicep/README.md)**: Azure Bicep templates and setup
+- **[ISSUE-10 Quick Reference](./ISSUE_10_QUICK_REFERENCE.md)**: Deployment commands
+
+### User Guides
 - **[Solicitor Guide](./SOLICITOR_GUIDE.md)**: Non-technical user guide
 - **[Technical Documentation](./TECHNICAL_DOCUMENTATION.md)**: API specifications
-- **[SaaS Documentation](./docs/saas/)**: Complete SaaS architecture docs
+
+### SaaS Platform Documentation
+- **[SaaS Architecture](./docs/saas/)**: Complete SaaS architecture docs
   - [Architecture](./docs/saas/architecture.md)
   - [Data Model](./docs/saas/data-model.md)
   - [Security](./docs/saas/security.md)
@@ -238,12 +249,40 @@ cd src/api-dotnet && npm test
 
 ## 🚢 Deployment
 
+### Quick Deploy to Azure
+
+Deploy the complete SaaS platform to Azure with one command:
+
+```bash
+./deploy-dev.sh
+```
+
+This script will:
+1. Create Azure resource group
+2. Deploy infrastructure (Bicep)
+3. Build and deploy API
+4. Build and deploy Blazor Portal
+5. Build SPFx package
+
+For detailed deployment instructions, see:
+- **[Complete Deployment Guide](./docs/DEPLOYMENT.md)** - Step-by-step instructions
+- **[Infrastructure Guide](./infra/bicep/README.md)** - Bicep templates and Azure setup
+- **[Quick Reference](./ISSUE_10_QUICK_REFERENCE.md)** - Commands and configuration
+
 ### CI/CD Pipelines
 
 GitHub Actions workflows automatically:
 - Build and test on pull requests
 - Deploy to dev environment on merge to `develop`
 - Deploy to production on merge to `main`
+
+**Workflows:**
+- `build-api.yml` - Builds ASP.NET Core API
+- `build-blazor.yml` - Builds Blazor Portal
+- `test-build.yml` - Builds SPFx Client
+- `deploy-dev.yml` - Deploys to dev environment
+- `deploy-backend.yml` - Deploys Azure Functions
+- `deploy-spfx.yml` - Deploys SPFx to SharePoint
 
 See [`.github/workflows/README.md`](./.github/workflows/README.md) for details.
 
