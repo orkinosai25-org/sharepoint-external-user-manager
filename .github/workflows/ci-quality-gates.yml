@@ -29,6 +29,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimum required permissions for workflow
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   #############################################################################
   # Job 1: Build and Lint SPFx Client
@@ -36,6 +41,8 @@ jobs:
   spfx-build-lint:
     name: SPFx Client - Build & Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
     - name: Checkout code
@@ -88,6 +95,8 @@ jobs:
   azure-functions-build-test:
     name: Azure Functions API - Build, Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
     - name: Checkout code
@@ -136,6 +145,8 @@ jobs:
   dotnet-api-build-test:
     name: .NET API - Build & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
     - name: Checkout code
@@ -174,6 +185,8 @@ jobs:
   blazor-portal-build-test:
     name: Blazor Portal - Build & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
     - name: Checkout code
@@ -212,6 +225,8 @@ jobs:
   security-scan:
     name: Security Scan - Secrets & Dependencies
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
     - name: Checkout code
@@ -280,6 +295,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [spfx-build-lint, azure-functions-build-test, dotnet-api-build-test, blazor-portal-build-test, security-scan]
     if: always()
+    permissions:
+      contents: read
     
     steps:
     - name: Generate Summary
