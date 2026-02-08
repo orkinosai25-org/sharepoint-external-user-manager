@@ -1,19 +1,40 @@
+/* ClientSpace Branding - Color Palette */
+:root {
+    --clientspace-primary: #0078D4;
+    --clientspace-primary-hover: #106EBE;
+    --clientspace-primary-pressed: #005A9E;
+    --clientspace-secondary: #008272;
+    --clientspace-success: #107C10;
+    --clientspace-error: #D13438;
+    --clientspace-warning: #F7630C;
+    --clientspace-info: #0078D4;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--clientspace-primary);
+}
+
+a:hover {
+    color: var(--clientspace-primary-hover);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--clientspace-primary);
+    border-color: var(--clientspace-primary-pressed);
+}
+
+.btn-primary:hover {
+    background-color: var(--clientspace-primary-hover);
+    border-color: var(--clientspace-primary-pressed);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--clientspace-primary);
 }
 
 .content {
@@ -25,15 +46,15 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid var(--clientspace-success);
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 1px solid var(--clientspace-error);
 }
 
 .validation-message {
-    color: #e50000;
+    color: var(--clientspace-error);
 }
 
 .blazor-error-boundary {
