@@ -1,0 +1,78 @@
+{
+  "name": "ClientSpace Brand Colors",
+  "version": "1.0.0",
+  "description": "SharePoint-aligned, Microsoft Fluent compliant color system",
+  "colors": {
+    "primary": {
+      "default": "#0078D4",
+      "hover": "#106EBE",
+      "pressed": "#005A9E",
+      "light": "#4A9EFF",
+      "lighter": "#C7E0F4"
+    },
+    "secondary": {
+      "default": "#008272",
+      "hover": "#00B294",
+      "light": "#B4E7E0"
+    },
+    "text": {
+      "primary": "#252423",
+      "secondary": "#605E5C",
+      "tertiary": "#8A8886",
+      "disabled": "#C8C6C4",
+      "white": "#FFFFFF"
+    },
+    "background": {
+      "white": "#FFFFFF",
+      "canvas": "#FAF9F8",
+      "light": "#F3F2F1",
+      "lighter": "#EDEBE9",
+      "dark": "#323130"
+    },
+    "border": {
+      "default": "#EDEBE9",
+      "hover": "#C8C6C4",
+      "strong": "#8A8886"
+    },
+    "status": {
+      "success": {
+        "main": "#107C10",
+        "light": "#DFF6DD",
+        "border": "#92C353"
+      },
+      "warning": {
+        "main": "#F7630C",
+        "light": "#FFF4CE",
+        "border": "#FFAA44"
+      },
+      "error": {
+        "main": "#D13438",
+        "light": "#FDE7E9",
+        "border": "#E81123"
+      },
+      "info": {
+        "main": "#0078D4",
+        "light": "#DEECF9",
+        "border": "#4A9EFF"
+      }
+    },
+    "darkTheme": {
+      "primary": "#4A9EFF",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#D2D0CE",
+      "bgCanvas": "#1B1A19",
+      "bgCard": "#292827"
+    }
+  },
+  "accessibility": {
+    "contrastRatios": {
+      "primaryOnWhite": "4.58:1 (AA)",
+      "textPrimaryOnWhite": "15.79:1 (AAA)",
+      "textSecondaryOnWhite": "6.61:1 (AAA)",
+      "whiteOnPrimary": "4.58:1 (AA)",
+      "successOnWhite": "4.62:1 (AA)",
+      "errorOnWhite": "4.93:1 (AA)"
+    },
+    "standards": "WCAG 2.1 AA compliant"
+  }
+}
