@@ -14,6 +14,7 @@ import { IExternalUserManagerProps } from './components/IExternalUserManagerProp
 export interface IExternalUserManagerWebPartProps {
   description: string;
   backendApiUrl: string;
+  portalUrl: string;
 }
 
 export default class ExternalUserManagerWebPart extends BaseClientSideWebPart<IExternalUserManagerWebPartProps> {
@@ -24,7 +25,8 @@ export default class ExternalUserManagerWebPart extends BaseClientSideWebPart<IE
       {
         description: this.properties.description,
         context: this.context,
-        backendApiUrl: this.properties.backendApiUrl || 'http://localhost:7071/api'
+        backendApiUrl: this.properties.backendApiUrl || 'http://localhost:7071/api',
+        portalUrl: this.properties.portalUrl || 'https://portal.yourdomain.com'
       }
     );
 
@@ -57,6 +59,11 @@ export default class ExternalUserManagerWebPart extends BaseClientSideWebPart<IE
                   label: 'Backend API URL',
                   description: 'URL of the SaaS backend API (e.g., https://your-function-app.azurewebsites.net/api)',
                   placeholder: 'http://localhost:7071/api'
+                }),
+                PropertyPaneTextField('portalUrl', {
+                  label: 'Portal URL',
+                  description: 'URL of the SaaS portal for upgrades and management (e.g., https://portal.yourdomain.com)',
+                  placeholder: 'https://portal.yourdomain.com'
                 })
               ]
             }

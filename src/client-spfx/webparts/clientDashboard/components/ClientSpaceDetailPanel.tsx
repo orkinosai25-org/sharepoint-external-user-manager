@@ -17,7 +17,9 @@ import {
   MessageBarType,
   Link,
   Icon,
-  Label
+  Label,
+  CommandBar,
+  ICommandBarItemProps
 } from '@fluentui/react';
 import { IClient } from '../models/IClient';
 import { ILibrary, IList, IExternalUser } from '../models/IClientDetail';
