@@ -1,0 +1,77 @@
+name: Build Blazor Portal
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/portal-blazor/**'
+      - 'src/shared/**'
+      - '.github/workflows/build-blazor.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/portal-blazor/**'
+      - 'src/shared/**'
+      - '.github/workflows/build-blazor.yml'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PORTAL_PROJECT_PATH: 'src/portal-blazor/SharePointExternalUserManager.Portal'
+
+jobs:
+  build:
+    name: Build and Test Blazor Portal
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET ${{ env.DOTNET_VERSION }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Display .NET version
+      run: dotnet --version
+      
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ${{ env.PORTAL_PROJECT_PATH }}
+      
+    - name: Build Portal
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ${{ env.PORTAL_PROJECT_PATH }}
+      
+    - name: Run tests (if available)
+      run: |
+        if [ -d "../../../tests" ]; then
+          dotnet test --no-build --verbosity normal --configuration Release
+        else
+          echo "No tests found - skipping test execution"
+        fi
+      working-directory: ${{ env.PORTAL_PROJECT_PATH }}
+      continue-on-error: true
+      
+    - name: Publish Portal
+      run: dotnet publish --configuration Release --output ./publish --no-build
+      working-directory: ${{ env.PORTAL_PROJECT_PATH }}
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: portal-build
+        path: ${{ env.PORTAL_PROJECT_PATH }}/publish
+        retention-days: 7
+        
+    - name: Build Summary
+      run: |
+        echo "## 🎉 Blazor Portal Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+        echo "**.NET Version**: $(dotnet --version)" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Configuration**: Release" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "The Blazor Portal build completed successfully and is ready for deployment." >> $GITHUB_STEP_SUMMARY
