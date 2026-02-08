@@ -1,0 +1,123 @@
+/**
+ * ClientSpace Brand Colors
+ * SharePoint-aligned, Microsoft Fluent compliant color system
+ * 
+ * Usage: Import this file in your application's main CSS/SCSS file
+ * @version 1.0.0
+ */
+
+:root {
+  /* ========================================
+     PRIMARY COLORS (SharePoint Blue)
+     ======================================== */
+  --clientspace-primary: #0078D4;
+  --clientspace-primary-hover: #106EBE;
+  --clientspace-primary-pressed: #005A9E;
+  --clientspace-primary-light: #4A9EFF;
+  --clientspace-primary-lighter: #C7E0F4;
+
+  /* ========================================
+     SECONDARY COLORS (Azure/Teal Accent)
+     ======================================== */
+  --clientspace-secondary: #008272;
+  --clientspace-secondary-hover: #00B294;
+  --clientspace-secondary-light: #B4E7E0;
+
+  /* ========================================
+     NEUTRAL COLORS - TEXT
+     ======================================== */
+  --clientspace-text-primary: #252423;
+  --clientspace-text-secondary: #605E5C;
+  --clientspace-text-tertiary: #8A8886;
+  --clientspace-text-disabled: #C8C6C4;
+  --clientspace-text-white: #FFFFFF;
+
+  /* ========================================
+     NEUTRAL COLORS - BACKGROUNDS
+     ======================================== */
+  --clientspace-bg-white: #FFFFFF;
+  --clientspace-bg-canvas: #FAF9F8;
+  --clientspace-bg-light: #F3F2F1;
+  --clientspace-bg-lighter: #EDEBE9;
+  --clientspace-bg-dark: #323130;
+
+  /* ========================================
+     NEUTRAL COLORS - BORDERS
+     ======================================== */
+  --clientspace-border-default: #EDEBE9;
+  --clientspace-border-hover: #C8C6C4;
+  --clientspace-border-strong: #8A8886;
+
+  /* ========================================
+     STATUS COLORS - SUCCESS
+     ======================================== */
+  --clientspace-success: #107C10;
+  --clientspace-success-light: #DFF6DD;
+  --clientspace-success-border: #92C353;
+
+  /* ========================================
+     STATUS COLORS - WARNING
+     ======================================== */
+  --clientspace-warning: #F7630C;
+  --clientspace-warning-light: #FFF4CE;
+  --clientspace-warning-border: #FFAA44;
+
+  /* ========================================
+     STATUS COLORS - ERROR
+     ======================================== */
+  --clientspace-error: #D13438;
+  --clientspace-error-light: #FDE7E9;
+  --clientspace-error-border: #E81123;
+
+  /* ========================================
+     STATUS COLORS - INFO
+     ======================================== */
+  --clientspace-info: #0078D4;
+  --clientspace-info-light: #DEECF9;
+  --clientspace-info-border: #4A9EFF;
+
+  /* ========================================
+     DARK THEME VARIANTS
+     ======================================== */
+  --clientspace-primary-dark: #4A9EFF;
+  --clientspace-text-dark-primary: #FFFFFF;
+  --clientspace-text-dark-secondary: #D2D0CE;
+  --clientspace-bg-dark-canvas: #1B1A19;
+  --clientspace-bg-dark-card: #292827;
+}
+
+/* ========================================
+   DARK THEME
+   ======================================== */
+[data-theme="dark"] {
+  --clientspace-primary: var(--clientspace-primary-dark);
+  --clientspace-text-primary: var(--clientspace-text-dark-primary);
+  --clientspace-text-secondary: var(--clientspace-text-dark-secondary);
+  --clientspace-bg-canvas: var(--clientspace-bg-dark-canvas);
+  --clientspace-bg-light: var(--clientspace-bg-dark-card);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Background colors */
+.bg-primary { background-color: var(--clientspace-primary) !important; }
+.bg-secondary { background-color: var(--clientspace-secondary) !important; }
+.bg-success { background-color: var(--clientspace-success) !important; }
+.bg-warning { background-color: var(--clientspace-warning) !important; }
+.bg-error { background-color: var(--clientspace-error) !important; }
+.bg-info { background-color: var(--clientspace-info) !important; }
+
+/* Text colors */
+.text-primary-brand { color: var(--clientspace-primary) !important; }
+.text-secondary-brand { color: var(--clientspace-secondary) !important; }
+.text-success { color: var(--clientspace-success) !important; }
+.text-warning { color: var(--clientspace-warning) !important; }
+.text-error { color: var(--clientspace-error) !important; }
+.text-info { color: var(--clientspace-info) !important; }
+
+/* Border colors */
+.border-primary { border-color: var(--clientspace-primary) !important; }
+.border-secondary { border-color: var(--clientspace-secondary) !important; }
+.border-default { border-color: var(--clientspace-border-default) !important; }

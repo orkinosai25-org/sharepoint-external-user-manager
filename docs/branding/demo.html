@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClientSpace Branding Demo</title>
+    <link rel="stylesheet" href="assets/clientspace-complete.css">
+    <link rel="icon" type="image/svg+xml" href="logos/clientspace-icon-light.svg">
+    <style>
+        .demo-section {
+            margin-bottom: var(--clientspace-spacing-2xl);
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--clientspace-spacing-md);
+        }
+        .color-swatch {
+            height: 80px;
+            border-radius: var(--clientspace-radius-md);
+            display: flex;
+            align-items: flex-end;
+            padding: var(--clientspace-spacing-sm);
+            color: white;
+            font-size: var(--clientspace-font-size-body-sm);
+            font-weight: var(--clientspace-font-weight-semibold);
+        }
+        .logo-container {
+            padding: var(--clientspace-spacing-lg);
+            background: var(--clientspace-bg-white);
+            border: 1px solid var(--clientspace-border-default);
+            border-radius: var(--clientspace-radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-container.dark {
+            background: var(--clientspace-bg-dark);
+        }
+    </style>
+</head>
+<body>
+    <div style="max-width: 1200px; margin: 0 auto; padding: var(--clientspace-spacing-xl);">
+        
+        <!-- Header -->
+        <header style="margin-bottom: var(--clientspace-spacing-2xl);">
+            <img src="logos/clientspace-logo-horizontal-light.svg" alt="ClientSpace" height="48">
+            <h1 class="clientspace-display" style="margin-top: var(--clientspace-spacing-lg);">
+                ClientSpace Branding Demo
+            </h1>
+            <p class="clientspace-body-large">
+                Complete design system for universal external collaboration in Microsoft 365
+            </p>
+        </header>
+
+        <!-- Logos Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Logo Variants</h2>
+            <div class="demo-grid">
+                <div>
+                    <h4 class="clientspace-h4">Horizontal Light</h4>
+                    <div class="logo-container">
+                        <img src="logos/clientspace-logo-horizontal-light.svg" alt="ClientSpace Logo" height="48">
+                    </div>
+                </div>
+                <div>
+                    <h4 class="clientspace-h4">Horizontal Dark</h4>
+                    <div class="logo-container dark">
+                        <img src="logos/clientspace-logo-horizontal-dark.svg" alt="ClientSpace Logo" height="48">
+                    </div>
+                </div>
+                <div>
+                    <h4 class="clientspace-h4">Icon Light</h4>
+                    <div class="logo-container">
+                        <img src="logos/clientspace-icon-light.svg" alt="ClientSpace Icon" height="48">
+                    </div>
+                </div>
+                <div>
+                    <h4 class="clientspace-h4">Icon Dark</h4>
+                    <div class="logo-container dark">
+                        <img src="logos/clientspace-icon-dark.svg" alt="ClientSpace Icon" height="48">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Colors Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Color Palette</h2>
+            <h3 class="clientspace-h3">Primary Colors</h3>
+            <div class="demo-grid">
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-primary);">
+                        Primary
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#0078D4</p>
+                </div>
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-primary-hover);">
+                        Primary Hover
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#106EBE</p>
+                </div>
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-secondary);">
+                        Secondary
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#008272</p>
+                </div>
+            </div>
+
+            <h3 class="clientspace-h3" style="margin-top: var(--clientspace-spacing-xl);">Status Colors</h3>
+            <div class="demo-grid">
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-success);">
+                        Success
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#107C10</p>
+                </div>
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-warning);">
+                        Warning
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#F7630C</p>
+                </div>
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-error);">
+                        Error
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#D13438</p>
+                </div>
+                <div>
+                    <div class="color-swatch" style="background: var(--clientspace-info);">
+                        Info
+                    </div>
+                    <p class="clientspace-body-small" style="margin-top: var(--clientspace-spacing-xs);">#0078D4</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Typography Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Typography Scale</h2>
+            <div class="clientspace-display">Display</div>
+            <h1 class="clientspace-h1">Heading 1</h1>
+            <h2 class="clientspace-h2">Heading 2</h2>
+            <h3 class="clientspace-h3">Heading 3</h3>
+            <h4 class="clientspace-h4">Heading 4</h4>
+            <p class="clientspace-body-large">Large body text for emphasis and introductions</p>
+            <p class="clientspace-body">Standard body text for regular content</p>
+            <p class="clientspace-body-small">Small text for captions and secondary information</p>
+        </section>
+
+        <!-- Buttons Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Buttons</h2>
+            <div style="display: flex; gap: var(--clientspace-spacing-md); flex-wrap: wrap; align-items: center;">
+                <button class="clientspace-button-primary">Primary Button</button>
+                <button class="clientspace-button-secondary">Secondary Button</button>
+                <button class="clientspace-button-text">Text Button</button>
+                <button class="clientspace-button-primary" disabled>Disabled</button>
+            </div>
+        </section>
+
+        <!-- Form Elements Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Form Elements</h2>
+            <div class="clientspace-card">
+                <div class="clientspace-card-header">
+                    <h3 class="clientspace-card-title">Add External User</h3>
+                </div>
+                <div class="clientspace-card-body">
+                    <div style="margin-bottom: var(--clientspace-spacing-md);">
+                        <label class="clientspace-label required">Email Address</label>
+                        <input type="email" class="clientspace-input" placeholder="user@example.com">
+                        <span class="clientspace-helper-text">Enter a valid email address</span>
+                    </div>
+                    <div style="margin-bottom: var(--clientspace-spacing-md);">
+                        <label class="clientspace-label required">Display Name</label>
+                        <input type="text" class="clientspace-input" placeholder="John Doe">
+                    </div>
+                    <div>
+                        <label class="clientspace-label">Company (Optional)</label>
+                        <input type="text" class="clientspace-input" placeholder="Acme Corporation">
+                    </div>
+                </div>
+                <div class="clientspace-card-footer">
+                    <button class="clientspace-button-primary">Add User</button>
+                    <button class="clientspace-button-text">Cancel</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Badges Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Status Badges</h2>
+            <div style="display: flex; gap: var(--clientspace-spacing-md); flex-wrap: wrap;">
+                <span class="clientspace-badge clientspace-badge-success">Active</span>
+                <span class="clientspace-badge clientspace-badge-warning">Pending</span>
+                <span class="clientspace-badge clientspace-badge-error">Blocked</span>
+                <span class="clientspace-badge clientspace-badge-info">Invited</span>
+                <span class="clientspace-badge clientspace-badge-neutral">Inactive</span>
+            </div>
+        </section>
+
+        <!-- Table Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Table Component</h2>
+            <div class="clientspace-card">
+                <table class="clientspace-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Last Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>John Doe</td>
+                            <td>john.doe@external.com</td>
+                            <td><span class="clientspace-badge clientspace-badge-success">Active</span></td>
+                            <td>2 hours ago</td>
+                        </tr>
+                        <tr>
+                            <td>Jane Smith</td>
+                            <td>jane.smith@partner.com</td>
+                            <td><span class="clientspace-badge clientspace-badge-warning">Pending</span></td>
+                            <td>1 day ago</td>
+                        </tr>
+                        <tr>
+                            <td>Bob Johnson</td>
+                            <td>bob.johnson@client.com</td>
+                            <td><span class="clientspace-badge clientspace-badge-success">Active</span></td>
+                            <td>3 hours ago</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Cards Section -->
+        <section class="demo-section">
+            <h2 class="clientspace-h2">Card Components</h2>
+            <div class="demo-grid">
+                <div class="clientspace-card">
+                    <div class="clientspace-card-header">
+                        <h4 class="clientspace-card-title">Active Users</h4>
+                    </div>
+                    <div class="clientspace-card-body">
+                        <p class="clientspace-display" style="margin: 0;">247</p>
+                        <p class="clientspace-body-small" style="margin: var(--clientspace-spacing-xs) 0 0 0;">
+                            External collaborators
+                        </p>
+                    </div>
+                </div>
+                <div class="clientspace-card">
+                    <div class="clientspace-card-header">
+                        <h4 class="clientspace-card-title">Client Spaces</h4>
+                    </div>
+                    <div class="clientspace-card-body">
+                        <p class="clientspace-display" style="margin: 0;">42</p>
+                        <p class="clientspace-body-small" style="margin: var(--clientspace-spacing-xs) 0 0 0;">
+                            Active projects
+                        </p>
+                    </div>
+                </div>
+                <div class="clientspace-card">
+                    <div class="clientspace-card-header">
+                        <h4 class="clientspace-card-title">Documents Shared</h4>
+                    </div>
+                    <div class="clientspace-card-body">
+                        <p class="clientspace-display" style="margin: 0;">1.2K</p>
+                        <p class="clientspace-body-small" style="margin: var(--clientspace-spacing-xs) 0 0 0;">
+                            This month
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer style="margin-top: var(--clientspace-spacing-3xl); padding-top: var(--clientspace-spacing-xl); border-top: 1px solid var(--clientspace-border-default);">
+            <p class="clientspace-body-small" style="text-align: center; color: var(--clientspace-text-secondary);">
+                ClientSpace™ – Universal External Collaboration for Microsoft 365<br>
+                Version 1.0.0 | © 2026 All rights reserved
+            </p>
+        </footer>
+
+    </div>
+</body>
+</html>
