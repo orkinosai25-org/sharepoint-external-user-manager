@@ -53,11 +53,11 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
     
     // Title validation
     if (!formData.title.trim()) {
-      errors.title = 'Library name is required';
+      errors.title = 'Space name is required';
     } else if (formData.title.length > 100) {
-      errors.title = 'Library name must be less than 100 characters';
+      errors.title = 'Space name must be less than 100 characters';
     } else if (!/^[a-zA-Z0-9\s\-_]+$/.test(formData.title)) {
-      errors.title = 'Library name can only contain letters, numbers, spaces, hyphens, and underscores';
+      errors.title = 'Space name can only contain letters, numbers, spaces, hyphens, and underscores';
     }
 
     // Description validation
@@ -113,7 +113,7 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
       onLibraryCreated(newLibrary);
       handleClose();
     } catch (err) {
-      setError(err.message || 'Failed to create library');
+      setError(err.message || 'Failed to create space');
     } finally {
       setIsCreating(false);
     }
@@ -145,10 +145,10 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
         <Stack tokens={{ childrenGap: 20 }}>
           <Stack.Item>
             <Text variant="xLarge" styles={{ root: { fontWeight: 'semibold' } }}>
-              Create New Library
+              Create New Space
             </Text>
             <Text variant="medium" styles={{ root: { color: '#666', marginTop: '8px' } }}>
-              Create a new document library for sharing with external users
+              Create a new space for sharing with external users
             </Text>
           </Stack.Item>
 
@@ -162,12 +162,12 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
 
           <Stack.Item>
             <TextField
-              label="Library Name *"
+              label="Space Name *"
               value={formData.title}
               onChange={handleInputChange('title')}
               disabled={isCreating}
               errorMessage={validationErrors.title}
-              placeholder="Enter a name for the library"
+              placeholder="Enter a name for the space"
               maxLength={100}
               description="The name will be used in URLs and must be unique within this site"
             />
@@ -184,7 +184,7 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
               multiline
               rows={3}
               maxLength={500}
-              description="Provide a brief description of the library's purpose"
+              description="Provide a brief description of the space's purpose"
             />
           </Stack.Item>
 
@@ -196,7 +196,7 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
               disabled={isCreating}
             />
             <Text variant="small" styles={{ root: { color: '#666', marginTop: '4px' } }}>
-              Allow this library to be shared with users outside your organization
+              Allow this space to be shared with users outside your organization
             </Text>
           </Stack.Item>
 
@@ -212,7 +212,7 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
           <Stack.Item>
             <Stack horizontal tokens={{ childrenGap: 10 }}>
               <PrimaryButton
-                text={isCreating ? 'Creating...' : 'Create Library'}
+                text={isCreating ? 'Creating...' : 'Create Space'}
                 onClick={handleCreate}
                 disabled={isCreating || !formData.title.trim()}
                 iconProps={isCreating ? undefined : { iconName: 'Add' }}
@@ -230,8 +230,8 @@ export const CreateLibraryModal: React.FC<ICreateLibraryModalProps> = ({
           <Stack.Item>
             <MessageBar messageBarType={MessageBarType.info}>
               <Text variant="small">
-                <strong>Note:</strong> The new library will be created with default permissions. 
-                You can manage permissions and external sharing after creation.
+                <strong>Note:</strong> The new space will be created with default access. 
+                You can manage access and external sharing after creation.
               </Text>
             </MessageBar>
           </Stack.Item>

@@ -98,14 +98,14 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
       
       if (!useMockData && librariesData.length === 0) {
         setOperationMessage({
-          message: 'No external libraries found. Libraries with external users will appear here.',
+          message: 'No spaces found. Spaces with external users will appear here.',
           type: MessageBarType.info
         });
       }
     } catch (error) {
       console.error('Error loading libraries:', error);
       setOperationMessage({
-        message: `Failed to load libraries: ${error.message}. Falling back to demo data.`,
+        message: `Failed to load spaces: ${error.message}. Falling back to demo data.`,
         type: MessageBarType.warning
       });
       
@@ -138,7 +138,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
   const handleLibraryCreated = (newLibrary: IExternalLibrary): void => {
     setLibraries(prev => [...prev, newLibrary]);
     setOperationMessage({
-      message: `Library "${newLibrary.name}" created successfully.`,
+      message: `Space "${newLibrary.name}" created successfully.`,
       type: MessageBarType.success
     });
     
@@ -161,7 +161,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
     
     const count = deletedIds.length;
     setOperationMessage({
-      message: `${count} librar${count !== 1 ? 'ies' : 'y'} deleted successfully.`,
+      message: `${count} space${count !== 1 ? 's' : ''} deleted successfully.`,
       type: MessageBarType.success
     });
     
@@ -198,7 +198,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
       // Get the library URL from the library ID
       const library = libraries.find(lib => lib.id === libraryId);
       if (!library) {
-        throw new Error('Library not found');
+        throw new Error('Space not found');
       }
       
       // Use BackendApiService to bulk add users (calls SaaS backend)
@@ -230,7 +230,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
       // Get the library URL from the library ID
       const library = libraries.find(lib => lib.id === libraryId);
       if (!library) {
-        throw new Error('Library not found');
+        throw new Error('Space not found');
       }
       
       // First get the user's email from the user ID
@@ -271,7 +271,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
       // Get the library URL from the library ID
       const library = libraries.find(lib => lib.id === libraryId);
       if (!library) {
-        throw new Error('Library not found');
+        throw new Error('Space not found');
       }
       
       // Use BackendApiService to get users (calls SaaS backend)
@@ -294,7 +294,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
   const columns: IColumn[] = [
     {
       key: 'name',
-      name: 'Library Name',
+      name: 'Space Name',
       fieldName: 'name',
       minWidth: 200,
       maxWidth: 300,
@@ -346,7 +346,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
     },
     {
       key: 'permissions',
-      name: 'Permission Level',
+      name: 'Access Level',
       fieldName: 'permissions',
       minWidth: 120,
       maxWidth: 150,
@@ -392,7 +392,7 @@ const ExternalUserManager: React.FC<IExternalUserManagerProps> = (props) => {
   const commandBarItems: ICommandBarItemProps[] = [
     {
       key: 'addLibrary',
-      text: 'Add Library',
+      text: 'Create Space',
       iconProps: { iconName: 'Add' },
       onClick: () => setShowCreateModal(true)
     },
