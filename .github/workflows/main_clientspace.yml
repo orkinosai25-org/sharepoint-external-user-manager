@@ -39,7 +39,6 @@ jobs:
     runs-on: windows-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
 
     steps:
@@ -47,13 +46,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_CEE34A09CC8248D293D76E6EAD388E02 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_AA59B7BCEFDC41B78D341FACBABCCE5B }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0649D06B846D465D9C22DC60C2CD6C0C }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -62,4 +54,5 @@ jobs:
           app-name: 'ClientSpace'
           slot-name: 'Production'
           package: .
+          publish-profile: ${{ secrets.PUBLISH_PROFILE }}
           
