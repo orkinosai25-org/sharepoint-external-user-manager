@@ -1,27 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
   "version": "2.0",
-  "bundles": {
-    "external-user-manager-web-part": {
-      "components": [
-        {
-          "entrypoint": "./webparts/externalUserManager/ExternalUserManagerWebPart.js",
-          "manifest": "./webparts/externalUserManager/ExternalUserManagerWebPart.manifest.json"
-        }
-      ]
-    },
-    "client-dashboard-web-part": {
-      "components": [
-        {
-          "entrypoint": "./webparts/clientDashboard/ClientDashboardWebPart.js",
-          "manifest": "./webparts/clientDashboard/ClientDashboardWebPart.manifest.json"
-        }
-      ]
-    }
-  },
+  "bundles": {},
   "externals": {},
-  "localizedResources": {
-    "ExternalUserManagerWebPartStrings": "webparts/externalUserManager/loc/{locale}.js",
-    "ClientDashboardWebPartStrings": "webparts/clientDashboard/loc/{locale}.js"
-  }
+  "localizedResources": {}
 }
