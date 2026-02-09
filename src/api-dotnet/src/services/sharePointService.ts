@@ -53,7 +53,7 @@ class SharePointService {
   async provisionSite(
     clientName: string,
     siteTemplate: SiteTemplateType = 'Team',
-    tenantDomain?: string
+    _tenantDomain?: string
   ): Promise<ProvisionSiteResult> {
     // If Graph integration is disabled, return mock data
     if (!config.features.enableGraphIntegration) {
@@ -293,7 +293,7 @@ class SharePointService {
    */
   private getMockProvisionResult(
     clientName: string,
-    siteTemplate: SiteTemplateType
+    _siteTemplate: SiteTemplateType
   ): ProvisionSiteResult {
     const alias = this.generateSiteAlias(clientName);
     const mockTenantDomain = 'contoso.sharepoint.com';

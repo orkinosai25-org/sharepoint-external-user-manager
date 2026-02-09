@@ -10,8 +10,6 @@ import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { ValidationError } from '../../models/common';
-import { getPlanDefinition, PlanTier } from '../../models/plan';
-import { getStripePriceId, BillingInterval } from '../../config/stripe-config';
 import * as Joi from 'joi';
 
 interface CreateCheckoutSessionRequest {

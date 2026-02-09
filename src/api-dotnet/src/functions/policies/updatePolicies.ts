@@ -6,13 +6,12 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { databaseService } from '../../services/database';
 import { auditLogger } from '../../services/auditLogger';
 import { authenticateRequest } from '../../middleware/auth';
-import { enforceSubscription, checkFeatureAccess } from '../../middleware/subscription';
+import { enforceSubscription } from '../../middleware/subscription';
 import { validateBody, updatePolicySchema } from '../../utils/validation';
 import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
-import { UpdatePolicyRequest, PolicyResponse } from '../../models/policy';
-import { ForbiddenError } from '../../models/common';
+import { UpdatePolicyRequest } from '../../models/policy';
 import { enforceFeatureAccess } from '../../services/plan-enforcement';
 
 async function updatePolicies(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {

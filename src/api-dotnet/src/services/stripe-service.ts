@@ -7,7 +7,6 @@ import Stripe from 'stripe';
 import { config } from '../utils/config';
 import { PlanTier } from '../models/plan';
 import { 
-  getStripePriceMapping, 
   getPlanTierFromPriceId,
   getBillingIntervalFromPriceId,
   isValidStripePriceId,
