@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Example integration of plan enforcement in API handlers
  * This file demonstrates how to properly integrate plan checking and enforcement

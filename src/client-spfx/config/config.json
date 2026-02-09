@@ -5,7 +5,7 @@
     "external-user-manager-web-part": {
       "components": [
         {
-          "entrypoint": "./lib/webparts/externalUserManager/ExternalUserManagerWebPart.js",
+          "entrypoint": "./webparts/externalUserManager/ExternalUserManagerWebPart.js",
           "manifest": "./webparts/externalUserManager/ExternalUserManagerWebPart.manifest.json"
         }
       ]
@@ -13,7 +13,7 @@
     "client-dashboard-web-part": {
       "components": [
         {
-          "entrypoint": "./lib/webparts/clientDashboard/ClientDashboardWebPart.js",
+          "entrypoint": "./webparts/clientDashboard/ClientDashboardWebPart.js",
           "manifest": "./webparts/clientDashboard/ClientDashboardWebPart.manifest.json"
         }
       ]
@@ -21,7 +21,7 @@
   },
   "externals": {},
   "localizedResources": {
-    "ExternalUserManagerWebPartStrings": "lib/webparts/externalUserManager/loc/{locale}.js",
-    "ClientDashboardWebPartStrings": "lib/webparts/clientDashboard/loc/{locale}.js"
+    "ExternalUserManagerWebPartStrings": "webparts/externalUserManager/loc/{locale}.js",
+    "ClientDashboardWebPartStrings": "webparts/clientDashboard/loc/{locale}.js"
   }
 }
