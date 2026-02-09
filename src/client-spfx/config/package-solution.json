@@ -7,11 +7,22 @@
     "includeClientSideAssets": true,
     "isDomainIsolated": false,
     "developer": {
-      "name": "Orkinosai Organization",
+      "name": "ClientSpace by Orkinosai Organization",
       "websiteUrl": "https://github.com/orkinosai-org",
       "privacyUrl": "",
       "termsOfUseUrl": "",
       "mpnId": ""
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "ClientSpace - Universal External Collaboration for Microsoft 365"
+      },
+      "longDescription": {
+        "default": "ClientSpace delivers secure, governed, Microsoft-native external collaboration that's enterprise-ready yet simple for non-technical users."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
     }
   },
   "paths": {

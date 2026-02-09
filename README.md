@@ -1,6 +1,8 @@
-# SharePoint External User Manager - SaaS Platform
+# ClientSpace - SharePoint External User Manager
 
 A modern, multi-tenant SaaS solution for managing external users, client spaces, and document access in SharePoint Online. Built with a clean separation between client-side SPFx web parts and a cloud-hosted backend API with Blazor administrative portal.
+
+> **Brand Name:** ClientSpace - Universal External Collaboration for Microsoft 365
 
 ## 🏗️ Architecture
 
@@ -69,7 +71,14 @@ This solution follows a split architecture pattern:
 │       └── main.bicep        # Main infrastructure template
 │
 ├── docs/                     # Documentation
-│   └── saas/                 # SaaS architecture and API documentation
+│   ├── branding/            # ClientSpace brand assets and guidelines
+│   │   ├── logos/           # Logo variants (horizontal, icon, AppSource)
+│   │   ├── colors/          # Color palette and CSS variables
+│   │   ├── typography/      # Typography system
+│   │   ├── ui-tokens/       # UI component styles
+│   │   ├── assets/          # Ready-to-use compiled CSS
+│   │   └── guidelines/      # Brand usage guidelines
+│   └── saas/                # SaaS architecture and API documentation
 │
 ├── .github/
 │   └── workflows/            # CI/CD pipelines
@@ -361,6 +370,34 @@ This is a private project under active development. Please follow these guidelin
 4. No secrets in repository
 5. Use UK English for all UI text
 6. Keep language solicitor-friendly (Client, Space, Access)
+
+## 🎨 Branding
+
+**Product Name:** ClientSpace - Universal External Collaboration for Microsoft 365
+
+The complete ClientSpace branding pack is available in the [`docs/branding/`](./docs/branding/) directory:
+
+- **Logo Assets**: Horizontal and icon variants in light/dark themes (SVG format)
+- **Color System**: SharePoint-aligned primary colors with WCAG 2.1 AA compliance
+- **Typography**: Segoe UI-based type scale following Microsoft Fluent Design
+- **UI Components**: Ready-to-use CSS for buttons, forms, cards, and badges
+- **Brand Guidelines**: Complete usage guidelines and best practices
+
+### Quick Start
+
+Import the complete design system in your application:
+
+```html
+<!-- Blazor Portal -->
+<link rel="stylesheet" href="/branding/css/clientspace-complete.css" />
+
+<!-- SPFx Web Parts -->
+import '../branding/assets/clientspace-complete.css';
+```
+
+For detailed guidelines, see:
+- [`docs/branding/README.md`](./docs/branding/README.md) - Complete branding pack overview
+- [`docs/branding/guidelines/branding-guidelines.md`](./docs/branding/guidelines/branding-guidelines.md) - Usage guidelines
 
 ## 📝 License
 
