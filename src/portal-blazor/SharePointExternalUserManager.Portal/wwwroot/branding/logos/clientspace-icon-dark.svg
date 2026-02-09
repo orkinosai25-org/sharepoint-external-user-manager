@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Square icon-only version for app icons - dark variant -->
+  
+  <!-- Outer circle representing containment/space -->
+  <circle cx="24" cy="24" r="20" fill="#4A9EFF" opacity="0.15"/>
+  
+  <!-- Main "C" shape in lighter blue for dark backgrounds -->
+  <path d="M24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44C29.5228 44 34.5228 41.5228 38 37.6569" 
+        stroke="#4A9EFF" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Connected nodes representing collaboration -->
+  <circle cx="38" cy="24" r="3" fill="#4A9EFF"/>
+  <circle cx="33" cy="16" r="2.5" fill="#6CB4FF"/>
+  <circle cx="33" cy="32" r="2.5" fill="#6CB4FF"/>
+  
+  <!-- Connection lines -->
+  <line x1="35.5" y1="16.5" x2="37" y2="22" stroke="#4A9EFF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="35.5" y1="31.5" x2="37" y2="26" stroke="#4A9EFF" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
