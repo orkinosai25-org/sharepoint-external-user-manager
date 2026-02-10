@@ -1,5 +1,29 @@
 # Blazor SaaS Portal
 
+## ⚠️ IMPORTANT: Configuration Required
+
+**The application will not work until you configure Azure AD credentials!**
+
+If you see an error like:
+```
+AADSTS700016: Application with identifier 'YOUR_CLIENT_ID' was not found...
+```
+
+This means the placeholder values in `appsettings.json` need to be replaced with actual Azure AD credentials.
+
+**Quick Fix:**
+1. Register an app in [Azure Portal](https://portal.azure.com) (see [Azure AD Setup](#azure-ad-setup) below)
+2. Configure credentials using User Secrets (recommended):
+   ```bash
+   dotnet user-secrets set "AzureAd:ClientId" "YOUR_ACTUAL_CLIENT_ID"
+   dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_ACTUAL_SECRET"
+   ```
+3. See [QUICKSTART.md](QUICKSTART.md) for detailed step-by-step instructions
+
+**Configuration Check:** Access `/config-check` in your browser to validate your configuration.
+
+---
+
 ## Overview
 The Blazor Web App portal provides the administrative interface for the SharePoint External User Manager SaaS platform. It handles pricing, onboarding, subscription management, and client space administration.
 

@@ -1,5 +1,11 @@
 # Blazor Portal - Quick Start Guide
 
+> **⚠️ CRITICAL:** This application requires Azure AD configuration before it will work!
+> 
+> **Error you might see:** `AADSTS700016: Application with identifier 'YOUR_CLIENT_ID' was not found`
+> 
+> **Why:** The placeholder values in configuration files must be replaced with real Azure AD credentials.
+
 Get the SharePoint External User Manager portal running locally in 5 minutes.
 
 ## Prerequisites
