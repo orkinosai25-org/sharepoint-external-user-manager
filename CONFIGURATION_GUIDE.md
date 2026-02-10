@@ -185,7 +185,7 @@ If changes don't seem to take effect:
 
 ## Additional Resources
 
-- [Azure AD App Registration](https://docs.microsoft.com/azure/active-directory/develop/quickstart-register-app)
-- [ASP.NET Core Configuration](https://docs.microsoft.com/aspnet/core/fundamentals/configuration/)
-- [Azure Key Vault](https://docs.microsoft.com/azure/key-vault/general/overview)
-- [Managed Identity](https://docs.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)
+- [Azure AD App Registration](https://learn.microsoft.com/azure/active-directory/develop/quickstart-register-app)
+- [ASP.NET Core Configuration](https://learn.microsoft.com/aspnet/core/fundamentals/configuration/)
+- [Azure Key Vault](https://learn.microsoft.com/azure/key-vault/general/overview)
+- [Managed Identity](https://learn.microsoft.com/azure/active-directory/managed-identities-azure-resources/overview)
