@@ -1,0 +1,277 @@
+@page "/config-check"
+@using SharePointExternalUserManager.Portal.Services
+@inject IConfiguration Configuration
+
+<PageTitle>Configuration Check - SharePoint User Manager</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-gear-fill me-2"></i>
+                        Configuration Check
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (ValidationResult == null)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Checking configuration...</span>
+                            </div>
+                            <p class="mt-3 text-muted">Validating configuration...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (ValidationResult.IsValid && !ValidationResult.HasWarnings)
+                        {
+                            <div class="alert alert-success" role="alert">
+                                <h4 class="alert-heading">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    Configuration is Valid!
+                                </h4>
+                                <p class="mb-0">All required configuration settings are properly configured.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (!ValidationResult.IsValid)
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    <h4 class="alert-heading">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        Configuration Errors Found
+                                    </h4>
+                                    <p>The following critical configuration issues must be fixed:</p>
+                                    <ul class="mb-0">
+                                        @foreach (var error in ValidationResult.Errors)
+                                        {
+                                            <li><strong>@error.Key</strong>: @error.Message</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (ValidationResult.HasWarnings)
+                            {
+                                <div class="alert alert-warning" role="alert">
+                                    <h4 class="alert-heading">
+                                        <i class="bi bi-exclamation-circle-fill me-2"></i>
+                                        Configuration Warnings
+                                    </h4>
+                                    <p>The following settings should be reviewed:</p>
+                                    <ul class="mb-0">
+                                        @foreach (var warning in ValidationResult.Warnings)
+                                        {
+                                            <li><strong>@warning.Key</strong>: @warning.Message</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        }
+
+                        <div class="mt-4">
+                            <h5>Configuration Details</h5>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Status</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Azure AD Client ID</strong></td>
+                                        <td>
+                                            @if (IsConfigured(AzureAdConfig?.ClientId))
+                                            {
+                                                <span class="badge bg-success">Configured</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Missing</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <code>@MaskSecret(AzureAdConfig?.ClientId)</code>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Azure AD Client Secret</strong></td>
+                                        <td>
+                                            @if (IsConfigured(AzureAdConfig?.ClientSecret))
+                                            {
+                                                <span class="badge bg-success">Configured</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Missing</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <code>@MaskSecret(AzureAdConfig?.ClientSecret, true)</code>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Azure AD Tenant ID</strong></td>
+                                        <td>
+                                            @if (IsConfigured(AzureAdConfig?.TenantId))
+                                            {
+                                                <span class="badge bg-success">Configured</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Missing</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <code>@(AzureAdConfig?.TenantId ?? "Not set")</code>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>API Base URL</strong></td>
+                                        <td>
+                                            @if (IsConfigured(ApiConfig?.BaseUrl))
+                                            {
+                                                <span class="badge bg-success">Configured</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">Optional</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <code>@(ApiConfig?.BaseUrl ?? "Not set")</code>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Stripe Publishable Key</strong></td>
+                                        <td>
+                                            @if (IsConfigured(StripeConfig?.PublishableKey))
+                                            {
+                                                <span class="badge bg-success">Configured</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">Optional</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <code>@MaskSecret(StripeConfig?.PublishableKey)</code>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (!ValidationResult.IsValid)
+                        {
+                            <div class="mt-4">
+                                <h5>How to Fix</h5>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6>Step 1: Register an Azure AD Application</h6>
+                                        <ol>
+                                            <li>Go to <a href="https://portal.azure.com" target="_blank">Azure Portal</a></li>
+                                            <li>Navigate to <strong>Azure Active Directory</strong> → <strong>App registrations</strong></li>
+                                            <li>Click <strong>New registration</strong></li>
+                                            <li>Configure:
+                                                <ul>
+                                                    <li><strong>Name:</strong> SharePoint User Manager Portal</li>
+                                                    <li><strong>Supported account types:</strong> Accounts in any organizational directory (Multitenant)</li>
+                                                    <li><strong>Redirect URI:</strong> Web → <code>https://your-domain.com/signin-oidc</code></li>
+                                                </ul>
+                                            </li>
+                                            <li>Copy the <strong>Application (client) ID</strong></li>
+                                            <li>Go to <strong>Certificates & secrets</strong> → Create a new client secret</li>
+                                            <li>Copy the secret <strong>Value</strong> immediately (you won't see it again!)</li>
+                                        </ol>
+
+                                        <h6 class="mt-3">Step 2: Configure the Application</h6>
+                                        <p><strong>Recommended for Development:</strong> Use User Secrets</p>
+                                        <pre class="bg-light p-3"><code>dotnet user-secrets set "AzureAd:ClientId" "YOUR_CLIENT_ID_FROM_AZURE"
+dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_CLIENT_SECRET_FROM_AZURE"</code></pre>
+
+                                        <p class="mt-3"><strong>For Production:</strong> Use Environment Variables or Azure Key Vault</p>
+                                        <pre class="bg-light p-3"><code>export AzureAd__ClientId="YOUR_CLIENT_ID"
+export AzureAd__ClientSecret="YOUR_CLIENT_SECRET"</code></pre>
+
+                                        <div class="alert alert-warning mt-3">
+                                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                            <strong>Security Warning:</strong> Never commit secrets to source control!
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mt-4 text-center">
+                            <button class="btn btn-primary" @onclick="RefreshCheck">
+                                <i class="bi bi-arrow-clockwise me-2"></i>
+                                Refresh Check
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ConfigurationValidationResult? ValidationResult { get; set; }
+    private AzureAdSettings? AzureAdConfig { get; set; }
+    private ApiSettings? ApiConfig { get; set; }
+    private StripeSettings? StripeConfig { get; set; }
+
+    protected override void OnInitialized()
+    {
+        RefreshCheck();
+    }
+
+    private void RefreshCheck()
+    {
+        var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<ConfigurationValidator>();
+        var validator = new ConfigurationValidator(Configuration, logger);
+        ValidationResult = validator.Validate();
+
+        // Load configuration for display
+        AzureAdConfig = Configuration.GetSection("AzureAd").Get<AzureAdSettings>();
+        ApiConfig = Configuration.GetSection("ApiSettings").Get<ApiSettings>();
+        StripeConfig = Configuration.GetSection("StripeSettings").Get<StripeSettings>();
+    }
+
+    private static bool IsConfigured(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        // Check if it's a placeholder
+        var placeholders = new[] { "YOUR_", "_HERE", "REPLACE_", "PLACEHOLDER", "EXAMPLE_", "TODO" };
+        return !placeholders.Any(p => value.Contains(p, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string MaskSecret(string? value, bool fullyMask = false)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Not set";
+
+        if (IsConfigured(value))
+        {
+            if (fullyMask)
+                return "••••••••••••";
+            
+            // Show first 8 chars and mask the rest
+            if (value.Length <= 12)
+                return new string('•', value.Length);
+            
+            return value[..8] + new string('•', value.Length - 8);
+        }
+
+        return value; // Show placeholder values as-is for debugging
+    }
+}
