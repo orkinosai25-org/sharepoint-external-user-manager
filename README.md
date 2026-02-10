@@ -132,12 +132,28 @@ npm start
 
 ### Quick Start - Blazor Portal
 
+> **⚠️ IMPORTANT:** The Blazor portal requires Azure AD configuration before it will work.
+> See [src/portal-blazor/SharePointExternalUserManager.Portal/QUICKSTART.md](src/portal-blazor/SharePointExternalUserManager.Portal/QUICKSTART.md) for detailed setup instructions.
+
 ```bash
-# [Coming in ISSUE-08]
-cd src/portal-blazor
+# Navigate to portal directory
+cd src/portal-blazor/SharePointExternalUserManager.Portal
+
+# Configure Azure AD credentials (REQUIRED)
+dotnet user-secrets set "AzureAd:ClientId" "YOUR_CLIENT_ID_FROM_AZURE_PORTAL"
+dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_CLIENT_SECRET_FROM_AZURE_PORTAL"
+
+# Restore dependencies
 dotnet restore
+
+# Run the portal
 dotnet run
+
+# Access at: https://localhost:7001
+# Configuration check: https://localhost:7001/config-check
 ```
+
+**If you see "Application with identifier 'YOUR_CLIENT_ID' was not found"**, this means you need to configure Azure AD credentials. The application will not start until this is done.
 
 ## 📦 Build Commands
 

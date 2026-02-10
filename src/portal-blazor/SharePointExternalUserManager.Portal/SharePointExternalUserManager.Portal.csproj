@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>sharepoint-external-user-manager-portal</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
