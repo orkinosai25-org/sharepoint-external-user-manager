@@ -269,7 +269,7 @@ export AzureAd__ClientSecret="YOUR_CLIENT_SECRET"</code></pre>
             if (value.Length <= 12)
                 return new string('•', value.Length);
             
-            return value.Substring(0, 8) + new string('•', value.Length - 8);
+            return value[..8] + new string('•', value.Length - 8);
         }
 
         return value; // Show placeholder values as-is for debugging
