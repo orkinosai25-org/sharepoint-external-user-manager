@@ -204,6 +204,7 @@ cd src/api-dotnet && npm test
 - ✅ **Authentication**: Azure AD multi-tenant with JWT validation
 
 ### Blazor Portal (Coming Soon)
+- ✅ **AI Chat Assistant**: Azure OpenAI-powered chat widget for product assistance
 - 🔄 **Pricing Page**: Display subscription tiers
 - 🔄 **Onboarding Wizard**: Streamlined tenant setup
 - 🔄 **Admin Dashboard**: Manage clients and subscriptions
