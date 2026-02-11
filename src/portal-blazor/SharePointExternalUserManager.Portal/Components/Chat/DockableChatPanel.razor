@@ -90,6 +90,13 @@
 
             <!-- Input -->
             <div class="chat-input-container">
+                @if (_showDisclaimer && _messages.Any())
+                {
+                    <div class="ai-disclaimer">
+                        <span class="bi bi-info-circle"></span>
+                        <small>AI responses may be incorrect — verify before applying changes.</small>
+                    </div>
+                }
                 <div class="chat-input-wrapper">
                     <input type="text" 
                            class="chat-input" 
@@ -121,11 +128,18 @@
     [Parameter]
     public EventCallback<bool> IsOpenChanged { get; set; }
 
+    [Parameter]
+    public string Mode { get; set; } = "Marketing"; // "Marketing" or "InProduct"
+
+    [Parameter]
+    public ChatContextInfo? Context { get; set; }
+
     private string _conversationId = Guid.NewGuid().ToString();
     private List<ChatMessage> _messages = new();
     private string _currentMessage = string.Empty;
     private bool _isLoading = false;
     private bool _showClearButton = true;
+    private bool _showDisclaimer = true;
     private ElementReference messagesContainer;
     
     private enum DockPosition { Bottom, Right, Top, Left }
@@ -185,12 +199,15 @@
             {
                 ConversationId = _conversationId,
                 Message = message,
+                Mode = Mode,
+                Context = Context,
                 Temperature = 0.7,
                 MaxTokens = 1000
             };
 
             var response = await ChatService.SendMessageAsync(request);
             _messages = ChatService.GetConversationHistory(_conversationId);
+            _showDisclaimer = response.ShowDisclaimer;
             
             await ScrollToBottom();
         }
