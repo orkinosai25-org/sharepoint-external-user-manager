@@ -10,6 +10,9 @@ using SharePointExternalUserManager.Portal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Constants
+const string CookieScheme = "Cookies";
+
 // Validate configuration early to provide helpful error messages
 var configValidator = new ConfigurationValidator(
     builder.Configuration, 
@@ -74,7 +77,8 @@ var hasValidAzureAdConfig = !string.IsNullOrWhiteSpace(azureAdConfig["ClientId"]
                             !string.IsNullOrWhiteSpace(azureAdConfig["ClientSecret"]) &&
                             !string.IsNullOrWhiteSpace(azureAdConfig["TenantId"]) &&
                             !azureAdConfig["ClientId"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) &&
-                            !azureAdConfig["ClientSecret"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
+                            !azureAdConfig["ClientSecret"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) &&
+                            !azureAdConfig["TenantId"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
 
 if (hasValidAzureAdConfig)
 {
@@ -89,10 +93,10 @@ else
     // Add minimal authentication to prevent errors
     builder.Services.AddAuthentication(options =>
     {
-        options.DefaultScheme = "Cookies";
-        options.DefaultChallengeScheme = "Cookies";
+        options.DefaultScheme = CookieScheme;
+        options.DefaultChallengeScheme = CookieScheme;
     })
-    .AddCookie("Cookies", options =>
+    .AddCookie(CookieScheme, options =>
     {
         options.LoginPath = "/account/signin";
         options.AccessDeniedPath = "/account/access-denied";
