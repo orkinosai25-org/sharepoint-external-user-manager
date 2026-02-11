@@ -241,27 +241,54 @@
         // Convert markdown-style formatting to HTML
         content = System.Web.HttpUtility.HtmlEncode(content);
         
-        // Bold text: **text** or __text__
+        // Bold text: **text** or __text__ (do bold first to avoid conflicts)
         content = System.Text.RegularExpressions.Regex.Replace(content, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
         content = System.Text.RegularExpressions.Regex.Replace(content, @"__(.+?)__", "<strong>$1</strong>");
         
-        // Italic text: *text* or _text_
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"\*(.+?)\*", "<em>$1</em>");
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"_(.+?)_", "<em>$1</em>");
+        // Italic text: *text* or _text_ (but not if already part of bold __)
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"(?<![_*])\*([^*]+?)\*(?![*_])", "<em>$1</em>");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"(?<![_*])_([^_]+?)_(?![_*])", "<em>$1</em>");
         
         // Line breaks
         content = content.Replace("\n", "<br>");
         
-        // Bullet points
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"^•\s", "<li>", System.Text.RegularExpressions.RegexOptions.Multiline);
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"^-\s", "<li>", System.Text.RegularExpressions.RegexOptions.Multiline);
+        // Bullet points - create proper list items
+        var lines = content.Split(new[] { "<br>" }, StringSplitOptions.None);
+        var formattedLines = new List<string>();
+        bool inList = false;
         
-        if (content.Contains("<li>"))
+        foreach (var line in lines)
         {
-            content = "<ul>" + content + "</ul>";
-            content = content.Replace("<br><li>", "<li>");
+            var trimmedLine = line.Trim();
+            if (trimmedLine.StartsWith("•") || trimmedLine.StartsWith("-"))
+            {
+                if (!inList)
+                {
+                    formattedLines.Add("<ul>");
+                    inList = true;
+                }
+                var listContent = trimmedLine.Substring(1).Trim();
+                formattedLines.Add($"<li>{listContent}</li>");
+            }
+            else
+            {
+                if (inList)
+                {
+                    formattedLines.Add("</ul>");
+                    inList = false;
+                }
+                if (!string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    formattedLines.Add(line);
+                }
+            }
         }
         
-        return content;
+        if (inList)
+        {
+            formattedLines.Add("</ul>");
+        }
+        
+        return string.Join("<br>", formattedLines);
     }
 }

@@ -10,6 +10,12 @@ public class ChatService
     private readonly HttpClient _httpClient;
     private readonly AzureOpenAISettings _settings;
     private readonly ILogger<ChatService> _logger;
+    
+    // NOTE: In-memory storage is used for simplicity in this implementation.
+    // For production use with multiple server instances, consider using:
+    // - IDistributedCache (Redis) for conversation persistence
+    // - Database storage for conversation history
+    // - Session state with a backing store
     private readonly Dictionary<string, List<ChatMessage>> _conversations = new();
     private readonly bool _isDemoMode;
 
@@ -165,12 +171,15 @@ public class ChatService
         var jsonContent = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-        // Add API key header
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("api-key", _settings.ApiKey);
+        // Create request message with API key header
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = content
+        };
+        requestMessage.Headers.Add("api-key", _settings.ApiKey);
 
         // Make the API call
-        var response = await _httpClient.PostAsync(endpoint, content);
+        var response = await _httpClient.SendAsync(requestMessage);
         response.EnsureSuccessStatusCode();
 
         var responseContent = await response.Content.ReadAsStringAsync();
