@@ -61,7 +61,7 @@
 </div>
 
 <!-- AI Chat Widget -->
-<DockableChatPanel IsOpen="isChatOpen" IsOpenChanged="HandleChatOpenChanged" />
+<DockableChatPanel @rendermode="InteractiveServer" IsOpen="isChatOpen" IsOpenChanged="HandleChatOpenChanged" />
 
 @code {
     private bool isChatOpen = false;
