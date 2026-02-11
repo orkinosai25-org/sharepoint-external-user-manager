@@ -148,7 +148,12 @@ public class AiAssistantService
         const int maxLength = 2000;
         if (sanitized.Length > maxLength)
         {
-            sanitized = sanitized.Substring(0, maxLength);
+            // Safely truncate without splitting multi-byte characters
+            var textInfo = new System.Globalization.StringInfo(sanitized);
+            if (textInfo.LengthInTextElements > maxLength)
+            {
+                sanitized = textInfo.SubstringByTextElements(0, maxLength);
+            }
         }
 
         return sanitized.Trim();
