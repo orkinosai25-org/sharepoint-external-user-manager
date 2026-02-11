@@ -1,0 +1,294 @@
+@using SharePointExternalUserManager.Portal.Services
+@using SharePointExternalUserManager.Portal.Models
+@inject ChatService ChatService
+@inject IJSRuntime JSRuntime
+
+<div class="chat-widget @(IsOpen ? "open" : "closed") @DockPositionClass">
+    @if (!IsOpen)
+    {
+        <button class="chat-toggle-btn" @onclick="ToggleChat" title="Open AI Chat">
+            <span class="bi bi-chat-dots-fill"></span>
+            <span class="chat-badge">AI</span>
+        </button>
+    }
+    else
+    {
+        <div class="chat-panel">
+            <!-- Header -->
+            <div class="chat-header">
+                <div class="chat-header-title">
+                    <span class="bi bi-robot"></span>
+                    <span class="chat-title">ClientSpace AI Assistant</span>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="dock-btn" @onclick="CycleDockPosition" title="Change position">
+                        <span class="bi bi-arrows-move"></span>
+                    </button>
+                    <button class="close-btn" @onclick="ToggleChat" title="Close chat">
+                        <span class="bi bi-x-lg"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="chat-messages" @ref="messagesContainer">
+                @if (!_messages.Any())
+                {
+                    <div class="welcome-message">
+                        <div class="welcome-icon">
+                            <span class="bi bi-robot"></span>
+                        </div>
+                        <h3>Welcome to ClientSpace AI</h3>
+                        <p>I'm here to help you learn about our external collaboration platform for Microsoft 365.</p>
+                        <p>Try asking me about:</p>
+                        <ul>
+                            <li>Features and capabilities</li>
+                            <li>Pricing and plans</li>
+                            <li>Getting started</li>
+                            <li>SharePoint integration</li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var message in _messages)
+                    {
+                        <div class="message @(message.Role == "user" ? "user-message" : "assistant-message")">
+                            <div class="message-avatar">
+                                @if (message.Role == "user")
+                                {
+                                    <span class="bi bi-person-circle"></span>
+                                }
+                                else
+                                {
+                                    <span class="bi bi-robot"></span>
+                                }
+                            </div>
+                            <div class="message-content">
+                                <div class="message-text">@((MarkupString)FormatMessage(message.Content))</div>
+                                <div class="message-time">@message.Timestamp.ToLocalTime().ToString("HH:mm")</div>
+                            </div>
+                        </div>
+                    }
+                }
+                @if (_isLoading)
+                {
+                    <div class="message assistant-message">
+                        <div class="message-avatar">
+                            <span class="bi bi-robot"></span>
+                        </div>
+                        <div class="message-content">
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Input -->
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <input type="text" 
+                           class="chat-input" 
+                           placeholder="Ask me anything about ClientSpace..."
+                           @bind="_currentMessage"
+                           @onkeydown="HandleKeyDown"
+                           disabled="@_isLoading" />
+                    <button class="send-btn" 
+                            @onclick="SendMessage" 
+                            disabled="@(_isLoading || string.IsNullOrWhiteSpace(_currentMessage))">
+                        <span class="bi bi-send-fill"></span>
+                    </button>
+                </div>
+                @if (_showClearButton && _messages.Any())
+                {
+                    <button class="clear-btn" @onclick="ClearChat">
+                        <span class="bi bi-trash"></span> Clear conversation
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    private string _conversationId = Guid.NewGuid().ToString();
+    private List<ChatMessage> _messages = new();
+    private string _currentMessage = string.Empty;
+    private bool _isLoading = false;
+    private bool _showClearButton = true;
+    private ElementReference messagesContainer;
+    
+    private enum DockPosition { Bottom, Right, Top, Left }
+    private DockPosition _dockPosition = DockPosition.Right;
+    
+    private string DockPositionClass => _dockPosition.ToString().ToLower();
+
+    protected override void OnInitialized()
+    {
+        _messages = ChatService.GetConversationHistory(_conversationId);
+    }
+
+    private async Task ToggleChat()
+    {
+        IsOpen = !IsOpen;
+        await IsOpenChanged.InvokeAsync(IsOpen);
+        
+        if (IsOpen)
+        {
+            await Task.Delay(100);
+            await ScrollToBottom();
+        }
+    }
+
+    private void CycleDockPosition()
+    {
+        _dockPosition = _dockPosition switch
+        {
+            DockPosition.Right => DockPosition.Bottom,
+            DockPosition.Bottom => DockPosition.Left,
+            DockPosition.Left => DockPosition.Top,
+            DockPosition.Top => DockPosition.Right,
+            _ => DockPosition.Right
+        };
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && !string.IsNullOrWhiteSpace(_currentMessage))
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_currentMessage) || _isLoading)
+            return;
+
+        var message = _currentMessage.Trim();
+        _currentMessage = string.Empty;
+        _isLoading = true;
+
+        try
+        {
+            var request = new ChatRequest
+            {
+                ConversationId = _conversationId,
+                Message = message,
+                Temperature = 0.7,
+                MaxTokens = 1000
+            };
+
+            var response = await ChatService.SendMessageAsync(request);
+            _messages = ChatService.GetConversationHistory(_conversationId);
+            
+            await ScrollToBottom();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending message: {ex.Message}");
+            _messages.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Content = "I apologize, but I encountered an error. Please try again.",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+            await Task.Delay(100);
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task ClearChat()
+    {
+        _messages.Clear();
+        ChatService.ClearConversation(_conversationId);
+        _conversationId = Guid.NewGuid().ToString();
+        StateHasChanged();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", messagesContainer);
+        }
+        catch
+        {
+            // Ignore if JS is not available
+        }
+    }
+
+    private string FormatMessage(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return content;
+
+        // Convert markdown-style formatting to HTML
+        content = System.Web.HttpUtility.HtmlEncode(content);
+        
+        // Bold text: **text** or __text__ (do bold first to avoid conflicts)
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"__(.+?)__", "<strong>$1</strong>");
+        
+        // Italic text: *text* or _text_ (but not if already part of bold __)
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"(?<![_*])\*([^*]+?)\*(?![*_])", "<em>$1</em>");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"(?<![_*])_([^_]+?)_(?![_*])", "<em>$1</em>");
+        
+        // Line breaks
+        content = content.Replace("\n", "<br>");
+        
+        // Bullet points - create proper list items
+        var lines = content.Split(new[] { "<br>" }, StringSplitOptions.None);
+        var formattedLines = new List<string>();
+        bool inList = false;
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            if (trimmedLine.StartsWith("•") || trimmedLine.StartsWith("-"))
+            {
+                if (!inList)
+                {
+                    formattedLines.Add("<ul>");
+                    inList = true;
+                }
+                var listContent = trimmedLine.Substring(1).Trim();
+                formattedLines.Add($"<li>{listContent}</li>");
+            }
+            else
+            {
+                if (inList)
+                {
+                    formattedLines.Add("</ul>");
+                    inList = false;
+                }
+                if (!string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    formattedLines.Add(line);
+                }
+            }
+        }
+        
+        if (inList)
+        {
+            formattedLines.Add("</ul>");
+        }
+        
+        return string.Join("<br>", formattedLines);
+    }
+}
