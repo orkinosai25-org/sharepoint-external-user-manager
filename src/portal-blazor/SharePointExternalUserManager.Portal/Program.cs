@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -9,6 +10,9 @@ using SharePointExternalUserManager.Portal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Constants
+const string CookieScheme = "Cookies";
+
 // Validate configuration early to provide helpful error messages
 var configValidator = new ConfigurationValidator(
     builder.Configuration, 
@@ -16,43 +20,14 @@ var configValidator = new ConfigurationValidator(
 
 var validationResult = configValidator.Validate();
 
-// In production, fail fast on configuration errors
-// In development, only show warnings to allow developers to start the app
-var isProduction = builder.Environment.IsProduction();
-
+// Show warnings for missing configuration but don't fail the app
+// This allows the app to start even with incomplete configuration
 if (!validationResult.IsValid)
 {
     var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
     
-    if (isProduction)
+    // Always show warnings, never fail
     {
-        logger.LogError("═══════════════════════════════════════════════════════════════");
-        logger.LogError("CONFIGURATION ERROR: Application cannot start");
-        logger.LogError("═══════════════════════════════════════════════════════════════");
-        logger.LogError("");
-        logger.LogError("The following configuration errors were found:");
-        logger.LogError("");
-        
-        foreach (var error in validationResult.Errors)
-        {
-            logger.LogError("  • {Key}: {Message}", error.Key, error.Message);
-        }
-        
-        logger.LogError("");
-        logger.LogError("How to fix:");
-        logger.LogError("  1. Configure application settings via Azure App Service Configuration");
-        logger.LogError("  2. Ensure all required Azure AD and API settings are set");
-        logger.LogError("  3. Check Azure Key Vault if using managed secrets");
-        logger.LogError("");
-        logger.LogError("═══════════════════════════════════════════════════════════════");
-        
-        throw new InvalidOperationException(
-            "Application configuration is invalid. Please configure Azure AD credentials. " +
-            "See console output above for details.");
-    }
-    else
-    {
-        // In development, show warnings but allow app to start
         logger.LogWarning("═══════════════════════════════════════════════════════════════");
         logger.LogWarning("CONFIGURATION WARNING: Some settings are not configured");
         logger.LogWarning("═══════════════════════════════════════════════════════════════");
@@ -66,27 +41,20 @@ if (!validationResult.IsValid)
         }
         
         logger.LogWarning("");
-        logger.LogWarning("The application will start, but authentication will not work.");
+        logger.LogWarning("The application will start, but some features may not work.");
         logger.LogWarning("");
         logger.LogWarning("How to fix:");
-        logger.LogWarning("  1. Register an application in Azure Portal:");
-        logger.LogWarning("     https://portal.azure.com → Azure Active Directory → App registrations");
+        logger.LogWarning("  1. Configure application settings via Azure App Service Configuration or environment variables");
+        logger.LogWarning("  2. Set the following required settings:");
+        logger.LogWarning("     - AzureAd__ClientId: Your Azure AD Application Client ID");
+        logger.LogWarning("     - AzureAd__ClientSecret: Your Azure AD Application Client Secret");
+        logger.LogWarning("     - AzureAd__TenantId: Your Azure AD Tenant ID");
+        logger.LogWarning("     - ApiSettings__BaseUrl: Your backend API URL");
+        logger.LogWarning("     - StripeSettings__PublishableKey: Your Stripe Publishable Key (optional)");
         logger.LogWarning("");
-        logger.LogWarning("  2. Configure the application using one of these methods:");
-        logger.LogWarning("");
-        logger.LogWarning("     Option A - User Secrets (recommended for development):");
-        logger.LogWarning("       dotnet user-secrets set \"AzureAd:ClientId\" \"YOUR_CLIENT_ID\"");
-        logger.LogWarning("       dotnet user-secrets set \"AzureAd:ClientSecret\" \"YOUR_SECRET\"");
-        logger.LogWarning("");
-        logger.LogWarning("     Option B - Environment Variables:");
-        logger.LogWarning("       export AzureAd__ClientId=\"YOUR_CLIENT_ID\"");
-        logger.LogWarning("       export AzureAd__ClientSecret=\"YOUR_SECRET\"");
-        logger.LogWarning("");
-        logger.LogWarning("     Option C - appsettings.Development.json (not recommended):");
-        logger.LogWarning("       Update appsettings.Development.json with actual values");
-        logger.LogWarning("       WARNING: Do not commit secrets to source control!");
-        logger.LogWarning("");
-        logger.LogWarning("  3. See QUICKSTART.md for detailed setup instructions");
+        logger.LogWarning("  3. For development, use user secrets:");
+        logger.LogWarning("     dotnet user-secrets set \"AzureAd:ClientId\" \"YOUR_CLIENT_ID\"");
+        logger.LogWarning("     dotnet user-secrets set \"AzureAd:ClientSecret\" \"YOUR_SECRET\"");
         logger.LogWarning("");
         logger.LogWarning("═══════════════════════════════════════════════════════════════");
     }
@@ -103,8 +71,37 @@ if (validationResult.HasWarnings)
 }
 
 // Add authentication with Microsoft Entra ID
-builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+// Only setup authentication if configuration is valid
+var azureAdConfig = builder.Configuration.GetSection("AzureAd");
+var hasValidAzureAdConfig = !string.IsNullOrWhiteSpace(azureAdConfig["ClientId"]) &&
+                            !string.IsNullOrWhiteSpace(azureAdConfig["ClientSecret"]) &&
+                            !string.IsNullOrWhiteSpace(azureAdConfig["TenantId"]) &&
+                            !azureAdConfig["ClientId"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) &&
+                            !azureAdConfig["ClientSecret"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) &&
+                            !azureAdConfig["TenantId"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
+
+if (hasValidAzureAdConfig)
+{
+    builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+        .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+}
+else
+{
+    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
+    logger.LogWarning("Azure AD authentication is not configured. Authentication features will be disabled.");
+    
+    // Add minimal authentication to prevent errors
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CookieScheme;
+        options.DefaultChallengeScheme = CookieScheme;
+    })
+    .AddCookie(CookieScheme, options =>
+    {
+        options.LoginPath = "/account/signin";
+        options.AccessDeniedPath = "/account/access-denied";
+    });
+}
 
 // Add authorization
 builder.Services.AddAuthorization();
