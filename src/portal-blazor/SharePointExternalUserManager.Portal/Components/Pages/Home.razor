@@ -1,4 +1,5 @@
-﻿@page "/"
+@page "/"
+@using SharePointExternalUserManager.Portal.Components.Chat
 
 <PageTitle>ClientSpace - Universal External Collaboration for Microsoft 365</PageTitle>
 
@@ -58,6 +59,18 @@
         </div>
     </div>
 </div>
+
+<!-- AI Chat Widget -->
+<DockableChatPanel IsOpen="isChatOpen" IsOpenChanged="HandleChatOpenChanged" />
+
+@code {
+    private bool isChatOpen = false;
+
+    private void HandleChatOpenChanged(bool isOpen)
+    {
+        isChatOpen = isOpen;
+    }
+}
 
 <style>
     .hero-section {

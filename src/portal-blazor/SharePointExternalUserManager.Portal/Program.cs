@@ -109,6 +109,7 @@ builder.Services.AddAuthorization();
 // Configure API settings
 builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
+builder.Services.Configure<AzureOpenAISettings>(builder.Configuration.GetSection("AzureOpenAI"));
 
 // Add HttpClient for API calls
 builder.Services.AddHttpClient<ApiClient>(client =>
@@ -126,6 +127,10 @@ builder.Services.AddHttpClient<ApiClient>(client =>
         client.Timeout = TimeSpan.FromSeconds(30);
     }
 });
+
+// Add HttpClient for ChatService
+builder.Services.AddHttpClient<ChatService>();
+builder.Services.AddScoped<ChatService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
