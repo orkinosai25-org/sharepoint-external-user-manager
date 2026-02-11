@@ -14,11 +14,33 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // Entra ID authentication (multi-tenant)
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"))
-    .EnableTokenAcquisitionToCallDownstreamApi()
-    .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
-    .AddInMemoryTokenCaches();
+// Check if AzureAd configuration exists before setting up authentication
+var azureAdSection = builder.Configuration.GetSection("AzureAd");
+var hasAzureAdConfig = !string.IsNullOrWhiteSpace(azureAdSection["ClientId"]) && 
+                       !string.IsNullOrWhiteSpace(azureAdSection["TenantId"]);
+
+if (hasAzureAdConfig)
+{
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddMicrosoftIdentityWebApi(azureAdSection)
+        .EnableTokenAcquisitionToCallDownstreamApi()
+        .AddMicrosoftGraph(builder.Configuration.GetSection("MicrosoftGraph"))
+        .AddInMemoryTokenCaches();
+}
+else
+{
+    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
+    logger.LogWarning("Azure AD configuration is incomplete. Authentication is disabled.");
+    logger.LogWarning("Configure AzureAd:ClientId, AzureAd:TenantId, and AzureAd:ClientSecret to enable authentication.");
+    
+    // Add minimal authentication setup to prevent errors
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+            options.SaveToken = true;
+        });
+}
 
 // Register services
 builder.Services.AddScoped<ISharePointService, SharePointService>();
