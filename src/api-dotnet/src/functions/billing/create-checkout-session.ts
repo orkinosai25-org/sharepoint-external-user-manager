@@ -10,7 +10,9 @@ import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { ValidationError } from '../../models/common';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getPlanDefinition, PlanTier } from '../../models/plan';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getStripePriceId, BillingInterval } from '../../config/stripe-config';
 import * as Joi from 'joi';
 

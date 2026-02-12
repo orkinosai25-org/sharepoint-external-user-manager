@@ -8,6 +8,7 @@ import { getStripeService } from '../../services/stripe-service';
 import { auditLogger } from '../../services/auditLogger';
 import { attachCorrelationId } from '../../utils/correlation';
 import Stripe from 'stripe';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getPlanTierFromPriceId } from '../../config/stripe-config';
 import { mapPlanToSubscriptionTier } from '../../models/subscription';
 
@@ -198,7 +199,7 @@ async function handleCheckoutSessionCompleted(
 async function handleSubscriptionUpdated(
   event: Stripe.Event,
   context: InvocationContext,
-  correlationId: string
+  _correlationId: string
 ): Promise<void> {
   const subscription = event.data.object as Stripe.Subscription;
   
@@ -261,7 +262,7 @@ async function handleSubscriptionUpdated(
 async function handleSubscriptionDeleted(
   event: Stripe.Event,
   context: InvocationContext,
-  correlationId: string
+  _correlationId: string
 ): Promise<void> {
   const subscription = event.data.object as Stripe.Subscription;
   
@@ -312,7 +313,7 @@ async function handleSubscriptionDeleted(
 async function handleInvoicePaid(
   event: Stripe.Event,
   context: InvocationContext,
-  correlationId: string
+  _correlationId: string
 ): Promise<void> {
   const invoice = event.data.object as Stripe.Invoice;
   

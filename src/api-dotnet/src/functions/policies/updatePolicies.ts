@@ -6,12 +6,14 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { databaseService } from '../../services/database';
 import { auditLogger } from '../../services/auditLogger';
 import { authenticateRequest } from '../../middleware/auth';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { enforceSubscription, checkFeatureAccess } from '../../middleware/subscription';
 import { validateBody, updatePolicySchema } from '../../utils/validation';
 import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { UpdatePolicyRequest, PolicyResponse } from '../../models/policy';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ForbiddenError } from '../../models/common';
 import { enforceFeatureAccess } from '../../services/plan-enforcement';
 
