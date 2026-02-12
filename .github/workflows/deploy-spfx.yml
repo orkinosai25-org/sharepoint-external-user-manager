@@ -160,9 +160,10 @@ jobs:
           # Extract tenant name from SharePoint URL if tenant ID not provided
           $tenantId = $env:SPO_TENANT_ID
           if (-not $tenantId) {
-            # Extract tenant name from URL
-            # Supports: https://contoso.sharepoint.com, https://contoso-admin.sharepoint.com
-            # Note: Custom domains or non-standard URLs may require explicit SPO_TENANT_ID
+            # Extract tenant name from URL (matches with or without -admin suffix)
+            # Examples: https://contoso.sharepoint.com -> contoso
+            #           https://contoso-admin.sharepoint.com -> contoso
+            # Note: Custom domains or non-standard URLs require explicit SPO_TENANT_ID
             if ($env:SPO_URL -match 'https://([^.]+?)(-admin)?\.sharepoint\.com') {
               $tenantName = $matches[1]
               Write-Host "Detected tenant name from URL: $tenantName"

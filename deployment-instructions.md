@@ -57,7 +57,7 @@ For detailed setup instructions, see [AZURE_AD_APP_SETUP.md](./AZURE_AD_APP_SETU
 - `SPO_URL`: SharePoint tenant URL (e.g., https://contoso.sharepoint.com)
 - `SPO_CLIENT_ID`: Azure AD App Registration Client ID
 - `SPO_CLIENT_SECRET`: Azure AD App Registration Client Secret
-- `SPO_TENANT_ID`: Azure AD Tenant ID (optional)
+- `SPO_TENANT_ID`: Azure AD Tenant ID (optional for standard URLs, recommended for reliability, required for custom domains)
 
 #### Triggering Deployment
 The workflow runs automatically on every push to the `main` branch, or can be triggered manually from the Actions tab.
