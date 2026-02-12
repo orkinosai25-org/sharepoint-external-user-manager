@@ -2,7 +2,9 @@
 
 ## ⚠️ IMPORTANT: Configuration Required
 
-**The application will not work until you configure Azure AD credentials!**
+**The application includes graceful fallback for missing Azure AD configuration.**
+
+If Azure AD credentials are not configured, the sign-in page will display a helpful error message showing what's missing, rather than throwing an error.
 
 If you see an error like:
 ```
@@ -20,7 +22,9 @@ This means the placeholder values in `appsettings.json` need to be replaced with
    ```
 3. See [QUICKSTART.md](QUICKSTART.md) for detailed step-by-step instructions
 
-**Configuration Check:** Access `/config-check` in your browser to validate your configuration.
+**Configuration Check:** 
+- Access `/account/signin` to see the status of your authentication configuration
+- Access `/config-check` in your browser to validate your full configuration
 
 ---
 
@@ -56,13 +60,14 @@ The Blazor Web App portal provides the administrative interface for the SharePoi
 SharePointExternalUserManager.Portal/
 ├── Components/
 │   ├── Auth/
-│   │   └── RedirectToLogin.razor      # Redirects to sign-in
+│   │   └── RedirectToLogin.razor      # Redirects to sign-in page
 │   ├── Layout/
 │   │   ├── MainLayout.razor           # Main layout with auth state
 │   │   ├── NavMenu.razor              # Navigation menu
 │   │   └── *.razor.css                # Scoped styles
 │   ├── Pages/
 │   │   ├── Home.razor                 # Landing page
+│   │   ├── SignIn.razor               # Sign-in page with config check
 │   │   ├── Pricing.razor              # Subscription plans
 │   │   ├── Onboarding.razor           # Multi-step onboarding wizard
 │   │   ├── OnboardingSuccess.razor    # Post-payment success page
@@ -177,11 +182,14 @@ The portal communicates with the backend API via the `ApiClient` service:
 - `GET /clients/{id}` - Get specific client
 
 ### Authentication Flow
-1. User signs in with Microsoft Entra ID
-2. Portal receives JWT access token
-3. `ApiClient` includes token in API requests
-4. Backend validates token and extracts tenant ID
-5. Data is filtered by tenant (multi-tenant isolation)
+1. User clicks sign-in link
+2. Portal checks if Azure AD is configured
+3. If configured: Redirects to Microsoft Entra ID login
+4. If not configured: Shows configuration status page with helpful error message
+5. After successful authentication: Portal receives JWT access token
+6. `ApiClient` includes token in API requests
+7. Backend validates token and extracts tenant ID
+8. Data is filtered by tenant (multi-tenant isolation)
 
 ## Onboarding Flow
 
@@ -284,6 +292,13 @@ The portal includes fallback data for pricing when the API is unavailable, allow
    - Enabled via `app.UseAntiforgery()`
 
 ## Troubleshooting
+
+### Sign-In Shows "Authentication Not Configured"
+This is the new graceful fallback when Azure AD is not properly configured:
+- Check that all three Azure AD settings are configured: `ClientId`, `ClientSecret`, and `TenantId`
+- The sign-in page at `/account/signin` will show which settings are missing
+- Configure missing settings using User Secrets or environment variables
+- Avoid placeholder values like "YOUR_CLIENT_ID"
 
 ### "Failed to load plans" Error
 - Check that backend API is running
