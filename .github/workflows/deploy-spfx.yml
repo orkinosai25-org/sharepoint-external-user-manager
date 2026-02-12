@@ -160,12 +160,15 @@ jobs:
           # Extract tenant name from SharePoint URL if tenant ID not provided
           $tenantId = $env:SPO_TENANT_ID
           if (-not $tenantId) {
-            # Extract tenant name from URL (e.g., https://contoso.sharepoint.com -> contoso)
-            if ($env:SPO_URL -match 'https://([^.]+)\.sharepoint\.com') {
+            # Extract tenant name from URL
+            # Supports: https://contoso.sharepoint.com, https://contoso-admin.sharepoint.com
+            # Note: Custom domains or non-standard URLs may require explicit SPO_TENANT_ID
+            if ($env:SPO_URL -match 'https://([^.]+?)(-admin)?\.sharepoint\.com') {
               $tenantName = $matches[1]
-              Write-Host "Detected tenant name: $tenantName"
+              Write-Host "Detected tenant name from URL: $tenantName"
+              Write-Host "Note: If connection fails, set SPO_TENANT_ID secret explicitly"
             } else {
-              throw "Could not extract tenant name from SPO_URL and SPO_TENANT_ID is not provided"
+              throw "Could not extract tenant name from SPO_URL ($env:SPO_URL). Please set SPO_TENANT_ID repository secret explicitly."
             }
           }
           
@@ -181,7 +184,8 @@ jobs:
                 Write-Host "Connecting with Tenant ID: $tenantId"
                 Connect-PnPOnline -Url $env:SPO_URL -ClientId $env:SPO_CLIENT_ID -ClientSecret $env:SPO_CLIENT_SECRET -Tenant $tenantId
               } else {
-                Write-Host "Connecting with tenant name: $tenantName"
+                # Try with .onmicrosoft.com suffix (standard Microsoft 365 tenant)
+                Write-Host "Connecting with derived tenant: $tenantName.onmicrosoft.com"
                 Connect-PnPOnline -Url $env:SPO_URL -ClientId $env:SPO_CLIENT_ID -ClientSecret $env:SPO_CLIENT_SECRET -Tenant "$tenantName.onmicrosoft.com"
               }
               $connected = $true

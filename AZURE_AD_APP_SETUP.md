@@ -77,9 +77,12 @@ The app needs permissions to manage SharePoint sites and app catalog.
 | `SPO_URL` | Your SharePoint tenant URL | `https://contoso.sharepoint.com` |
 | `SPO_CLIENT_ID` | Application (client) ID from Step 2 | `12345678-1234-1234-1234-123456789abc` |
 | `SPO_CLIENT_SECRET` | Client secret value from Step 3 | `abc123~DEF456.ghi789` |
-| `SPO_TENANT_ID` | Directory (tenant) ID from Step 2 (optional) | `87654321-4321-4321-4321-cba987654321` |
+| `SPO_TENANT_ID` | Directory (tenant) ID from Step 2 (recommended) | `87654321-4321-4321-4321-cba987654321` |
 
-**Note**: `SPO_TENANT_ID` is optional. If not provided, the workflow will derive it from `SPO_URL`.
+**Note**: `SPO_TENANT_ID` is optional but **recommended**. 
+- **If provided**: Ensures accurate tenant identification regardless of URL format
+- **If not provided**: Workflow attempts to derive tenant name from `SPO_URL` (works for standard `*.sharepoint.com` URLs)
+- **Custom domains**: If using custom SharePoint domains or vanity URLs, `SPO_TENANT_ID` must be provided
 
 ## Step 6: Verify the Setup
 
@@ -109,8 +112,15 @@ After configuring all secrets:
 ### Tenant Configuration Issues
 
 **Error**: `Could not extract tenant name from SPO_URL`
-- **Solution**: Ensure `SPO_URL` is in the format `https://yourtenant.sharepoint.com`
-- **Alternative**: Explicitly set `SPO_TENANT_ID` secret
+- **Solution**: Ensure `SPO_URL` is in the format `https://yourtenant.sharepoint.com` or `https://yourtenant-admin.sharepoint.com`
+- **Alternative**: Explicitly set `SPO_TENANT_ID` secret (recommended for custom domains)
+- **Note**: Custom SharePoint domains or vanity URLs require explicit `SPO_TENANT_ID`
+
+**Error**: `Tenant identification failed`
+- **Solution**: 
+  1. Set `SPO_TENANT_ID` explicitly in repository secrets
+  2. Verify the tenant ID is correct (find it in Azure AD overview)
+  3. Ensure the Client ID is from the correct tenant
 
 ### App Catalog Access
 
