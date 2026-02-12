@@ -5,8 +5,9 @@
 #
 # Required Repository Secrets:
 # - SPO_URL: SharePoint tenant URL (e.g., https://contoso.sharepoint.com)
-# - SPO_USERNAME: SharePoint admin username (e.g., admin@contoso.onmicrosoft.com)  
-# - SPO_PASSWORD: SharePoint admin password (use app password if MFA is enabled)
+# - SPO_CLIENT_ID: Azure AD App Registration Client ID (Application ID)
+# - SPO_CLIENT_SECRET: Azure AD App Registration Client Secret
+# - SPO_TENANT_ID: Azure AD Tenant ID (optional, can be derived from SPO_URL)
 #
 # The workflow performs the following steps:
 # 1. Build: Install dependencies, build and package the SPFx solution
@@ -106,20 +107,21 @@ jobs:
       shell: pwsh
       env:
         SPO_URL: ${{ secrets.SPO_URL }}
-        SPO_USERNAME: ${{ secrets.SPO_USERNAME }}
-        SPO_PASSWORD: ${{ secrets.SPO_PASSWORD }}
+        SPO_CLIENT_ID: ${{ secrets.SPO_CLIENT_ID }}
+        SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+        SPO_TENANT_ID: ${{ secrets.SPO_TENANT_ID }}
       run: |
         # Check if required secrets are provided
         if (-not $env:SPO_URL) {
           Write-Host "❌ SPO_URL secret is not configured"
           exit 1
         }
-        if (-not $env:SPO_USERNAME) {
-          Write-Host "❌ SPO_USERNAME secret is not configured"
+        if (-not $env:SPO_CLIENT_ID) {
+          Write-Host "❌ SPO_CLIENT_ID secret is not configured"
           exit 1
         }
-        if (-not $env:SPO_PASSWORD) {
-          Write-Host "❌ SPO_PASSWORD secret is not configured"
+        if (-not $env:SPO_CLIENT_SECRET) {
+          Write-Host "❌ SPO_CLIENT_SECRET secret is not configured"
           exit 1
         }
         
@@ -138,8 +140,9 @@ jobs:
       shell: pwsh
       env:
         SPO_URL: ${{ secrets.SPO_URL }}
-        SPO_USERNAME: ${{ secrets.SPO_USERNAME }}
-        SPO_PASSWORD: ${{ secrets.SPO_PASSWORD }}
+        SPO_CLIENT_ID: ${{ secrets.SPO_CLIENT_ID }}
+        SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+        SPO_TENANT_ID: ${{ secrets.SPO_TENANT_ID }}
       run: |
         try {
           Write-Host "=============================================="
@@ -147,25 +150,40 @@ jobs:
           Write-Host "=============================================="
           Write-Host "Deployment Started: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')"
           Write-Host "SharePoint URL: $env:SPO_URL"
-          Write-Host "Username: $env:SPO_USERNAME"
+          Write-Host "Client ID: $env:SPO_CLIENT_ID"
           Write-Host "Workflow Run: ${{ github.run_number }}"
           Write-Host "Commit SHA: ${{ github.sha }}"
           Write-Host ""
           
-          Write-Host "🔗 Connecting to SharePoint Online..."
+          Write-Host "🔗 Connecting to SharePoint Online using Azure AD App..."
           
-          # Convert password to secure string
-          $securePassword = ConvertTo-SecureString $env:SPO_PASSWORD -AsPlainText -Force
-          $credentials = New-Object System.Management.Automation.PSCredential($env:SPO_USERNAME, $securePassword)
+          # Extract tenant name from SharePoint URL if tenant ID not provided
+          $tenantId = $env:SPO_TENANT_ID
+          if (-not $tenantId) {
+            # Extract tenant name from URL (e.g., https://contoso.sharepoint.com -> contoso)
+            if ($env:SPO_URL -match 'https://([^.]+)\.sharepoint\.com') {
+              $tenantName = $matches[1]
+              Write-Host "Detected tenant name: $tenantName"
+            } else {
+              throw "Could not extract tenant name from SPO_URL and SPO_TENANT_ID is not provided"
+            }
+          }
           
-          # Connect to SharePoint Online with retry logic
+          # Connect to SharePoint Online with retry logic using modern authentication
           $maxRetries = 3
           $retryCount = 0
           $connected = $false
           
           while (-not $connected -and $retryCount -lt $maxRetries) {
             try {
-              Connect-PnPOnline -Url $env:SPO_URL -Credentials $credentials
+              # Use modern authentication with client ID and secret
+              if ($tenantId) {
+                Write-Host "Connecting with Tenant ID: $tenantId"
+                Connect-PnPOnline -Url $env:SPO_URL -ClientId $env:SPO_CLIENT_ID -ClientSecret $env:SPO_CLIENT_SECRET -Tenant $tenantId
+              } else {
+                Write-Host "Connecting with tenant name: $tenantName"
+                Connect-PnPOnline -Url $env:SPO_URL -ClientId $env:SPO_CLIENT_ID -ClientSecret $env:SPO_CLIENT_SECRET -Tenant "$tenantName.onmicrosoft.com"
+              }
               $connected = $true
               Write-Host "✅ Successfully connected to SharePoint Online"
             } catch {
@@ -292,15 +310,24 @@ jobs:
         
         ### Troubleshooting
         1. 🔍 Check the workflow logs above for detailed error information
-        2. 🔐 Verify that repository secrets (SPO_URL, SPO_USERNAME, SPO_PASSWORD) are correctly configured
-        3. 📋 Ensure the SharePoint account has sufficient permissions for App Catalog management
-        4. 🌐 Confirm that the SharePoint tenant URL is accessible and correct
-        5. 🔄 Try running the deployment again if this was a temporary issue
+        2. 🔐 Verify that repository secrets (SPO_URL, SPO_CLIENT_ID, SPO_CLIENT_SECRET) are correctly configured
+        3. 📋 Ensure the Azure AD App Registration has the required SharePoint permissions
+        4. 🔑 Verify the Azure AD App has Sites.FullControl.All application permission
+        5. 🌐 Confirm that the SharePoint tenant URL is accessible and correct
+        6. 🔄 Try running the deployment again if this was a temporary issue
         
         ### Repository Secrets Required
-        - **SPO_URL**: SharePoint tenant URL (e.g., https://turqoisecms-admin.sharepoint.com)
-        - **SPO_USERNAME**: SharePoint admin username
-        - **SPO_PASSWORD**: SharePoint admin password (use app password if MFA enabled)
+        - **SPO_URL**: SharePoint tenant URL (e.g., https://contoso.sharepoint.com)
+        - **SPO_CLIENT_ID**: Azure AD App Registration Client ID (Application ID)
+        - **SPO_CLIENT_SECRET**: Azure AD App Registration Client Secret
+        - **SPO_TENANT_ID**: (Optional) Azure AD Tenant ID - if not provided, will be derived from SPO_URL
+        
+        ### Azure AD App Registration Setup
+        1. Register a new app in Azure AD (or use existing one)
+        2. Grant API permissions: SharePoint Sites.FullControl.All (Application permission)
+        3. Grant admin consent for the permissions
+        4. Create a client secret and save it securely
+        5. Add the Client ID and Secret to repository secrets
         "@
           
           Write-Host $errorSummary

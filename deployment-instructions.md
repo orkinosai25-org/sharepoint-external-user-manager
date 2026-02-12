@@ -36,10 +36,31 @@ npm run package-solution
 ```
 
 ## Deploy to SharePoint
+
+### Manual Deployment
 1. Navigate to your SharePoint App Catalog
 2. Upload the generated `.sppkg` file from `solution/` folder
 3. Trust the solution when prompted
 4. Add the web part to a SharePoint page
+
+### Automated Deployment via GitHub Actions
+
+The repository includes a GitHub Actions workflow for automated deployment to SharePoint.
+
+#### Prerequisites
+- Azure AD App Registration with appropriate permissions
+- GitHub repository secrets configured
+
+For detailed setup instructions, see [AZURE_AD_APP_SETUP.md](./AZURE_AD_APP_SETUP.md)
+
+#### Required Repository Secrets
+- `SPO_URL`: SharePoint tenant URL (e.g., https://contoso.sharepoint.com)
+- `SPO_CLIENT_ID`: Azure AD App Registration Client ID
+- `SPO_CLIENT_SECRET`: Azure AD App Registration Client Secret
+- `SPO_TENANT_ID`: Azure AD Tenant ID (optional)
+
+#### Triggering Deployment
+The workflow runs automatically on every push to the `main` branch, or can be triggered manually from the Actions tab.
 
 ## Features Included
 - ✅ External library management with DetailsList
