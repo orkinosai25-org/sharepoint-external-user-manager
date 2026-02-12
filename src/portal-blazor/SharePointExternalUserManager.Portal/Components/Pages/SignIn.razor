@@ -26,7 +26,7 @@
                                 Authentication Not Configured
                             </h5>
                             <p class="mb-0">
-                                Azure Active Directory authentication is not configured for this application.
+                                Microsoft Entra ID authentication is not configured for this application.
                                 Please contact your system administrator to complete the setup.
                             </p>
                         </div>
@@ -72,12 +72,9 @@
         var clientSecret = azureAdConfig["ClientSecret"];
         var tenantId = azureAdConfig["TenantId"];
 
-        hasClientId = !string.IsNullOrWhiteSpace(clientId) && 
-                      !clientId.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
-        hasClientSecret = !string.IsNullOrWhiteSpace(clientSecret) && 
-                          !clientSecret.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
-        hasTenantId = !string.IsNullOrWhiteSpace(tenantId) && 
-                      !tenantId.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
+        hasClientId = IsValidConfigValue(clientId);
+        hasClientSecret = IsValidConfigValue(clientSecret);
+        hasTenantId = IsValidConfigValue(tenantId);
 
         isAzureAdConfigured = hasClientId && hasClientSecret && hasTenantId;
 
@@ -86,5 +83,11 @@
             // Redirect to Microsoft Identity sign-in
             Navigation.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
         }
+    }
+
+    private static bool IsValidConfigValue(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && 
+               !value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
     }
 }
