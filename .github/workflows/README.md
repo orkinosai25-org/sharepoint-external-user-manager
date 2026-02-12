@@ -104,13 +104,16 @@ The deployment process consists of two main jobs:
 
 ### Required Repository Secrets
 
-Before using this workflow, you must configure the following secrets in your GitHub repository:
+**IMPORTANT**: This workflow now uses modern authentication via Azure AD App Registration. Username/password authentication is no longer supported.
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
 | `SPO_URL` | SharePoint tenant URL | `https://turqoisecms-admin.sharepoint.com` |
-| `SPO_USERNAME` | SharePoint admin username | `admin@turqoisecms-admin.onmicrosoft.com` |
-| `SPO_PASSWORD` | SharePoint admin password | `YourSecurePassword123!` |
+| `SPO_CLIENT_ID` | Azure AD App Registration Client ID (Application ID) | `12345678-1234-1234-1234-123456789abc` |
+| `SPO_CLIENT_SECRET` | Azure AD App Registration Client Secret | `abc123~DEF456.ghi789` |
+| `SPO_TENANT_ID` | Azure AD Tenant ID (optional, can be derived from SPO_URL) | `87654321-4321-4321-4321-cba987654321` |
+
+**See [AZURE_AD_APP_SETUP.md](../../AZURE_AD_APP_SETUP.md) for complete setup instructions.**
 
 ### Setting Up Repository Secrets
 
@@ -121,15 +124,14 @@ Before using this workflow, you must configure the following secrets in your Git
 
 ### Authentication Requirements
 
-The deployment account must have:
-- SharePoint Administrator role
+The deployment uses **modern authentication** via Azure AD App Registration. The app must have:
+- API Permission: `SharePoint Sites.FullControl.All` (Application permission)
+- Admin consent granted for the permission
 - Access to the tenant App Catalog
-- Appropriate permissions to upload and publish apps
 
-**Note**: If your organization uses Multi-Factor Authentication (MFA), you may need to:
-- Use an app password instead of the regular password
-- Create a dedicated service account without MFA
-- Use certificate-based authentication (requires workflow modification)
+**Complete setup guide**: [AZURE_AD_APP_SETUP.md](../../AZURE_AD_APP_SETUP.md)
+
+This replaces the deprecated username/password authentication method which is no longer supported by Microsoft.
 
 ### Triggering the Workflow
 
@@ -166,9 +168,11 @@ Each deployment provides:
    - Local development should use the same version
 
 2. **Authentication Failures**
-   - Verify the SPO_USERNAME and SPO_PASSWORD secrets
-   - Check if the account has proper permissions
-   - Consider using app passwords for MFA-enabled accounts
+   - Verify the SPO_CLIENT_ID and SPO_CLIENT_SECRET secrets are correctly configured
+   - Check that the Azure AD App has the required API permissions
+   - Ensure admin consent is granted for the permissions
+   - Verify the tenant ID or URL is correct
+   - See [AZURE_AD_APP_SETUP.md](../../AZURE_AD_APP_SETUP.md) for troubleshooting
 
 3. **Package Upload Failures**
    - Ensure the App Catalog is accessible
@@ -191,9 +195,9 @@ To view detailed logs:
 
 1. **Test Connection Manually**:
    ```powershell
-   # Test PowerShell connection locally
+   # Test PowerShell connection locally with modern auth
    Install-Module -Name PnP.PowerShell -Force
-   Connect-PnPOnline -Url "https://yourtenant.sharepoint.com" -Interactive
+   Connect-PnPOnline -Url "https://yourtenant.sharepoint.com" -ClientId "your-client-id" -ClientSecret "your-client-secret" -Tenant "yourtenant.onmicrosoft.com"
    Get-PnPApp
    ```
 
