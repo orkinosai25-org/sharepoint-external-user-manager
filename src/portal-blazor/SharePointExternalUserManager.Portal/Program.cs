@@ -10,9 +10,6 @@ using SharePointExternalUserManager.Portal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Constants
-const string CookieScheme = "Cookies";
-
 // Validate configuration early to provide helpful error messages
 var configValidator = new ConfigurationValidator(
     builder.Configuration, 
@@ -71,37 +68,9 @@ if (validationResult.HasWarnings)
 }
 
 // Add authentication with Microsoft Entra ID
-// Only setup authentication if configuration is valid
-var azureAdConfig = builder.Configuration.GetSection("AzureAd");
-var hasValidAzureAdConfig = !string.IsNullOrWhiteSpace(azureAdConfig["ClientId"]) &&
-                            !string.IsNullOrWhiteSpace(azureAdConfig["ClientSecret"]) &&
-                            !string.IsNullOrWhiteSpace(azureAdConfig["TenantId"]) &&
-                            !azureAdConfig["ClientId"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) &&
-                            !azureAdConfig["ClientSecret"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) &&
-                            !azureAdConfig["TenantId"]!.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
-
-if (hasValidAzureAdConfig)
-{
-    builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-        .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
-}
-else
-{
-    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
-    logger.LogWarning("Azure AD authentication is not configured. Authentication features will be disabled.");
-    
-    // Add minimal authentication to prevent errors
-    builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = CookieScheme;
-        options.DefaultChallengeScheme = CookieScheme;
-    })
-    .AddCookie(CookieScheme, options =>
-    {
-        options.LoginPath = "/account/signin";
-        options.AccessDeniedPath = "/account/access-denied";
-    });
-}
+// Always use configuration from appsettings.json for MVP
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
 
 // Add authorization
 builder.Services.AddAuthorization();
