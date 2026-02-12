@@ -3,6 +3,8 @@
  * This file demonstrates how to properly integrate plan checking and enforcement
  */
 
+// Unused imports are kept for reference in examples
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { HttpRequest, InvocationContext } from '@azure/functions';
 import { TenantContext } from '../models/common';
 import {
@@ -10,15 +12,25 @@ import {
   getTenantPlanLimits,
   getTenantPlanFeatures,
   getTenantPlanDefinition,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   checkFeatureAccess,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   checkClientSpaceLimit,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   checkExternalUserLimit,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   enforceFeatureAccess,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   enforceClientSpaceLimit,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   enforceExternalUserLimit,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getAuditRetentionDays,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   shouldRetainAudit,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getSupportLevel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   hasMinimumTier
 } from '../services/plan-enforcement';
 
@@ -26,6 +38,7 @@ import {
  * Example 1: Get tenant plan information
  * Use this in a GET /tenant/plan endpoint to show plan details to users
  */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export async function getTenantPlanInfo(context: TenantContext) {
   const plan = getTenantPlan(context);
   const definition = getTenantPlanDefinition(context);
@@ -85,6 +98,7 @@ export async function getTenantPlanInfo(context: TenantContext) {
  * Example 2: Checking feature availability before showing UI
  * Use this in GET /features endpoint to determine what UI to show
  */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export async function getAvailableFeatures(context: TenantContext) {
   const features = getTenantPlanFeatures(context);
 
@@ -118,6 +132,7 @@ export async function getAvailableFeatures(context: TenantContext) {
  * Example 3: Soft checking limits to show warnings
  * Use this to show warnings in UI before user hits the limit
  */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export async function checkQuotaStatus(
   context: TenantContext,
   currentCounts: {
