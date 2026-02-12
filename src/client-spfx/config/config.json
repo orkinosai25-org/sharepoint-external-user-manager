@@ -6,7 +6,7 @@
       "components": [
         {
           "entrypoint": "./lib/webparts/externalUserManager/ExternalUserManagerWebPart.js",
-          "manifest": "./webparts/externalUserManager/ExternalUserManagerWebPart.manifest.json"
+          "manifest": "./src/webparts/externalUserManager/ExternalUserManagerWebPart.manifest.json"
         }
       ]
     },
@@ -14,7 +14,7 @@
       "components": [
         {
           "entrypoint": "./lib/webparts/clientDashboard/ClientDashboardWebPart.js",
-          "manifest": "./webparts/clientDashboard/ClientDashboardWebPart.manifest.json"
+          "manifest": "./src/webparts/clientDashboard/ClientDashboardWebPart.manifest.json"
         }
       ]
     }
