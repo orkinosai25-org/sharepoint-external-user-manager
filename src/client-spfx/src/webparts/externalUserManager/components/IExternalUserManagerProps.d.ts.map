@@ -1,0 +1,1 @@
+{"version":3,"file":"IExternalUserManagerProps.d.ts","sourceRoot":"","sources":["IExternalUserManagerProps.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,4BAA4B,CAAC;AAE5D,MAAM,WAAW,yBAAyB;IACxC,WAAW,EAAE,MAAM,CAAC;IACpB,OAAO,EAAE,cAAc,CAAC;IACxB,aAAa,EAAE,MAAM,CAAC;IACtB,SAAS,CAAC,EAAE,MAAM,CAAC;CACpB"}

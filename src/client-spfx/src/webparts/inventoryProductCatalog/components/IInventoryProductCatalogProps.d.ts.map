@@ -1,0 +1,1 @@
+{"version":3,"file":"IInventoryProductCatalogProps.d.ts","sourceRoot":"","sources":["IInventoryProductCatalogProps.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,4BAA4B,CAAC;AAE5D,MAAM,WAAW,6BAA6B;IAC5C,WAAW,EAAE,MAAM,CAAC;IACpB,OAAO,EAAE,cAAc,CAAC;CACzB"}

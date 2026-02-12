@@ -1,0 +1,1 @@
+{"version":3,"file":"IClientDashboardProps.d.ts","sourceRoot":"","sources":["IClientDashboardProps.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,4BAA4B,CAAC;AAE5D,MAAM,WAAW,qBAAqB;IACpC,WAAW,EAAE,MAAM,CAAC;IACpB,OAAO,EAAE,cAAc,CAAC;CACzB"}
