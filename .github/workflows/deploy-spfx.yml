@@ -13,8 +13,13 @@
 # 1. Build: Install dependencies, build and package the SPFx solution
 # 2. Deploy: Upload .sppkg file to tenant app catalog and publish it
 #
-# Note: Ensure the user account has SharePoint administrator privileges
-# and can access the tenant app catalog
+# Note: The deployment job will only run if the required secrets are configured.
+#       The build job will always run to validate the solution can be built successfully.
+#       To enable deployment, configure the required secrets in your repository settings.
+#
+# Deployment Requirements:
+# - Ensure the user account has SharePoint administrator privileges
+# - Ensure the Azure AD App can access the tenant app catalog
 
 name: Deploy SPFx Solution to SharePoint
 
@@ -106,6 +111,7 @@ jobs:
         Write-Host "PnP PowerShell version: $(Get-Module -Name PnP.PowerShell -ListAvailable | Select-Object -ExpandProperty Version)"
         
     - name: Validate deployment prerequisites
+      id: validate
       shell: pwsh
       env:
         SPO_URL: ${{ secrets.SPO_URL }}
@@ -114,17 +120,36 @@ jobs:
         SPO_TENANT_ID: ${{ secrets.SPO_TENANT_ID }}
       run: |
         # Check if required secrets are provided
+        $missingSecrets = @()
         if (-not $env:SPO_URL) {
-          Write-Host "❌ SPO_URL secret is not configured"
-          exit 1
+          $missingSecrets += "SPO_URL"
         }
         if (-not $env:SPO_CLIENT_ID) {
-          Write-Host "❌ SPO_CLIENT_ID secret is not configured"
-          exit 1
+          $missingSecrets += "SPO_CLIENT_ID"
         }
         if (-not $env:SPO_CLIENT_SECRET) {
-          Write-Host "❌ SPO_CLIENT_SECRET secret is not configured"
-          exit 1
+          $missingSecrets += "SPO_CLIENT_SECRET"
+        }
+        
+        if ($missingSecrets.Count -gt 0) {
+          Write-Host "⚠️ Deployment skipped - Required secrets not configured:"
+          foreach ($secret in $missingSecrets) {
+            Write-Host "  - $secret"
+          }
+          Write-Host ""
+          Write-Host "ℹ️ To enable automatic deployment to SharePoint:"
+          Write-Host "  1. Go to repository Settings > Secrets and variables > Actions"
+          Write-Host "  2. Add the following secrets:"
+          Write-Host "     - SPO_URL: SharePoint tenant URL (e.g., https://contoso.sharepoint.com)"
+          Write-Host "     - SPO_CLIENT_ID: Azure AD App Registration Client ID"
+          Write-Host "     - SPO_CLIENT_SECRET: Azure AD App Registration Client Secret"
+          Write-Host "     - SPO_TENANT_ID: (Optional) Azure AD Tenant ID"
+          Write-Host ""
+          Write-Host "✅ Build artifacts are available for manual deployment"
+          
+          # Set output to skip deployment
+          'should_deploy=false' | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          exit 0
         }
         
         # Check if package file exists
@@ -137,8 +162,10 @@ jobs:
         }
         
         Write-Host "✅ All prerequisites validated"
+        'should_deploy=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         
     - name: Deploy to SharePoint App Catalog
+      if: steps.validate.outputs.should_deploy == 'true'
       shell: pwsh
       env:
         SPO_URL: ${{ secrets.SPO_URL }}
