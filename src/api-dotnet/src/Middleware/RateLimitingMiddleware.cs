@@ -56,8 +56,12 @@ public class RateLimitingMiddleware : IFunctionsWorkerMiddleware
 
                     var tenantId = Guid.Parse(tenantIdString);
 
+                    // Get subscription tier from context (set by LicenseEnforcementMiddleware)
+                    // Default to Free tier if not found to enforce stricter limits
+                    var subscriptionTier = context.Items["SubscriptionTier"] as SubscriptionTier? ?? SubscriptionTier.Free;
+
                     // Check rate limit
-                    var rateLimitResult = await _rateLimitingService.CheckRateLimitAsync(tenantId, functionName);
+                    var rateLimitResult = await _rateLimitingService.CheckRateLimitAsync(tenantId, functionName, subscriptionTier);
 
                     // Add rate limit headers to response (will be set later)
                     context.Items["RateLimit-Limit"] = rateLimitResult.Limit;

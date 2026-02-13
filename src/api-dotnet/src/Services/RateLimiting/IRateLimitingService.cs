@@ -1,3 +1,5 @@
+using SharePointExternalUserManager.Functions.Models;
+
 namespace SharePointExternalUserManager.Functions.Services.RateLimiting;
 
 /// <summary>
@@ -10,16 +12,18 @@ public interface IRateLimitingService
     /// </summary>
     /// <param name="tenantId">Tenant ID</param>
     /// <param name="endpoint">API endpoint identifier</param>
+    /// <param name="tier">Subscription tier</param>
     /// <returns>True if request is allowed, false if rate limit exceeded</returns>
-    Task<RateLimitResult> CheckRateLimitAsync(Guid tenantId, string endpoint);
+    Task<RateLimitResult> CheckRateLimitAsync(Guid tenantId, string endpoint, SubscriptionTier tier);
 
     /// <summary>
     /// Get current rate limit status for a tenant
     /// </summary>
     /// <param name="tenantId">Tenant ID</param>
     /// <param name="endpoint">API endpoint identifier</param>
+    /// <param name="tier">Subscription tier</param>
     /// <returns>Rate limit status</returns>
-    Task<RateLimitStatus> GetRateLimitStatusAsync(Guid tenantId, string endpoint);
+    Task<RateLimitStatus> GetRateLimitStatusAsync(Guid tenantId, string endpoint, SubscriptionTier tier);
 }
 
 /// <summary>

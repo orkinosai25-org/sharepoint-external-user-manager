@@ -56,6 +56,9 @@ public class ClientSpaceSearchFunction
 
             // TODO: Verify user has access to this client space
             // For MVP, we assume the authentication middleware has verified tenant access
+            // Phase 2: Add client-space level authorization check by querying the client space
+            // access control list and verifying the authenticated user has permission to access
+            // this specific client space within their tenant.
 
             // Parse query parameters
             var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);

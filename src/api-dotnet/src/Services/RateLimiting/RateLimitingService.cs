@@ -29,7 +29,7 @@ public class RateLimitingService : IRateLimitingService
     /// <summary>
     /// Check if a request is allowed based on rate limits
     /// </summary>
-    public async Task<RateLimitResult> CheckRateLimitAsync(Guid tenantId, string endpoint)
+    public async Task<RateLimitResult> CheckRateLimitAsync(Guid tenantId, string endpoint, SubscriptionTier tier)
     {
         await Task.CompletedTask; // Placeholder for async operations
 
@@ -47,7 +47,7 @@ public class RateLimitingService : IRateLimitingService
                 Endpoint = endpoint,
                 WindowStart = now,
                 RequestCount = 1,
-                Limit = GetRateLimitForEndpoint(endpoint, SubscriptionTier.Pro) // TODO: Get actual tier
+                Limit = GetRateLimitForEndpoint(endpoint, tier)
             },
             (_, existingWindow) =>
             {
@@ -56,6 +56,7 @@ public class RateLimitingService : IRateLimitingService
                 {
                     existingWindow.WindowStart = now;
                     existingWindow.RequestCount = 1;
+                    existingWindow.Limit = GetRateLimitForEndpoint(endpoint, tier);
                 }
                 else
                 {
@@ -86,7 +87,7 @@ public class RateLimitingService : IRateLimitingService
     /// <summary>
     /// Get current rate limit status for a tenant
     /// </summary>
-    public async Task<RateLimitStatus> GetRateLimitStatusAsync(Guid tenantId, string endpoint)
+    public async Task<RateLimitStatus> GetRateLimitStatusAsync(Guid tenantId, string endpoint, SubscriptionTier tier)
     {
         await Task.CompletedTask;
 
@@ -103,7 +104,7 @@ public class RateLimitingService : IRateLimitingService
             };
         }
 
-        var limit = GetRateLimitForEndpoint(endpoint, SubscriptionTier.Pro);
+        var limit = GetRateLimitForEndpoint(endpoint, tier);
         return new RateLimitStatus
         {
             RequestCount = 0,
