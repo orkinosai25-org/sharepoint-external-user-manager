@@ -22,7 +22,8 @@ import {
   checkFullTextSearchAccess,
   checkAdvancedSearchFiltersAccess,
   enforceGlobalSearchAccess,
-  enforceFullTextSearchAccess
+  enforceFullTextSearchAccess,
+  enforceAdvancedSearchFiltersAccess
 } from '../services/plan-enforcement';
 import { TenantContext } from '../models/common';
 import { PlanTier } from '../models/plan';
@@ -653,6 +654,34 @@ describe('Plan Enforcement Service', () => {
         };
 
         expect(() => enforceFullTextSearchAccess(context)).not.toThrow();
+      });
+    });
+
+    describe('enforceAdvancedSearchFiltersAccess', () => {
+      it('should throw error for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        expect(() => enforceAdvancedSearchFiltersAccess(context)).toThrow(FeatureNotAvailableError);
+      });
+
+      it('should not throw error for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        expect(() => enforceAdvancedSearchFiltersAccess(context)).not.toThrow();
       });
     });
   });
