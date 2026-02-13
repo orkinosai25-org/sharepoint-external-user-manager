@@ -34,6 +34,10 @@ export interface PlanFeatures {
   scheduledReviews: boolean;
   ssoIntegration: boolean;
   customBranding: boolean;
+  // Search features
+  globalSearch: boolean;
+  fullTextSearch: boolean;
+  advancedSearchFilters: boolean;
 }
 
 /**
@@ -82,7 +86,10 @@ export const PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
       apiAccess: false,
       scheduledReviews: false,
       ssoIntegration: false,
-      customBranding: false
+      customBranding: false,
+      globalSearch: false,
+      fullTextSearch: false,
+      advancedSearchFilters: false
     }
   },
   Professional: {
@@ -111,7 +118,10 @@ export const PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
       apiAccess: true,
       scheduledReviews: false,
       ssoIntegration: false,
-      customBranding: false
+      customBranding: false,
+      globalSearch: true,
+      fullTextSearch: true,
+      advancedSearchFilters: true
     }
   },
   Business: {
@@ -140,7 +150,10 @@ export const PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
       apiAccess: true,
       scheduledReviews: true,
       ssoIntegration: true,
-      customBranding: false
+      customBranding: false,
+      globalSearch: true,
+      fullTextSearch: true,
+      advancedSearchFilters: true
     }
   },
   Enterprise: {
@@ -171,7 +184,10 @@ export const PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
       apiAccess: true,
       scheduledReviews: true,
       ssoIntegration: true,
-      customBranding: true
+      customBranding: true,
+      globalSearch: true,
+      fullTextSearch: true,
+      advancedSearchFilters: true
     }
   }
 };

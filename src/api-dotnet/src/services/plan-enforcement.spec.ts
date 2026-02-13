@@ -17,7 +17,13 @@ import {
   enforceFeatureAccess,
   enforceClientSpaceLimit,
   enforceExternalUserLimit,
-  hasMinimumTier
+  hasMinimumTier,
+  checkGlobalSearchAccess,
+  checkFullTextSearchAccess,
+  checkAdvancedSearchFiltersAccess,
+  enforceGlobalSearchAccess,
+  enforceFullTextSearchAccess,
+  enforceAdvancedSearchFiltersAccess
 } from '../services/plan-enforcement';
 import { TenantContext } from '../models/common';
 import { PlanTier } from '../models/plan';
@@ -484,6 +490,199 @@ describe('Plan Enforcement Service', () => {
       expect(hasMinimumTier(enterpriseContext, 'Professional')).toBe(true);
       expect(hasMinimumTier(enterpriseContext, 'Business')).toBe(true);
       expect(hasMinimumTier(enterpriseContext, 'Enterprise')).toBe(true);
+    });
+  });
+
+  describe('Search Feature Access', () => {
+    describe('checkGlobalSearchAccess', () => {
+      it('should deny global search for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        const result = checkGlobalSearchAccess(context);
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('Professional');
+        expect(result.requiredTier).toBe('Professional');
+      });
+
+      it('should allow global search for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        const result = checkGlobalSearchAccess(context);
+        expect(result.allowed).toBe(true);
+      });
+
+      it('should allow global search for Enterprise tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Enterprise'
+        };
+
+        const result = checkGlobalSearchAccess(context);
+        expect(result.allowed).toBe(true);
+      });
+    });
+
+    describe('checkFullTextSearchAccess', () => {
+      it('should deny full-text search for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        const result = checkFullTextSearchAccess(context);
+        expect(result.allowed).toBe(false);
+        expect(result.requiredTier).toBe('Professional');
+      });
+
+      it('should allow full-text search for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        const result = checkFullTextSearchAccess(context);
+        expect(result.allowed).toBe(true);
+      });
+    });
+
+    describe('checkAdvancedSearchFiltersAccess', () => {
+      it('should deny advanced filters for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        const result = checkAdvancedSearchFiltersAccess(context);
+        expect(result.allowed).toBe(false);
+      });
+
+      it('should allow advanced filters for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        const result = checkAdvancedSearchFiltersAccess(context);
+        expect(result.allowed).toBe(true);
+      });
+    });
+
+    describe('enforceGlobalSearchAccess', () => {
+      it('should throw error for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        expect(() => enforceGlobalSearchAccess(context)).toThrow(FeatureNotAvailableError);
+      });
+
+      it('should not throw error for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        expect(() => enforceGlobalSearchAccess(context)).not.toThrow();
+      });
+    });
+
+    describe('enforceFullTextSearchAccess', () => {
+      it('should throw error for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        expect(() => enforceFullTextSearchAccess(context)).toThrow(FeatureNotAvailableError);
+      });
+
+      it('should not throw error for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        expect(() => enforceFullTextSearchAccess(context)).not.toThrow();
+      });
+    });
+
+    describe('enforceAdvancedSearchFiltersAccess', () => {
+      it('should throw error for Starter tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Free'
+        };
+
+        expect(() => enforceAdvancedSearchFiltersAccess(context)).toThrow(FeatureNotAvailableError);
+      });
+
+      it('should not throw error for Professional tier', () => {
+        const context: TenantContext = {
+          tenantId: 1,
+          entraIdTenantId: 'test-tenant-id',
+          userId: 'user-123',
+          userEmail: 'test@example.com',
+          roles: ['User'],
+          subscriptionTier: 'Pro'
+        };
+
+        expect(() => enforceAdvancedSearchFiltersAccess(context)).not.toThrow();
+      });
     });
   });
 });
