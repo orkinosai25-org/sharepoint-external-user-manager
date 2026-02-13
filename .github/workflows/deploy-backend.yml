@@ -47,10 +47,11 @@ jobs:
       - name: 'Run tests'
         shell: bash
         run: |
-          pushd './src/api-dotnet/tests'
           # TODO: Add when tests are created
+          # pushd './src/api-dotnet/tests'
           # dotnet test --no-build --verbosity normal
-          popd
+          # popd
+          echo "Tests skipped - test directory not yet created"
 
       - name: 'Publish'
         shell: bash
