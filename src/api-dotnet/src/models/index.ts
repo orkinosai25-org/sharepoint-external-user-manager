@@ -10,3 +10,4 @@ export * from './policy';
 export * from './audit';
 export * from './client';
 export * from './plan';
+export * from './search';

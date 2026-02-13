@@ -318,3 +318,93 @@ export function hasMinimumTier(context: TenantContext, minimumTier: PlanTier): b
   
   return currentIndex >= minimumIndex;
 }
+
+/**
+ * Check if tenant has access to global search (cross-client search)
+ */
+export function checkGlobalSearchAccess(
+  context: TenantContext
+): PlanEnforcementResult {
+  const result = checkFeatureAccess(context, 'globalSearch');
+  
+  if (!result.allowed) {
+    return {
+      allowed: false,
+      reason: 'Global search requires Professional plan or higher',
+      requiredTier: result.requiredTier
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if tenant has access to full-text search
+ */
+export function checkFullTextSearchAccess(
+  context: TenantContext
+): PlanEnforcementResult {
+  const result = checkFeatureAccess(context, 'fullTextSearch');
+  
+  if (!result.allowed) {
+    return {
+      allowed: false,
+      reason: 'Full-text search requires Professional plan or higher',
+      requiredTier: result.requiredTier
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if tenant has access to advanced search filters
+ */
+export function checkAdvancedSearchFiltersAccess(
+  context: TenantContext
+): PlanEnforcementResult {
+  const result = checkFeatureAccess(context, 'advancedSearchFilters');
+  
+  if (!result.allowed) {
+    return {
+      allowed: false,
+      reason: 'Advanced search filters require Professional plan or higher',
+      requiredTier: result.requiredTier
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Enforce global search access - throws error if not allowed
+ */
+export function enforceGlobalSearchAccess(context: TenantContext): void {
+  const result = checkGlobalSearchAccess(context);
+  
+  if (!result.allowed) {
+    throw new FeatureNotAvailableError('globalSearch', result.requiredTier || 'Professional');
+  }
+}
+
+/**
+ * Enforce full-text search access - throws error if not allowed
+ */
+export function enforceFullTextSearchAccess(context: TenantContext): void {
+  const result = checkFullTextSearchAccess(context);
+  
+  if (!result.allowed) {
+    throw new FeatureNotAvailableError('fullTextSearch', result.requiredTier || 'Professional');
+  }
+}
+
+/**
+ * Enforce advanced search filters access - throws error if not allowed
+ */
+export function enforceAdvancedSearchFiltersAccess(context: TenantContext): void {
+  const result = checkAdvancedSearchFiltersAccess(context);
+  
+  if (!result.allowed) {
+    throw new FeatureNotAvailableError('advancedSearchFilters', result.requiredTier || 'Professional');
+  }
+}
