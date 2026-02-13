@@ -418,6 +418,9 @@ class DatabaseService {
         WHERE TenantId = @tenantId
       `);
     
+    if (!result.recordset || result.recordset.length === 0) {
+      return 0;
+    }
     return result.recordset[0].count;
   }
 
@@ -431,6 +434,9 @@ class DatabaseService {
         WHERE TenantId = @tenantId
       `);
     
+    if (!result.recordset || result.recordset.length === 0) {
+      return 0;
+    }
     return result.recordset[0].count;
   }
 
