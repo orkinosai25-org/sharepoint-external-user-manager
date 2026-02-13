@@ -87,6 +87,8 @@ jobs:
     name: Deploy to SharePoint App Catalog
     runs-on: ubuntu-latest
     needs: build
+    # Only run deployment if SharePoint secrets are configured
+    if: secrets.SPO_URL && secrets.SPO_CLIENT_ID && secrets.SPO_CLIENT_SECRET
     environment: production # Requires approval for production deployment
     
     steps:
