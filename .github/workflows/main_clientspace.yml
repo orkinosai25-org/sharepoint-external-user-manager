@@ -40,8 +40,6 @@ jobs:
   deploy:
     runs-on: windows-latest
     needs: build
-    # Only run if publish profile secret is configured
-    if: secrets.PUBLISH_PROFILE
     permissions:
       contents: read #This is required for actions/checkout
 
@@ -50,6 +48,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
+
+      - name: Validate publish profile
+        env:
+          PUBLISH_PROFILE: ${{ secrets.PUBLISH_PROFILE }}
+        run: |
+          if ([string]::IsNullOrEmpty($env:PUBLISH_PROFILE)) {
+            Write-Host "❌ PUBLISH_PROFILE secret is not configured"
+            Write-Host "ℹ️ To enable deployment:"
+            Write-Host "  1. Go to repository Settings > Secrets and variables > Actions"
+            Write-Host "  2. Add PUBLISH_PROFILE secret with Azure Web App publish profile"
+            exit 1
+          }
+          Write-Host "✅ Publish profile validated"
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
