@@ -146,7 +146,7 @@ jobs:
           Write-Host "✅ Build artifacts are available for manual deployment"
           
           # Set output to skip deployment
-          echo "should_deploy=false" >> $env:GITHUB_OUTPUT
+          'should_deploy=false' | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           exit 0
         }
         
@@ -160,7 +160,7 @@ jobs:
         }
         
         Write-Host "✅ All prerequisites validated"
-        echo "should_deploy=true" >> $env:GITHUB_OUTPUT
+        'should_deploy=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Append
         
     - name: Deploy to SharePoint App Catalog
       if: steps.validate.outputs.should_deploy == 'true'
