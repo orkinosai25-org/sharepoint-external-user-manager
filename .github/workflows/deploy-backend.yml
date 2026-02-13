@@ -18,6 +18,8 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Only run if Azure credentials are configured
+    if: ${{ secrets.AZURE_CREDENTIALS != '' }}
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
 

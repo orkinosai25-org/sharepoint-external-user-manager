@@ -92,7 +92,8 @@ jobs:
   deploy-infrastructure:
     name: Deploy Azure Infrastructure
     runs-on: ubuntu-latest
-    if: github.event.inputs.deploy_infrastructure == 'true'
+    # Only run if workflow was manually triggered with deploy_infrastructure=true AND Azure credentials are configured
+    if: github.event.inputs.deploy_infrastructure == 'true' && secrets.AZURE_CREDENTIALS != ''
     environment: development
     
     steps:
@@ -131,6 +132,8 @@ jobs:
     name: Deploy API to Azure
     runs-on: ubuntu-latest
     needs: build
+    # Only run if Azure credentials and API app name are configured
+    if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.API_APP_NAME != '' }}
     environment: development
     
     steps:
@@ -159,6 +162,8 @@ jobs:
     name: Deploy Blazor Portal to Azure
     runs-on: ubuntu-latest
     needs: build
+    # Only run if Azure credentials and Portal app name are configured
+    if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.PORTAL_APP_NAME != '' }}
     environment: development
     
     steps:
@@ -187,6 +192,8 @@ jobs:
     name: Health Check
     runs-on: ubuntu-latest
     needs: [deploy-api, deploy-portal]
+    # Only run if deploy jobs ran (which means secrets are configured)
+    if: ${{ always() && secrets.AZURE_CREDENTIALS != '' && secrets.API_APP_NAME != '' && secrets.PORTAL_APP_NAME != '' }}
     
     steps:
     - name: Check API Health
