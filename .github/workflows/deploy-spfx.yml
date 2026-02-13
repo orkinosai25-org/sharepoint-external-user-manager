@@ -13,8 +13,13 @@
 # 1. Build: Install dependencies, build and package the SPFx solution
 # 2. Deploy: Upload .sppkg file to tenant app catalog and publish it
 #
-# Note: Ensure the user account has SharePoint administrator privileges
-# and can access the tenant app catalog
+# Note: The deployment job will only run if the required secrets are configured.
+#       The build job will always run to validate the solution can be built successfully.
+#       To enable deployment, configure the required secrets in your repository settings.
+#
+# Deployment Requirements:
+# - Ensure the user account has SharePoint administrator privileges
+# - Ensure the Azure AD App can access the tenant app catalog
 
 name: Deploy SPFx Solution to SharePoint
 
@@ -87,6 +92,8 @@ jobs:
     name: Deploy to SharePoint App Catalog
     runs-on: ubuntu-latest
     needs: build
+    # Only run deployment if SharePoint secrets are configured
+    if: ${{ secrets.SPO_URL != '' && secrets.SPO_CLIENT_ID != '' && secrets.SPO_CLIENT_SECRET != '' }}
     environment: production # Requires approval for production deployment
     
     steps:
