@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SharePointExternalUserManager.Functions.Middleware;
 using SharePointExternalUserManager.Functions.Services;
+using SharePointExternalUserManager.Functions.Services.Search;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWebApplication(workerApplication =>
@@ -21,6 +22,7 @@ var host = new HostBuilder()
 
         // Register services
         services.AddSingleton<ILicensingService, LicensingService>();
+        services.AddSingleton<ISearchService, SearchService>();
 
         // TODO: Add more services as needed
         // services.AddSingleton<ITenantService, TenantService>();
