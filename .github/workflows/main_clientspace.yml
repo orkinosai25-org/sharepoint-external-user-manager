@@ -41,7 +41,7 @@ jobs:
     runs-on: windows-latest
     needs: build
     # Only run if publish profile secret is configured
-    if: ${{ secrets.PUBLISH_PROFILE }}
+    if: secrets.PUBLISH_PROFILE
     permissions:
       contents: read #This is required for actions/checkout
 
