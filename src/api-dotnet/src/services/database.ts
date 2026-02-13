@@ -408,6 +408,38 @@ class DatabaseService {
     `);
   }
 
+  async getClientCount(tenantId: number): Promise<number> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .query(`
+        SELECT COUNT(*) as count
+        FROM [dbo].[Client]
+        WHERE TenantId = @tenantId
+      `);
+    
+    if (!result.recordset || result.recordset.length === 0) {
+      return 0;
+    }
+    return result.recordset[0].count;
+  }
+
+  async getExternalUserCount(tenantId: number): Promise<number> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .query(`
+        SELECT COUNT(*) as count
+        FROM [dbo].[ExternalUser]
+        WHERE TenantId = @tenantId
+      `);
+    
+    if (!result.recordset || result.recordset.length === 0) {
+      return 0;
+    }
+    return result.recordset[0].count;
+  }
+
   // Subscription update operations
   async updateSubscription(subscriptionId: number, updates: Partial<Subscription>): Promise<Subscription> {
     const pool = this.ensureConnected();

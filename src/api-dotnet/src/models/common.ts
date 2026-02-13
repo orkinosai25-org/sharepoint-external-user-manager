@@ -113,7 +113,7 @@ export class SubscriptionError extends AppError {
 }
 
 export class FeatureNotAvailableError extends AppError {
-  constructor(feature: string, requiredTier: 'Free' | 'Pro' | 'Enterprise') {
+  constructor(feature: string, requiredTier: string) {
     super(
       402,
       'FEATURE_NOT_AVAILABLE',

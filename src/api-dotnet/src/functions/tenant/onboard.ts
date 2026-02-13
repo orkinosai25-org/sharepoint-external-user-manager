@@ -9,7 +9,7 @@ import { validateBody, tenantOnboardSchema } from '../../utils/validation';
 import { attachCorrelationId } from '../../utils/correlation';
 import { handleError, createSuccessResponse } from '../../middleware/errorHandler';
 import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
-import { ConflictError, UnauthorizedError } from '../../models/common';
+import { ConflictError, UnauthorizedError, UserRole } from '../../models/common';
 import { OnboardTenantRequest, TenantResponse } from '../../models/tenant';
 import { TIER_LIMITS, USER_LIMITS } from '../../models/subscription';
 import { verify } from 'jsonwebtoken';
@@ -110,7 +110,7 @@ async function onboardTenant(req: HttpRequest, _context: InvocationContext): Pro
       entraIdTenantId: tenant.entraIdTenantId,
       userId,
       userEmail,
-      roles: ['Owner'], // User who onboards is the owner
+      roles: ['Owner'] as UserRole[], // User who onboards is the owner
       subscriptionTier: subscription.tier
     };
 
