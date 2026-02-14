@@ -21,7 +21,8 @@ public class LicensingService : ILicensingService
             {
                 "GetLibraries",
                 "GetLibraryUsers",
-                "InviteUser"
+                "InviteUser",
+                "ClientSpaceSearch"
             }
         },
         {
@@ -37,7 +38,9 @@ public class LicensingService : ILicensingService
                 "UpdateUserPermissions",
                 "GetPolicies",
                 "UpdatePolicies",
-                "QueryAuditLogs"
+                "QueryAuditLogs",
+                "ClientSpaceSearch",
+                "GlobalSearch"
             }
         },
         {
@@ -59,7 +62,9 @@ public class LicensingService : ILicensingService
                 "QueryAuditLogs",
                 "ExportAuditLogs",
                 "BulkUserOperations",
-                "CustomIntegrations"
+                "CustomIntegrations",
+                "ClientSpaceSearch",
+                "GlobalSearch"
             }
         }
     };

@@ -40,19 +40,33 @@ backend/
 │   │   │   └── RegisterTenantFunction.cs
 │   │   ├── UserManagement/
 │   │   │   └── GetLibrariesFunction.cs
+│   │   ├── Search/
+│   │   │   ├── GlobalSearchFunction.cs
+│   │   │   ├── ClientSpaceSearchFunction.cs
+│   │   │   └── SearchSuggestionsFunction.cs
 │   │   ├── PolicyManagement/
 │   │   ├── AuditLog/
 │   │   └── Licensing/
 │   ├── Middleware/
 │   │   ├── AuthenticationMiddleware.cs
-│   │   └── LicenseEnforcementMiddleware.cs
+│   │   ├── LicenseEnforcementMiddleware.cs
+│   │   └── RateLimitingMiddleware.cs
 │   ├── Services/
-│   │   └── LicensingService.cs
+│   │   ├── LicensingService.cs
+│   │   ├── Search/
+│   │   │   ├── ISearchService.cs
+│   │   │   └── SearchService.cs
+│   │   └── RateLimiting/
+│   │       ├── IRateLimitingService.cs
+│   │       └── RateLimitingService.cs
 │   ├── Models/
 │   │   ├── Tenant.cs
 │   │   ├── ExternalUser.cs
 │   │   ├── Library.cs
-│   │   └── ApiResponse.cs
+│   │   ├── ApiResponse.cs
+│   │   └── Search/
+│   │       ├── SearchRequest.cs
+│   │       └── SearchResultDto.cs
 │   ├── Program.cs
 │   └── SharePointExternalUserManager.Functions.csproj
 ├── tests/
@@ -173,18 +187,29 @@ The licensing middleware enforces subscription tiers and feature gates:
 
 ### Subscription Tiers
 
-| Tier | Max Users | Max Libraries | Features |
-|------|-----------|---------------|----------|
-| Free | 5 | 3 | Basic management |
-| Pro | 50 | 25 | Advanced policies, audit logs |
-| Enterprise | Unlimited | Unlimited | All features, custom integrations |
+| Tier | Max Users | Max Libraries | Search Features | Rate Limit |
+|------|-----------|---------------|-----------------|------------|
+| Free | 5 | 3 | Client space search only | 10/min |
+| Pro | 50 | 25 | Global cross-client search, full-text | 60/min |
+| Enterprise | Unlimited | Unlimited | All search features + AI summaries (future) | 300/min |
 
 ### Feature Gates
 
 Functions are automatically gated based on subscription tier:
-- Free tier: Basic CRUD operations
-- Pro tier: Policies, advanced audit
-- Enterprise tier: Bulk operations, custom integrations
+- **Free tier**: Basic CRUD operations, client space search
+- **Pro tier**: Policies, advanced audit, global search
+- **Enterprise tier**: Bulk operations, custom integrations, advanced search analytics
+
+### Search API Features
+
+The search API provides comprehensive search capabilities:
+- **Client Space Search** (All tiers): Search within a specific client space
+- **Global Search** (Pro/Enterprise): Search across all client spaces
+- **Search Suggestions** (All tiers): Autocomplete suggestions
+- **Advanced Filters**: Filter by document type, user, date range
+- **Rate Limiting**: Tier-based rate limits to prevent abuse
+
+See [SEARCH_API_DOCUMENTATION.md](./SEARCH_API_DOCUMENTATION.md) for detailed API documentation.
 
 ## Deployment
 
