@@ -1,0 +1,27 @@
+{
+  "name": "@clientspace/shared-services",
+  "version": "1.0.0",
+  "description": "Shared business logic services for ClientSpace SaaS platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "sharepoint",
+    "external-users",
+    "saas",
+    "services"
+  ],
+  "author": "ClientSpace",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@microsoft/microsoft-graph-client": "^3.0.0"
+  }
+}
