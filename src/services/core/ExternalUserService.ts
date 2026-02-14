@@ -380,11 +380,20 @@ export class ExternalUserService implements IExternalUserService {
 
   /**
    * Extract email from external user format
-   * Removes #EXT# suffix and converts underscores to @
+   * Removes #EXT# suffix and converts underscore before domain to @
+   * Example: john_doe_example.com#EXT# → john_doe@example.com
    */
   private extractEmailFromExternal(externalEmail: string): string {
-    return externalEmail
-      .replace(/_#EXT#.*$/, '')
-      .replace(/_/g, '@');
+    // Remove #EXT# and everything after it
+    let email = externalEmail.replace(/_#EXT#.*$/, '');
+    
+    // Find the last underscore (which represents the @ before domain)
+    // Keep underscores in the local part intact
+    const lastUnderscoreIndex = email.lastIndexOf('_');
+    if (lastUnderscoreIndex !== -1) {
+      email = email.substring(0, lastUnderscoreIndex) + '@' + email.substring(lastUnderscoreIndex + 1);
+    }
+    
+    return email;
   }
 }

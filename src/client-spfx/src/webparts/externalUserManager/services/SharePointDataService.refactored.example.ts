@@ -75,7 +75,7 @@ export class SharePointDataServiceRefactored {
       // Create invitation request
       const request: InvitationRequest = {
         email,
-        displayName: email.split('@')[0], // Simple display name from email
+        displayName: displayName || email.split('@')[0], // Use email prefix as fallback
         resourceUrl: libraryUrl,
         permission: this.mapToSharedPermission(permission),
         metadata: {
@@ -175,16 +175,19 @@ export class SharePointDataServiceRefactored {
 
   /**
    * Search for users
-   * Note: This might still use SPFx People Picker or other SPFx-specific APIs
+   * Note: This is a simplified mock implementation for demonstration
+   * In production, this should use Microsoft Graph People Picker API or similar
    */
   public async searchUsers(query: string): Promise<IExternalUser[]> {
-    // For now, this could remain SPFx-specific
-    // Or be migrated to a shared search service later
-    if (!query || !query.includes('@')) {
+    // Simple email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!query || !emailRegex.test(query)) {
       return [];
     }
 
-    // Simple mock for demonstration
+    // Mock implementation - in production, this would query Graph API
+    // TODO: Replace with actual Graph API people picker when migrating
     return [{
       id: 'search-result',
       email: query,

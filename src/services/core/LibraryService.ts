@@ -42,7 +42,7 @@ export class LibraryService implements ILibraryService {
         externalUserCount: 0, // Would require additional API call to calculate
         lastModified: new Date(drive.lastModifiedDateTime),
         owner: drive.owner?.user?.displayName || 'Unknown',
-        itemCount: drive.quota?.total || 0
+        itemCount: 0 // Item count not directly available in drives endpoint
       }));
 
       this.auditService?.logInfo('listLibraries', `Found ${libraries.length} libraries`);
@@ -194,8 +194,9 @@ export class LibraryService implements ILibraryService {
 
   /**
    * Enable external sharing for a library
+   * Note: This requires tenant admin permissions and is typically configured at tenant level
    */
-  private async enableExternalSharing(_siteId: string, libraryId: string): Promise<void> {
+  private async enableExternalSharing(siteId: string, libraryId: string): Promise<void> {
     try {
       this.auditService?.logInfo('enableExternalSharing', 
         `Enabling external sharing for library: ${libraryId}`);
@@ -205,7 +206,7 @@ export class LibraryService implements ILibraryService {
       // In production, this would use SharePoint Admin APIs
 
       this.auditService?.logInfo('enableExternalSharing', 
-        `External sharing enablement for library ${libraryId} requires tenant admin configuration`);
+        `External sharing configuration for library ${libraryId} in site ${siteId} requires tenant admin permissions`);
     } catch (error: any) {
       this.auditService?.logError('enableExternalSharing', 
         `Failed to enable external sharing for library: ${libraryId}`, error);
