@@ -48,6 +48,28 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
 
+// AI Assistant services
+builder.Services.AddMemoryCache(); // For rate limiting
+builder.Services.AddHttpClient<AiAssistantService>();
+builder.Services.AddScoped<AiAssistantService>();
+builder.Services.AddSingleton<AiRateLimitService>();
+
+// Azure OpenAI configuration
+var azureOpenAIConfig = builder.Configuration.GetSection("AzureOpenAI");
+builder.Services.Configure<AzureOpenAIConfiguration>(options =>
+{
+    options.Endpoint = azureOpenAIConfig["Endpoint"] ?? "";
+    options.ApiKey = azureOpenAIConfig["ApiKey"] ?? "";
+    options.DeploymentName = azureOpenAIConfig["DeploymentName"] ?? "gpt-4";
+    options.ApiVersion = azureOpenAIConfig["ApiVersion"] ?? "2024-08-01-preview";
+    options.Model = azureOpenAIConfig["Model"] ?? "gpt-4";
+    
+    // Enable demo mode if endpoint/key not configured
+    options.UseDemoMode = string.IsNullOrWhiteSpace(options.Endpoint) || 
+                         string.IsNullOrWhiteSpace(options.ApiKey) ||
+                         options.Endpoint.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

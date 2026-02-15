@@ -405,6 +405,24 @@
     border-color: #ef4444;
 }
 
+/* AI Disclaimer */
+.ai-disclaimer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #856404;
+}
+
+.ai-disclaimer .bi {
+    font-size: 14px;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
     .chat-panel {
