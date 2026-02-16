@@ -1,0 +1,332 @@
+@page "/admin/ai-settings"
+@using SharePointExternalUserManager.Portal.Models
+@using SharePointExternalUserManager.Portal.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>AI Assistant Settings - ClientSpace</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="mb-0">
+                <span class="bi bi-robot"></span>
+                AI Assistant Settings
+            </h2>
+            <p class="text-muted">Configure AI assistant behavior and usage limits for your organization</p>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading AI settings...</p>
+        </div>
+    }
+    else if (_error != null)
+    {
+        <div class="alert alert-danger">
+            <span class="bi bi-exclamation-triangle-fill"></span>
+            <strong>Error:</strong> @_error
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <!-- Settings Form -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">General Settings</h5>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enabledSwitch" 
+                                   @bind="_isEnabled">
+                            <label class="form-check-label" for="enabledSwitch">
+                                <strong>Enable AI Assistant</strong>
+                                <p class="text-muted small mb-0">Allow users to interact with the AI assistant</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="marketingSwitch" 
+                                   @bind="_marketingModeEnabled" disabled="@(!_isEnabled)">
+                            <label class="form-check-label" for="marketingSwitch">
+                                <strong>Marketing Mode</strong>
+                                <p class="text-muted small mb-0">Public AI for product information and pricing</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="inProductSwitch" 
+                                   @bind="_inProductModeEnabled" disabled="@(!_isEnabled)">
+                            <label class="form-check-label" for="inProductSwitch">
+                                <strong>In-Product Mode</strong>
+                                <p class="text-muted small mb-0">Context-aware AI for authenticated users</p>
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="disclaimerSwitch" 
+                                   @bind="_showDisclaimer" disabled="@(!_isEnabled)">
+                            <label class="form-check-label" for="disclaimerSwitch">
+                                <strong>Show Disclaimer</strong>
+                                <p class="text-muted small mb-0">Display AI disclaimer message to users</p>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Usage Limits</h5>
+                        
+                        <div class="mb-3">
+                            <label for="maxRequestsInput" class="form-label">
+                                <strong>Max Requests Per Hour</strong>
+                            </label>
+                            <input type="number" class="form-control" id="maxRequestsInput" 
+                                   @bind="_maxRequestsPerHour" min="1" max="1000" 
+                                   disabled="@(!_isEnabled)">
+                            <div class="form-text">Maximum AI requests allowed per hour (1-1000)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="maxTokensInput" class="form-label">
+                                <strong>Max Tokens Per Request</strong>
+                            </label>
+                            <input type="number" class="form-control" id="maxTokensInput" 
+                                   @bind="_maxTokensPerRequest" min="100" max="4000" 
+                                   disabled="@(!_isEnabled)">
+                            <div class="form-text">Maximum tokens for each AI response (100-4000)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="monthlyBudgetInput" class="form-label">
+                                <strong>Monthly Token Budget</strong>
+                            </label>
+                            <input type="number" class="form-control" id="monthlyBudgetInput" 
+                                   @bind="_monthlyTokenBudget" min="0" 
+                                   disabled="@(!_isEnabled)">
+                            <div class="form-text">Total tokens allowed per month (0 = unlimited)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-secondary" @onclick="LoadSettings">
+                        <span class="bi bi-arrow-clockwise"></span> Reset
+                    </button>
+                    <button class="btn btn-primary" @onclick="SaveSettings" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        <span class="bi bi-check-lg"></span> Save Changes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Usage Statistics -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Current Usage</h5>
+                        
+                        @if (_settings != null)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">Tokens This Month</small>
+                                    <small><strong>@_settings.TokensUsedThisMonth</strong></small>
+                                </div>
+                                @if (_settings.MonthlyTokenBudget > 0)
+                                {
+                                    var percentage = Math.Min(100, (_settings.TokensUsedThisMonth * 100.0) / _settings.MonthlyTokenBudget);
+                                    <div class="progress">
+                                        <div class="progress-bar @GetProgressBarClass(percentage)" 
+                                             role="progressbar" 
+                                             style="width: @percentage%"
+                                             aria-valuenow="@percentage" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Budget: @_settings.MonthlyTokenBudget</small>
+                                }
+                                else
+                                {
+                                    <small class="text-muted">No budget limit</small>
+                                }
+                            </div>
+
+                            <div class="mb-2">
+                                <small class="text-muted">Max Requests/Hour</small>
+                                <div><strong>@_settings.MaxRequestsPerHour</strong></div>
+                            </div>
+
+                            <div class="mb-2">
+                                <small class="text-muted">Last Reset</small>
+                                <div><strong>@_settings.LastMonthlyReset.ToString("MMM dd, yyyy")</strong></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card shadow-sm bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <span class="bi bi-info-circle-fill text-primary"></span>
+                            About AI Modes
+                        </h6>
+                        <p class="small mb-2">
+                            <strong>Marketing Mode:</strong> Public-facing AI for product questions, pricing, and general information. Available to all visitors.
+                        </p>
+                        <p class="small mb-0">
+                            <strong>In-Product Mode:</strong> Context-aware AI for authenticated users. Provides guidance on tasks, permissions, and platform features.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _saving = false;
+    private string? _error = null;
+    private AiSettingsDto? _settings = null;
+
+    // Form fields
+    private bool _isEnabled = true;
+    private bool _marketingModeEnabled = true;
+    private bool _inProductModeEnabled = true;
+    private bool _showDisclaimer = true;
+    private int _maxRequestsPerHour = 100;
+    private int _maxTokensPerRequest = 1000;
+    private int _monthlyTokenBudget = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            // For demo purposes, create default settings
+            // In production, this would call the API
+            _settings = new AiSettingsDto
+            {
+                Id = 1,
+                TenantId = 1,
+                IsEnabled = true,
+                MarketingModeEnabled = true,
+                InProductModeEnabled = true,
+                ShowDisclaimer = true,
+                MaxRequestsPerHour = 100,
+                MaxTokensPerRequest = 1000,
+                MonthlyTokenBudget = 0,
+                TokensUsedThisMonth = 0,
+                LastMonthlyReset = DateTime.UtcNow
+            };
+
+            // Populate form fields
+            _isEnabled = _settings.IsEnabled;
+            _marketingModeEnabled = _settings.MarketingModeEnabled;
+            _inProductModeEnabled = _settings.InProductModeEnabled;
+            _showDisclaimer = _settings.ShowDisclaimer;
+            _maxRequestsPerHour = _settings.MaxRequestsPerHour;
+            _maxTokensPerRequest = _settings.MaxTokensPerRequest;
+            _monthlyTokenBudget = _settings.MonthlyTokenBudget;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load settings: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        _saving = true;
+        _error = null;
+
+        try
+        {
+            // Validate inputs
+            if (_maxRequestsPerHour < 1 || _maxRequestsPerHour > 1000)
+            {
+                _error = "Max requests per hour must be between 1 and 1000";
+                return;
+            }
+
+            if (_maxTokensPerRequest < 100 || _maxTokensPerRequest > 4000)
+            {
+                _error = "Max tokens per request must be between 100 and 4000";
+                return;
+            }
+
+            // In production, this would call the API to save settings
+            // For now, just update local settings
+            if (_settings != null)
+            {
+                _settings.IsEnabled = _isEnabled;
+                _settings.MarketingModeEnabled = _marketingModeEnabled;
+                _settings.InProductModeEnabled = _inProductModeEnabled;
+                _settings.ShowDisclaimer = _showDisclaimer;
+                _settings.MaxRequestsPerHour = _maxRequestsPerHour;
+                _settings.MaxTokensPerRequest = _maxTokensPerRequest;
+                _settings.MonthlyTokenBudget = _monthlyTokenBudget;
+            }
+
+            // Show success message
+            await Task.Delay(500); // Simulate API call
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to save settings: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private string GetProgressBarClass(double percentage)
+    {
+        if (percentage < 50) return "bg-success";
+        if (percentage < 80) return "bg-warning";
+        return "bg-danger";
+    }
+
+    // Placeholder DTO class (would normally come from Models)
+    public class AiSettingsDto
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public bool IsEnabled { get; set; }
+        public bool MarketingModeEnabled { get; set; }
+        public bool InProductModeEnabled { get; set; }
+        public int MaxRequestsPerHour { get; set; }
+        public int MaxTokensPerRequest { get; set; }
+        public int MonthlyTokenBudget { get; set; }
+        public int TokensUsedThisMonth { get; set; }
+        public DateTime LastMonthlyReset { get; set; }
+        public bool ShowDisclaimer { get; set; }
+        public string? CustomSystemPrompt { get; set; }
+    }
+}

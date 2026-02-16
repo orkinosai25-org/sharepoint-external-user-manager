@@ -8,7 +8,7 @@ namespace SharePointExternalUserManager.Portal.Services;
 public class ChatService
 {
     private readonly HttpClient _httpClient;
-    private readonly AzureOpenAISettings _settings;
+    private readonly ApiSettings _apiSettings;
     private readonly ILogger<ChatService> _logger;
     
     // NOTE: In-memory storage is used for simplicity in this implementation.
@@ -17,23 +17,18 @@ public class ChatService
     // - Database storage for conversation history
     // - Session state with a backing store
     private readonly Dictionary<string, List<ChatMessage>> _conversations = new();
-    private readonly bool _isDemoMode;
 
-    public ChatService(IOptions<AzureOpenAISettings> settings, HttpClient httpClient, ILogger<ChatService> logger)
+    public ChatService(IOptions<ApiSettings> apiSettings, HttpClient httpClient, ILogger<ChatService> logger)
     {
-        _settings = settings.Value;
+        _apiSettings = apiSettings.Value;
         _httpClient = httpClient;
         _logger = logger;
         
-        // Check if we're in demo mode (no valid Azure OpenAI configuration)
-        _isDemoMode = string.IsNullOrWhiteSpace(_settings.Endpoint) ||
-                      string.IsNullOrWhiteSpace(_settings.ApiKey) ||
-                      _settings.Endpoint.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ||
-                      _settings.ApiKey.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
-
-        if (_isDemoMode)
+        // Configure HttpClient base address if API is configured
+        if (!string.IsNullOrWhiteSpace(_apiSettings.BaseUrl))
         {
-            _logger.LogWarning("ChatService running in DEMO MODE - using mock responses. Configure Azure OpenAI to enable full functionality.");
+            _httpClient.BaseAddress = new Uri(_apiSettings.BaseUrl);
+            _httpClient.Timeout = TimeSpan.FromSeconds(_apiSettings.Timeout);
         }
     }
 
@@ -53,48 +48,108 @@ public class ChatService
             Timestamp = DateTime.UtcNow
         });
 
-        string assistantMessage;
+        ChatResponse response;
 
-        if (_isDemoMode)
+        try
         {
-            // Demo mode - return mock response
-            assistantMessage = GetDemoResponse(request.Message);
+            // Call backend API
+            response = await CallBackendApiAsync(request);
         }
-        else
+        catch (Exception ex)
         {
-            // Real mode - call Azure OpenAI
-            try
+            _logger.LogError(ex, "Error calling backend API");
+            
+            // Return error message
+            response = new ChatResponse
             {
-                assistantMessage = await CallAzureOpenAIAsync(request);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calling Azure OpenAI API");
-                assistantMessage = "I'm sorry, I encountered an error processing your request. Please try again later.";
-            }
+                ConversationId = request.ConversationId,
+                UserMessage = request.Message,
+                AssistantMessage = "I'm sorry, I encountered an error processing your request. Please try again later.",
+                ShowDisclaimer = true,
+                Timestamp = DateTime.UtcNow
+            };
         }
 
         // Add assistant message to conversation history
         _conversations[request.ConversationId].Add(new ChatMessage
         {
             Role = "assistant",
-            Content = assistantMessage,
+            Content = response.AssistantMessage,
             Timestamp = DateTime.UtcNow
         });
+
+        return response;
+    }
+
+    private async Task<ChatResponse> CallBackendApiAsync(ChatRequest request)
+    {
+        // Check if API is configured
+        if (string.IsNullOrWhiteSpace(_apiSettings.BaseUrl) || 
+            _apiSettings.BaseUrl.Contains("YOUR_", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("API URL not configured, using demo mode");
+            return GetDemoResponse(request);
+        }
+
+        try
+        {
+            var jsonContent = JsonSerializer.Serialize(request, new JsonSerializerOptions 
+            { 
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+            });
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            var httpResponse = await _httpClient.PostAsync("/aiassistant/chat", content);
+            
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                var errorContent = await httpResponse.Content.ReadAsStringAsync();
+                _logger.LogError("API returned error {StatusCode}: {Error}", 
+                    httpResponse.StatusCode, errorContent);
+                throw new HttpRequestException($"API returned {httpResponse.StatusCode}");
+            }
+
+            var responseContent = await httpResponse.Content.ReadAsStringAsync();
+            var response = JsonSerializer.Deserialize<ChatResponse>(responseContent, new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+
+            return response ?? throw new InvalidOperationException("Failed to deserialize response");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling backend API");
+            throw;
+        }
+    }
+
+    private ChatResponse GetDemoResponse(ChatRequest request)
+    {
+        var lowerMessage = request.Message.ToLower();
+        string assistantMessage;
+
+        if (request.Mode == "InProduct")
+        {
+            assistantMessage = GetInProductDemoResponse(lowerMessage, request.Context);
+        }
+        else
+        {
+            assistantMessage = GetMarketingDemoResponse(lowerMessage);
+        }
 
         return new ChatResponse
         {
             ConversationId = request.ConversationId,
             UserMessage = request.Message,
             AssistantMessage = assistantMessage,
+            ShowDisclaimer = true,
             Timestamp = DateTime.UtcNow
         };
     }
 
-    private string GetDemoResponse(string userMessage)
+    private string GetMarketingDemoResponse(string lowerMessage)
     {
-        var lowerMessage = userMessage.ToLower();
-        
         if (lowerMessage.Contains("hello") || lowerMessage.Contains("hi"))
         {
             return "Hello! 👋 I'm the ClientSpace AI assistant. I can help you learn about our external collaboration platform for Microsoft 365. How can I assist you today?";
@@ -128,98 +183,46 @@ public class ChatService
         }
         else
         {
-            return $"Thank you for your question! I'm currently running in demo mode. To enable full AI capabilities with detailed answers about ClientSpace, an Azure OpenAI configuration is needed. In the meantime, try asking about features, pricing, or getting started!";
+            return $"Thank you for your question! I can help you learn about:\n\n" +
+                   "• Features and capabilities\n" +
+                   "• Pricing and plans\n" +
+                   "• Getting started\n" +
+                   "• SharePoint integration\n\n" +
+                   "What would you like to know more about?";
         }
     }
 
-    private async Task<string> CallAzureOpenAIAsync(ChatRequest request)
+    private string GetInProductDemoResponse(string lowerMessage, ChatContextInfo? context)
     {
-        // Build the API endpoint
-        var endpoint = $"{_settings.Endpoint.TrimEnd('/')}/openai/deployments/{_settings.DeploymentName}/chat/completions?api-version={_settings.ApiVersion}";
+        var contextStr = context?.ClientSpaceName != null ? $" in {context.ClientSpaceName}" : "";
 
-        // Build messages array from conversation history
-        var messages = new List<object>
+        if (lowerMessage.Contains("add") && lowerMessage.Contains("user"))
         {
-            new
-            {
-                role = "system",
-                content = GetSystemPrompt()
-            }
-        };
-
-        // Add conversation history
-        if (_conversations.ContainsKey(request.ConversationId))
-        {
-            foreach (var msg in _conversations[request.ConversationId])
-            {
-                messages.Add(new
-                {
-                    role = msg.Role,
-                    content = msg.Content
-                });
-            }
+            return $"To add an external user{contextStr}:\n\n" +
+                   "1. Navigate to the **External User Manager**\n" +
+                   "2. Click **Add User**\n" +
+                   "3. Enter their email address\n" +
+                   "4. Select permissions\n" +
+                   "5. Click **Send Invitation**\n\n" +
+                   "They'll receive an email to access the space.";
         }
-
-        // Build request body
-        var requestBody = new
+        else if (lowerMessage.Contains("permission"))
         {
-            messages = messages,
-            temperature = request.Temperature,
-            max_tokens = request.MaxTokens
-        };
-
-        var jsonContent = JsonSerializer.Serialize(requestBody);
-        var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-        // Create request message with API key header
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            return "SharePoint permissions work on three levels:\n\n" +
+                   "• **Site level** - Full site access\n" +
+                   "• **Library level** - Document library access\n" +
+                   "• **Item level** - Specific file access\n\n" +
+                   "Best practice: Use library-level permissions for easier management.";
+        }
+        else
         {
-            Content = content
-        };
-        requestMessage.Headers.Add("api-key", _settings.ApiKey);
-
-        // Make the API call
-        var response = await _httpClient.SendAsync(requestMessage);
-        response.EnsureSuccessStatusCode();
-
-        var responseContent = await response.Content.ReadAsStringAsync();
-        var jsonResponse = JsonSerializer.Deserialize<JsonElement>(responseContent);
-
-        // Extract the assistant's message
-        var assistantMessage = jsonResponse
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString() ?? "I apologize, but I couldn't generate a response.";
-
-        return assistantMessage;
-    }
-
-    private string GetSystemPrompt()
-    {
-        return @"You are a helpful AI assistant for ClientSpace, a SaaS platform for managing external users and client spaces in Microsoft 365 and SharePoint Online.
-
-ClientSpace helps organizations:
-- Manage external users with granular permissions
-- Create dedicated SharePoint sites for each client (Client Spaces)
-- Maintain security and compliance with multi-tenant architecture
-- Track all activities with comprehensive audit logging
-- Integrate billing through Stripe
-
-Key Features:
-1. External User Management: Invite, manage, and remove external users
-2. Client Spaces: Dedicated SharePoint sites with isolated access
-3. Library & List Management: Create and manage document libraries and lists
-4. Security: Complete tenant isolation and audit trails
-5. Blazor Portal: Admin dashboard for subscription and tenant management
-
-Architecture:
-- SPFx web parts (installed in customer's SharePoint)
-- ASP.NET Core backend API (multi-tenant)
-- Blazor admin portal (SaaS platform)
-- Azure infrastructure (SQL Database, Key Vault, App Insights)
-
-Answer questions about the product, features, pricing, setup, and integration. Be friendly, concise, and helpful. If you don't know something specific, recommend checking the documentation or contacting support.";
+            return $"I'm here to help you{contextStr}! I can assist with:\n\n" +
+                   "• Adding external users\n" +
+                   "• Managing permissions\n" +
+                   "• Creating client spaces\n" +
+                   "• Understanding features\n\n" +
+                   "What would you like help with?";
+        }
     }
 
     public List<ChatMessage> GetConversationHistory(string conversationId)

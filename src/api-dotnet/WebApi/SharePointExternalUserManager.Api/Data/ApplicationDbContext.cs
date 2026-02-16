@@ -19,6 +19,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ClientEntity> Clients => Set<ClientEntity>();
     public DbSet<SubscriptionEntity> Subscriptions => Set<SubscriptionEntity>();
     public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();
+    public DbSet<AiSettingsEntity> AiSettings => Set<AiSettingsEntity>();
+    public DbSet<AiConversationLogEntity> AiConversationLogs => Set<AiConversationLogEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -122,6 +124,45 @@ public class ApplicationDbContext : DbContext
                 .WithMany(t => t.AuditLogs)
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure AiSettings
+        modelBuilder.Entity<AiSettingsEntity>(entity =>
+        {
+            // Unique constraint: one settings record per tenant
+            entity.HasIndex(e => e.TenantId)
+                .IsUnique()
+                .HasDatabaseName("UQ_AiSettings_TenantId");
+
+            // Configure relationship with Tenant
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure AiConversationLog
+        modelBuilder.Entity<AiConversationLogEntity>(entity =>
+        {
+            // Index on ConversationId for retrieving conversation history
+            entity.HasIndex(e => e.ConversationId)
+                .HasDatabaseName("IX_AiConversationLogs_ConversationId");
+
+            // Composite index for tenant-scoped queries
+            entity.HasIndex(e => new { e.TenantId, e.Timestamp })
+                .IsDescending(false, true) // TenantId ASC, Timestamp DESC
+                .HasDatabaseName("IX_AiConversationLogs_TenantId_Timestamp");
+
+            // Index on Mode for filtering by AI mode
+            entity.HasIndex(e => new { e.TenantId, e.Mode })
+                .HasDatabaseName("IX_AiConversationLogs_TenantId_Mode")
+                .HasFilter("[TenantId] IS NOT NULL");
+
+            // Configure relationship with Tenant (optional)
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 
