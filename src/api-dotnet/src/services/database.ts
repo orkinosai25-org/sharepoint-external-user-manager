@@ -9,6 +9,7 @@ import { Subscription } from '../models/subscription';
 import { Policy } from '../models/policy';
 import { AuditLog, CreateAuditLogEntry } from '../models/audit';
 import { Client } from '../models/client';
+import { TenantAuth, OAuthTokenResponse } from '../models/tenant-auth';
 
 class DatabaseService {
   private pool: sql.ConnectionPool | null = null;
@@ -611,6 +612,165 @@ class DatabaseService {
       onboardedDate: row.OnboardedDate,
       status: row.Status,
       settings: row.Settings ? JSON.parse(row.Settings) : null,
+      createdDate: row.CreatedDate,
+      modifiedDate: row.ModifiedDate
+    };
+  }
+
+  // Tenant Auth operations
+  async getTenantAuth(tenantId: number): Promise<TenantAuth | null> {
+    const pool = this.ensureConnected();
+    const result = await pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .query(`
+        SELECT Id as id, TenantId as tenantId,
+               AccessToken as accessToken, RefreshToken as refreshToken,
+               TokenExpiresAt as tokenExpiresAt, Scope as scope,
+               ConsentGrantedBy as consentGrantedBy, ConsentGrantedAt as consentGrantedAt,
+               LastTokenRefresh as lastTokenRefresh,
+               CreatedDate as createdDate, ModifiedDate as modifiedDate
+        FROM [dbo].[TenantAuth]
+        WHERE TenantId = @tenantId
+      `);
+
+    if (result.recordset.length === 0) {
+      return null;
+    }
+
+    return result.recordset[0];
+  }
+
+  async saveTenantAuth(auth: Omit<TenantAuth, 'id' | 'createdDate' | 'modifiedDate'>): Promise<TenantAuth> {
+    const pool = this.ensureConnected();
+    
+    // Check if auth record exists
+    const existing = await this.getTenantAuth(auth.tenantId);
+    
+    if (existing) {
+      // Update existing record
+      const result = await pool.request()
+        .input('tenantId', sql.Int, auth.tenantId)
+        .input('accessToken', sql.NVarChar, auth.accessToken || null)
+        .input('refreshToken', sql.NVarChar, auth.refreshToken || null)
+        .input('tokenExpiresAt', sql.DateTime2, auth.tokenExpiresAt || null)
+        .input('scope', sql.NVarChar, auth.scope || null)
+        .input('consentGrantedBy', sql.NVarChar, auth.consentGrantedBy || null)
+        .input('consentGrantedAt', sql.DateTime2, auth.consentGrantedAt || null)
+        .input('lastTokenRefresh', sql.DateTime2, auth.lastTokenRefresh || null)
+        .query(`
+          UPDATE [dbo].[TenantAuth]
+          SET AccessToken = @accessToken,
+              RefreshToken = @refreshToken,
+              TokenExpiresAt = @tokenExpiresAt,
+              Scope = @scope,
+              ConsentGrantedBy = @consentGrantedBy,
+              ConsentGrantedAt = @consentGrantedAt,
+              LastTokenRefresh = @lastTokenRefresh,
+              ModifiedDate = GETUTCDATE()
+          OUTPUT INSERTED.Id, INSERTED.TenantId, INSERTED.AccessToken, INSERTED.RefreshToken,
+                 INSERTED.TokenExpiresAt, INSERTED.Scope, INSERTED.ConsentGrantedBy,
+                 INSERTED.ConsentGrantedAt, INSERTED.LastTokenRefresh,
+                 INSERTED.CreatedDate, INSERTED.ModifiedDate
+          WHERE TenantId = @tenantId
+        `);
+      
+      const row = result.recordset[0];
+      return {
+        id: row.Id,
+        tenantId: row.TenantId,
+        accessToken: row.AccessToken,
+        refreshToken: row.RefreshToken,
+        tokenExpiresAt: row.TokenExpiresAt,
+        scope: row.Scope,
+        consentGrantedBy: row.ConsentGrantedBy,
+        consentGrantedAt: row.ConsentGrantedAt,
+        lastTokenRefresh: row.LastTokenRefresh,
+        createdDate: row.CreatedDate,
+        modifiedDate: row.ModifiedDate
+      };
+    } else {
+      // Insert new record
+      const result = await pool.request()
+        .input('tenantId', sql.Int, auth.tenantId)
+        .input('accessToken', sql.NVarChar, auth.accessToken || null)
+        .input('refreshToken', sql.NVarChar, auth.refreshToken || null)
+        .input('tokenExpiresAt', sql.DateTime2, auth.tokenExpiresAt || null)
+        .input('scope', sql.NVarChar, auth.scope || null)
+        .input('consentGrantedBy', sql.NVarChar, auth.consentGrantedBy || null)
+        .input('consentGrantedAt', sql.DateTime2, auth.consentGrantedAt || null)
+        .input('lastTokenRefresh', sql.DateTime2, auth.lastTokenRefresh || null)
+        .query(`
+          INSERT INTO [dbo].[TenantAuth] (
+            TenantId, AccessToken, RefreshToken, TokenExpiresAt, Scope,
+            ConsentGrantedBy, ConsentGrantedAt, LastTokenRefresh
+          )
+          OUTPUT INSERTED.Id, INSERTED.TenantId, INSERTED.AccessToken, INSERTED.RefreshToken,
+                 INSERTED.TokenExpiresAt, INSERTED.Scope, INSERTED.ConsentGrantedBy,
+                 INSERTED.ConsentGrantedAt, INSERTED.LastTokenRefresh,
+                 INSERTED.CreatedDate, INSERTED.ModifiedDate
+          VALUES (
+            @tenantId, @accessToken, @refreshToken, @tokenExpiresAt, @scope,
+            @consentGrantedBy, @consentGrantedAt, @lastTokenRefresh
+          )
+        `);
+
+      const row = result.recordset[0];
+      return {
+        id: row.Id,
+        tenantId: row.TenantId,
+        accessToken: row.AccessToken,
+        refreshToken: row.RefreshToken,
+        tokenExpiresAt: row.TokenExpiresAt,
+        scope: row.Scope,
+        consentGrantedBy: row.ConsentGrantedBy,
+        consentGrantedAt: row.ConsentGrantedAt,
+        lastTokenRefresh: row.LastTokenRefresh,
+        createdDate: row.CreatedDate,
+        modifiedDate: row.ModifiedDate
+      };
+    }
+  }
+
+  async refreshTenantToken(tenantId: number, tokenResponse: OAuthTokenResponse): Promise<TenantAuth> {
+    const pool = this.ensureConnected();
+    const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
+
+    const result = await pool.request()
+      .input('tenantId', sql.Int, tenantId)
+      .input('accessToken', sql.NVarChar, tokenResponse.access_token)
+      .input('refreshToken', sql.NVarChar, tokenResponse.refresh_token || null)
+      .input('tokenExpiresAt', sql.DateTime2, expiresAt)
+      .input('scope', sql.NVarChar, tokenResponse.scope || null)
+      .query(`
+        UPDATE [dbo].[TenantAuth]
+        SET AccessToken = @accessToken,
+            RefreshToken = COALESCE(@refreshToken, RefreshToken),
+            TokenExpiresAt = @tokenExpiresAt,
+            Scope = COALESCE(@scope, Scope),
+            LastTokenRefresh = GETUTCDATE(),
+            ModifiedDate = GETUTCDATE()
+        OUTPUT INSERTED.Id, INSERTED.TenantId, INSERTED.AccessToken, INSERTED.RefreshToken,
+               INSERTED.TokenExpiresAt, INSERTED.Scope, INSERTED.ConsentGrantedBy,
+               INSERTED.ConsentGrantedAt, INSERTED.LastTokenRefresh,
+               INSERTED.CreatedDate, INSERTED.ModifiedDate
+        WHERE TenantId = @tenantId
+      `);
+
+    if (result.recordset.length === 0) {
+      throw new Error('Tenant auth record not found');
+    }
+
+    const row = result.recordset[0];
+    return {
+      id: row.Id,
+      tenantId: row.TenantId,
+      accessToken: row.AccessToken,
+      refreshToken: row.RefreshToken,
+      tokenExpiresAt: row.TokenExpiresAt,
+      scope: row.Scope,
+      consentGrantedBy: row.ConsentGrantedBy,
+      consentGrantedAt: row.ConsentGrantedAt,
+      lastTokenRefresh: row.LastTokenRefresh,
       createdDate: row.CreatedDate,
       modifiedDate: row.ModifiedDate
     };
