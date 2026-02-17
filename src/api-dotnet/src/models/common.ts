@@ -105,6 +105,13 @@ export class ConflictError extends AppError {
   }
 }
 
+export class BadRequestError extends AppError {
+  constructor(message: string, details?: string) {
+    super(400, 'BAD_REQUEST', message, details);
+    this.name = 'BadRequestError';
+  }
+}
+
 export class SubscriptionError extends AppError {
   constructor(message: string, details?: string) {
     super(402, 'SUBSCRIPTION_ERROR', message, details);

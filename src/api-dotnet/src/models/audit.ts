@@ -4,6 +4,7 @@
 
 export type AuditAction =
   | 'TenantOnboarded'
+  | 'TenantConsentGranted'
   | 'SubscriptionUpdated'
   | 'SubscriptionActivated'
   | 'PaymentFailed'
