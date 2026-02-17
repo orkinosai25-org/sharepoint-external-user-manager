@@ -11,3 +11,4 @@ export * from './audit';
 export * from './client';
 export * from './plan';
 export * from './search';
+export * from './tenant-auth';

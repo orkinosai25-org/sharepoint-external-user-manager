@@ -1,0 +1,259 @@
+@page "/onboarding/consent"
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@inject Services.ApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILogger<TenantConsent> Logger
+
+<PageTitle>Grant Permissions - ClientSpace</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>
+                        Grant Microsoft Graph Permissions
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center my-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-3">Preparing authorization...</p>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Error:</strong> @errorMessage
+                        </div>
+                        <button class="btn btn-primary" @onclick="RetryConsent">
+                            <i class="bi bi-arrow-clockwise me-2"></i>
+                            Try Again
+                        </button>
+                        <a href="/dashboard" class="btn btn-secondary ms-2">
+                            Return to Dashboard
+                        </a>
+                    }
+                    else if (permissionsGranted)
+                    {
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <strong>Success!</strong> Permissions have been granted.
+                        </div>
+                        <p>Your tenant is now connected to ClientSpace.</p>
+                        <a href="/dashboard" class="btn btn-primary">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            Go to Dashboard
+                        </a>
+                    }
+                    else
+                    {
+                        <div class="mb-4">
+                            <h5>Why do we need these permissions?</h5>
+                            <p>ClientSpace requires the following Microsoft Graph permissions to manage external users in your SharePoint environment:</p>
+                            
+                            <ul class="list-group mb-4">
+                                <li class="list-group-item">
+                                    <strong>User.Read.All</strong>
+                                    <span class="text-muted"> - Read all user profiles</span>
+                                    <p class="small mb-0 mt-1">Required to view and manage external users invited to your SharePoint sites.</p>
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Sites.ReadWrite.All</strong>
+                                    <span class="text-muted"> - Manage SharePoint sites</span>
+                                    <p class="small mb-0 mt-1">Required to configure sharing settings and manage permissions on sites.</p>
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Sites.FullControl.All</strong>
+                                    <span class="text-muted"> - Full control of SharePoint</span>
+                                    <p class="small mb-0 mt-1">Required for advanced external sharing configuration.</p>
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Directory.Read.All</strong>
+                                    <span class="text-muted"> - Read directory data</span>
+                                    <p class="small mb-0 mt-1">Required to read organization information.</p>
+                                </li>
+                            </ul>
+
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                <strong>Note:</strong> You must be a Global Administrator or SharePoint Administrator to grant these permissions.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-lg" @onclick="InitiateConsent">
+                                <i class="bi bi-shield-check me-2"></i>
+                                Grant Permissions
+                            </button>
+                            <a href="/dashboard" class="btn btn-outline-secondary">
+                                I'll do this later
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (checkingPermissions)
+            {
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            Checking Permissions...
+                        </h5>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isLoading = false;
+    private bool checkingPermissions = false;
+    private bool permissionsGranted = false;
+    private string? errorMessage;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "admin_consent")]
+    public string? AdminConsent { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "tenant")]
+    public string? TenantId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "error_description")]
+    public string? ErrorDescription { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if we're returning from OAuth callback
+        if (!string.IsNullOrEmpty(AdminConsent))
+        {
+            await HandleOAuthCallbackAsync();
+        }
+        else if (!string.IsNullOrEmpty(Error))
+        {
+            errorMessage = $"Authorization failed: {Error}. {ErrorDescription}";
+        }
+    }
+
+    private async Task InitiateConsent()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            var redirectUri = $"{baseUrl}/onboarding/consent";
+
+            var response = await ApiClient.ConnectTenantAsync(redirectUri);
+            
+            if (response != null && !string.IsNullOrEmpty(response.AuthorizationUrl))
+            {
+                // Redirect to Microsoft admin consent page
+                Navigation.NavigateTo(response.AuthorizationUrl, forceLoad: true);
+            }
+            else
+            {
+                errorMessage = "Failed to generate authorization URL";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initiate consent");
+            errorMessage = "An error occurred while initiating consent. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleOAuthCallbackAsync()
+    {
+        checkingPermissions = true;
+        
+        try
+        {
+            // Poll for permissions validation with exponential backoff
+            var maxAttempts = 5;
+            var attempt = 0;
+            var delay = 1000; // Start with 1 second
+            
+            while (attempt < maxAttempts)
+            {
+                attempt++;
+                
+                // Wait before checking
+                await Task.Delay(delay);
+                
+                try
+                {
+                    // Validate that permissions were granted
+                    var validation = await ApiClient.ValidatePermissionsAsync();
+                    
+                    if (validation != null)
+                    {
+                        if (validation.HasRequiredPermissions)
+                        {
+                            permissionsGranted = true;
+                            return; // Success!
+                        }
+                        else if (attempt >= maxAttempts)
+                        {
+                            // Final attempt - show what's missing
+                            errorMessage = $"Some required permissions are missing: {string.Join(", ", validation.MissingPermissions)}";
+                            return;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // If validation fails on early attempts, continue polling
+                    if (attempt >= maxAttempts)
+                    {
+                        throw; // Re-throw on final attempt
+                    }
+                }
+                
+                // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                delay *= 2;
+            }
+            
+            errorMessage = "Permission validation timed out. Please refresh the page to check status.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to validate permissions");
+            errorMessage = "Failed to validate permissions. Please try again.";
+        }
+        finally
+        {
+            checkingPermissions = false;
+        }
+    }
+
+    private void RetryConsent()
+    {
+        errorMessage = null;
+        StateHasChanged();
+    }
+}
