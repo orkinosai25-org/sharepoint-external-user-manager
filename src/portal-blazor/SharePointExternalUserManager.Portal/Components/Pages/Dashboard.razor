@@ -513,16 +513,14 @@
     // Mock data for external user counts - In production, this would come from API
     private int GetExternalUserCount(int clientId)
     {
-        // Generate consistent mock data based on client ID
-        var random = new Random(clientId);
-        return random.Next(0, 15);
+        // Generate consistent mock data based on client ID without Random
+        return clientId % 15;
     }
 
     // Mock data for document counts - In production, this would come from API
     private int GetDocumentCount(int clientId)
     {
-        // Generate consistent mock data based on client ID
-        var random = new Random(clientId * 2);
-        return random.Next(5, 150);
+        // Generate consistent mock data based on client ID without Random
+        return (clientId * 7) % 145 + 5;
     }
 }
