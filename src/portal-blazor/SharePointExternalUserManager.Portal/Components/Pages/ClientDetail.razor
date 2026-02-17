@@ -3,6 +3,7 @@
 @inject Services.ApiClient ApiClient
 @inject NavigationManager Navigation
 @inject ILogger<ClientDetail> Logger
+@inject IJSRuntime JSRuntime
 @using Microsoft.AspNetCore.WebUtilities
 
 <PageTitle>Client Details - ClientSpace</PageTitle>
@@ -621,8 +622,9 @@
 
     private async Task<bool> ConfirmRemoval(string email)
     {
-        // Simple confirmation - in a real app you might use a better modal dialog
-        return await Task.FromResult(true); // This should be replaced with actual JS confirm or modal
+        return await JSRuntime.InvokeAsync<bool>(
+            "confirm", 
+            $"Are you sure you want to remove {email} from this client space? This action cannot be undone.");
     }
 
     private string GetStatusBadgeClass(string status)
