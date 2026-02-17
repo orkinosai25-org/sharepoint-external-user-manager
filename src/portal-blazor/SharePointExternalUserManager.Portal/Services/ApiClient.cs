@@ -175,4 +175,58 @@ public class ApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Initiate OAuth admin consent flow for tenant
+    /// </summary>
+    public async Task<ConnectTenantResponse?> ConnectTenantAsync(string redirectUri)
+    {
+        try
+        {
+            var request = new { redirectUri };
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/auth/connect", content);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<ConnectTenantResponse>>(responseJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect tenant");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Validate Microsoft Graph permissions for tenant
+    /// </summary>
+    public async Task<ValidatePermissionsResponse?> ValidatePermissionsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/auth/permissions");
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<ValidatePermissionsResponse>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to validate permissions");
+            throw;
+        }
+    }
 }

@@ -13,6 +13,21 @@
         </div>
     </div>
 
+    <!-- Permissions Warning Banner -->
+    @if (showPermissionsWarning)
+    {
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Action Required:</strong> Microsoft Graph permissions need to be granted.
+                    <a href="/onboarding/consent" class="alert-link ms-2">Grant Permissions Now</a>
+                    <button type="button" class="btn-close" @onclick="() => showPermissionsWarning = false"></button>
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Subscription Status Card -->
     <div class="row mb-4">
         <div class="col-md-12">
@@ -273,6 +288,7 @@
     private bool isLoadingClients = true;
     private bool showCreateModal = false;
     private bool isCreatingClient = false;
+    private bool showPermissionsWarning = false;
     private string? clientsError;
     private string? createError;
     
@@ -287,6 +303,25 @@
     {
         await LoadSubscriptionStatus();
         await LoadClients();
+        await CheckPermissions();
+    }
+
+    private async Task CheckPermissions()
+    {
+        try
+        {
+            var permissions = await ApiClient.ValidatePermissionsAsync();
+            if (permissions != null && !permissions.HasRequiredPermissions)
+            {
+                showPermissionsWarning = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            // If validation fails (e.g., tenant not yet connected), show warning
+            Logger.LogWarning(ex, "Failed to validate permissions");
+            showPermissionsWarning = true;
+        }
     }
 
     private async Task LoadSubscriptionStatus()
