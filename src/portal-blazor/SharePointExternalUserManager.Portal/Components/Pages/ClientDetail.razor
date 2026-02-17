@@ -519,8 +519,8 @@
             
             await Task.WhenAll(librariesTask, listsTask);
             
-            libraries = await librariesTask;
-            lists = await listsTask;
+            libraries = librariesTask.Result;
+            lists = listsTask.Result;
         }
         catch (Exception ex)
         {
@@ -538,9 +538,8 @@
         Navigation.NavigateTo("/dashboard");
     }
 
-    private void ShowInviteModal()
+    private void ResetInviteForm()
     {
-        showInviteModal = true;
         inviteEmail = string.Empty;
         inviteDisplayName = string.Empty;
         invitePermissionLevel = "Read";
@@ -548,10 +547,16 @@
         inviteErrorMessage = null;
     }
 
+    private void ShowInviteModal()
+    {
+        showInviteModal = true;
+        ResetInviteForm();
+    }
+
     private void HideInviteModal()
     {
         showInviteModal = false;
-        inviteErrorMessage = null;
+        ResetInviteForm();
     }
 
     private async Task InviteUser()
@@ -641,12 +646,13 @@
 
     private string GetPermissionBadgeClass(string permission)
     {
-        return permission.ToLower() switch
-        {
-            "read" => "info",
-            "edit" or "write" or "contribute" => "warning",
-            _ => "secondary"
-        };
+        if (permission.Equals("Read", StringComparison.OrdinalIgnoreCase))
+            return "info";
+        if (permission.Equals("Edit", StringComparison.OrdinalIgnoreCase) ||
+            permission.Equals("Write", StringComparison.OrdinalIgnoreCase) ||
+            permission.Equals("Contribute", StringComparison.OrdinalIgnoreCase))
+            return "warning";
+        return "secondary";
     }
 
     private int GetTotalLibrariesAndLists()
