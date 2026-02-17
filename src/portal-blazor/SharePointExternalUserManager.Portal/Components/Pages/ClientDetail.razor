@@ -3,6 +3,7 @@
 @inject Services.ApiClient ApiClient
 @inject NavigationManager Navigation
 @inject ILogger<ClientDetail> Logger
+@using Microsoft.AspNetCore.WebUtilities
 
 <PageTitle>Client Details - ClientSpace</PageTitle>
 
@@ -213,8 +214,8 @@
     {
         // Check if action=invite query parameter is present
         var uri = new Uri(Navigation.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        if (query["action"] == "invite")
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+        if (queryParams.TryGetValue("action", out var action) && action == "invite")
         {
             showInviteModal = true;
         }
