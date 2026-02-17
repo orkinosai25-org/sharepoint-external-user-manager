@@ -5,6 +5,7 @@
 @inject ILogger<ClientDetail> Logger
 @inject IJSRuntime JSRuntime
 @using Microsoft.AspNetCore.WebUtilities
+@using System.Globalization
 
 <PageTitle>Client Details - ClientSpace</PageTitle>
 
@@ -98,7 +99,7 @@
                             </div>
                             <div class="col-md-4">
                                 <h6>Created Date</h6>
-                                <p>@client.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                                <p>@client.CreatedDate.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)</p>
                             </div>
                         </div>
                         @if (!string.IsNullOrEmpty(client.Description))
@@ -215,7 +216,7 @@
                                                         </span>
                                                     </td>
                                                     <td>@user.Status</td>
-                                                    <td>@user.InvitedDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>@user.InvitedDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
                                                     <td>
                                                         <button class="btn btn-danger btn-sm" @onclick="@(() => RemoveUser(user))">
                                                             <i class="bi bi-trash"></i> Remove
@@ -274,7 +275,7 @@
                                                     <tr>
                                                         <td>@library.DisplayName</td>
                                                         <td>@library.ItemCount</td>
-                                                        <td>@library.LastModifiedDateTime.ToString("dd/MM/yyyy")</td>
+                                                        <td>@library.LastModifiedDateTime.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
                                                         <td>
                                                             <a href="@library.WebUrl" target="_blank" class="btn btn-outline-primary btn-sm">
                                                                 <i class="bi bi-box-arrow-up-right"></i> Open
@@ -306,7 +307,7 @@
                                                     <tr>
                                                         <td>@list.DisplayName</td>
                                                         <td>@list.ItemCount</td>
-                                                        <td>@list.LastModifiedDateTime.ToString("dd/MM/yyyy")</td>
+                                                        <td>@list.LastModifiedDateTime.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
                                                         <td>
                                                             <a href="@list.WebUrl" target="_blank" class="btn btn-outline-primary btn-sm">
                                                                 <i class="bi bi-box-arrow-up-right"></i> Open
