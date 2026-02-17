@@ -114,6 +114,31 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <!-- Search Bar -->
+                    @if (clients.Any())
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           placeholder="Search by client name or reference..." 
+                                           @bind="searchQuery"
+                                           @bind:event="oninput"
+                                           @onkeyup="FilterClients" />
+                                    @if (!string.IsNullOrEmpty(searchQuery))
+                                    {
+                                        <button class="btn btn-outline-secondary" @onclick="ClearSearch">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
                     @if (isLoadingClients)
                     {
                         <div class="text-center my-4">
@@ -146,13 +171,15 @@
                                         <th>Client Reference</th>
                                         <th>Client Name</th>
                                         <th>Status</th>
+                                        <th>External Users</th>
+                                        <th>Documents</th>
                                         <th>SharePoint Site</th>
                                         <th>Created Date</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var client in clients)
+                                    @foreach (var client in filteredClients)
                                     {
                                         <tr>
                                             <td>@client.ClientReference</td>
@@ -160,6 +187,16 @@
                                             <td>
                                                 <span class="badge bg-@GetStatusBadgeClass(client.ProvisioningStatus)">
                                                     @client.ProvisioningStatus
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">
+                                                    @GetExternalUserCount(client.Id) users
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">
+                                                    @GetDocumentCount(client.Id) docs
                                                 </span>
                                             </td>
                                             <td>
@@ -176,16 +213,30 @@
                                             </td>
                                             <td>@client.CreatedDate.ToString("dd/MM/yyyy")</td>
                                             <td>
-                                                <button class="btn btn-sm btn-outline-primary"
-                                                        @onclick="() => ViewClient(client.Id)">
-                                                    <span class="bi bi-eye"></span> View
-                                                </button>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-primary"
+                                                            @onclick="() => ViewClient(client.Id)"
+                                                            title="View Details">
+                                                        <span class="bi bi-eye"></span> View
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-success"
+                                                            @onclick="() => InviteUser(client.Id)"
+                                                            title="Invite External User">
+                                                        <span class="bi bi-person-plus"></span> Invite
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
+                        @if (filteredClients.Count == 0 && !string.IsNullOrEmpty(searchQuery))
+                        {
+                            <div class="alert alert-info text-center">
+                                No client spaces match your search criteria.
+                            </div>
+                        }
                     }
                 </div>
             </div>
@@ -291,9 +342,11 @@
     private bool showPermissionsWarning = false;
     private string? clientsError;
     private string? createError;
+    private string searchQuery = string.Empty;
     
     private Models.SubscriptionStatusResponse? subscription;
     private List<Models.ClientResponse> clients = new();
+    private List<Models.ClientResponse> filteredClients = new();
 
     private string newClientReference = string.Empty;
     private string newClientName = string.Empty;
@@ -348,6 +401,7 @@
         try
         {
             clients = await ApiClient.GetClientsAsync();
+            filteredClients = clients;
         }
         catch (Exception ex)
         {
@@ -358,6 +412,28 @@
         {
             isLoadingClients = false;
         }
+    }
+
+    private void FilterClients()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredClients = clients;
+        }
+        else
+        {
+            var query = searchQuery.ToLower();
+            filteredClients = clients.Where(c =>
+                c.ClientName.ToLower().Contains(query) ||
+                c.ClientReference.ToLower().Contains(query)
+            ).ToList();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        filteredClients = clients;
     }
 
     private void ShowCreateClientModal()
@@ -418,6 +494,11 @@
         Navigation.NavigateTo($"/clients/{clientId}");
     }
 
+    private void InviteUser(int clientId)
+    {
+        Navigation.NavigateTo($"/clients/{clientId}?action=invite");
+    }
+
     private string GetStatusBadgeClass(string status)
     {
         return status switch
@@ -427,5 +508,21 @@
             "Failed" => "danger",
             _ => "secondary"
         };
+    }
+
+    // Mock data for external user counts - In production, this would come from API
+    private int GetExternalUserCount(int clientId)
+    {
+        // Generate consistent mock data based on client ID
+        var random = new Random(clientId);
+        return random.Next(0, 15);
+    }
+
+    // Mock data for document counts - In production, this would come from API
+    private int GetDocumentCount(int clientId)
+    {
+        // Generate consistent mock data based on client ID
+        var random = new Random(clientId * 2);
+        return random.Next(5, 150);
     }
 }

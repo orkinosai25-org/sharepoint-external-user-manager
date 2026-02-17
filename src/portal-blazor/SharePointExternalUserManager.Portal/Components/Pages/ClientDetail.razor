@@ -1,0 +1,285 @@
+@page "/clients/{ClientId:int}"
+@attribute [Authorize]
+@inject Services.ApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILogger<ClientDetail> Logger
+
+<PageTitle>Client Details - ClientSpace</PageTitle>
+
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Client Details</li>
+        </ol>
+    </nav>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status"></div>
+            <p class="mt-2">Loading client details...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @errorMessage
+            <br />
+            <a href="/dashboard" class="btn btn-primary mt-2">Back to Dashboard</a>
+        </div>
+    }
+    else if (client != null)
+    {
+        <!-- Client Header -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1>@client.ClientName</h1>
+                <p class="text-muted">@client.ClientReference</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-outline-primary me-2" @onclick="BackToDashboard">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </button>
+                <button class="btn btn-success" @onclick="ShowInviteModal">
+                    <i class="bi bi-person-plus"></i> Invite User
+                </button>
+            </div>
+        </div>
+
+        <!-- Client Info Card -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Client Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>Status</h6>
+                                <p>
+                                    <span class="badge bg-@GetStatusBadgeClass(client.ProvisioningStatus)">
+                                        @client.ProvisioningStatus
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>SharePoint Site</h6>
+                                <p>
+                                    @if (!string.IsNullOrEmpty(client.SharePointSiteUrl))
+                                    {
+                                        <a href="@client.SharePointSiteUrl" target="_blank">
+                                            Open Site <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Pending provisioning</span>
+                                    }
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Created Date</h6>
+                                <p>@client.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(client.Description))
+                        {
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <h6>Description</h6>
+                                    <p>@client.Description</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-people"></i> External Users</h5>
+                        <p class="display-4">@GetExternalUserCount(client.Id)</p>
+                        <p class="text-muted">Active external users</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-secondary">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Documents</h5>
+                        <p class="display-4">@GetDocumentCount(client.Id)</p>
+                        <p class="text-muted">Total documents shared</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- External Users Section -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-people-fill"></i> External Users</h5>
+                            <button class="btn btn-light btn-sm" @onclick="ShowInviteModal">
+                                <i class="bi bi-person-plus"></i> Invite User
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> External user management features will be available here.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Libraries Section -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Document Libraries</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> Document library management features will be available here.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Invite User Modal -->
+@if (showInviteModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Invite External User</h5>
+                    <button type="button" class="btn-close" @onclick="HideInviteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> External user invitation functionality will be implemented here.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control" placeholder="user@example.com" disabled />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Display Name</label>
+                        <input type="text" class="form-control" placeholder="John Doe" disabled />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideInviteModal">Close</button>
+                    <button type="button" class="btn btn-success" disabled>
+                        <i class="bi bi-send"></i> Send Invitation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int ClientId { get; set; }
+
+    private bool isLoading = true;
+    private bool showInviteModal = false;
+    private string? errorMessage;
+    private Models.ClientResponse? client;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClientDetails();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Check if action=invite query parameter is present
+        var uri = new Uri(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        if (query["action"] == "invite")
+        {
+            showInviteModal = true;
+        }
+    }
+
+    private async Task LoadClientDetails()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            client = await ApiClient.GetClientAsync(ClientId);
+            if (client == null)
+            {
+                errorMessage = "Client not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load client details");
+            errorMessage = "Failed to load client details. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void BackToDashboard()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+
+    private void ShowInviteModal()
+    {
+        showInviteModal = true;
+    }
+
+    private void HideInviteModal()
+    {
+        showInviteModal = false;
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Completed" => "success",
+            "Provisioning" => "warning",
+            "Failed" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    // Mock data for external user counts - In production, this would come from API
+    private int GetExternalUserCount(int clientId)
+    {
+        var random = new Random(clientId);
+        return random.Next(0, 15);
+    }
+
+    // Mock data for document counts - In production, this would come from API
+    private int GetDocumentCount(int clientId)
+    {
+        var random = new Random(clientId * 2);
+        return random.Next(5, 150);
+    }
+}
