@@ -1,6 +1,9 @@
 /**
  * POST /auth/connect - Initiate OAuth admin consent flow
  * Returns authorization URL for admin to grant consent
+ * 
+ * SECURITY WARNING: Current implementation stores tenant context in client-side
+ * state parameter. In production, use server-side cache (Redis) instead.
  */
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
@@ -51,8 +54,18 @@ async function connectTenant(req: HttpRequest, context: InvocationContext): Prom
     // For now, we'll encode it in the state itself (not recommended for production)
     const encodedState = Buffer.from(JSON.stringify(stateData)).toString('base64');
 
-    // Generate admin consent URL
-    const authorizationUrl = oauthService.generateAdminConsentUrl(encodedState, body.redirectUri);
+    // Get tenant for entraIdTenantId
+    const tenant = await databaseService.getTenantById(tenantContext.tenantId);
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    // Generate admin consent URL with tenant-specific endpoint
+    const authorizationUrl = oauthService.generateAdminConsentUrl(
+      encodedState,
+      body.redirectUri,
+      tenant.entraIdTenantId
+    );
 
     const response: ConnectTenantResponse = {
       authorizationUrl,

@@ -75,8 +75,19 @@ async function authCallback(req: HttpRequest, _context: InvocationContext): Prom
     }
 
     // Get redirect URI from query or use default
-    const redirectUri = req.query.get('redirect_uri') || 
-                       `${req.headers.get('origin') || 'http://localhost:7001'}/onboarding/success`;
+    const redirectUri = req.query.get('redirect_uri');
+    
+    // Validate redirect URI against whitelist
+    const allowedRedirectUris = (config.cors.allowedOrigins || []).map(origin => 
+      `${origin}/onboarding/consent`
+    );
+    
+    if (!redirectUri || !allowedRedirectUris.includes(redirectUri)) {
+      throw new BadRequestError(
+        'Invalid redirect URI',
+        'Redirect URI must be from an allowed origin'
+      );
+    }
 
     // Exchange authorization code for tokens
     const tokenResponse = await oauthService.exchangeAuthorizationCode(
@@ -88,6 +99,11 @@ async function authCallback(req: HttpRequest, _context: InvocationContext): Prom
     // Calculate token expiry
     const tokenExpiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
 
+    // TODO: Get actual consenting user from token claims or Graph API
+    // The tenant.primaryAdminEmail may not be the actual user who granted consent
+    // Consider extracting from JWT claims or querying Graph API with the access token
+    const consentGrantedBy = tenant.primaryAdminEmail;
+
     // Save tokens to database
     await databaseService.saveTenantAuth({
       tenantId: tenant.id,
@@ -95,7 +111,7 @@ async function authCallback(req: HttpRequest, _context: InvocationContext): Prom
       refreshToken: tokenResponse.refresh_token,
       tokenExpiresAt,
       scope: tokenResponse.scope,
-      consentGrantedBy: tenant.primaryAdminEmail,
+      consentGrantedBy,
       consentGrantedAt: new Date(),
       lastTokenRefresh: new Date()
     });

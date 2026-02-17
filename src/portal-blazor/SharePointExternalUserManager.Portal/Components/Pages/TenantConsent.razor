@@ -193,23 +193,52 @@
         
         try
         {
-            // Give the backend time to process the callback
-            await Task.Delay(2000);
-
-            // Validate that permissions were granted
-            var validation = await ApiClient.ValidatePermissionsAsync();
+            // Poll for permissions validation with exponential backoff
+            var maxAttempts = 5;
+            var attempt = 0;
+            var delay = 1000; // Start with 1 second
             
-            if (validation != null)
+            while (attempt < maxAttempts)
             {
-                if (validation.HasRequiredPermissions)
+                attempt++;
+                
+                // Wait before checking
+                await Task.Delay(delay);
+                
+                try
                 {
-                    permissionsGranted = true;
+                    // Validate that permissions were granted
+                    var validation = await ApiClient.ValidatePermissionsAsync();
+                    
+                    if (validation != null)
+                    {
+                        if (validation.HasRequiredPermissions)
+                        {
+                            permissionsGranted = true;
+                            return; // Success!
+                        }
+                        else if (attempt >= maxAttempts)
+                        {
+                            // Final attempt - show what's missing
+                            errorMessage = $"Some required permissions are missing: {string.Join(", ", validation.MissingPermissions)}";
+                            return;
+                        }
+                    }
                 }
-                else
+                catch (Exception)
                 {
-                    errorMessage = $"Some required permissions are missing: {string.Join(", ", validation.MissingPermissions)}";
+                    // If validation fails on early attempts, continue polling
+                    if (attempt >= maxAttempts)
+                    {
+                        throw; // Re-throw on final attempt
+                    }
                 }
+                
+                // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                delay *= 2;
             }
+            
+            errorMessage = "Permission validation timed out. Please refresh the page to check status.";
         }
         catch (Exception ex)
         {

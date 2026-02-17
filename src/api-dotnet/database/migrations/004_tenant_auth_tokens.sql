@@ -4,8 +4,14 @@
 -- Description: Add table for storing tenant OAuth tokens for Microsoft Graph
 -- ============================================================================
 
--- Create TenantAuth table for storing OAuth tokens
-IF OBJECT_ID('dbo.TenantAuth', 'U') IS NOT NULL DROP TABLE dbo.TenantAuth;
+-- Only drop table if it exists and is a development environment
+-- Remove this DROP statement for production deployments
+IF OBJECT_ID('dbo.TenantAuth', 'U') IS NOT NULL 
+BEGIN
+    -- WARNING: This will delete all OAuth tokens
+    -- Only use during development or when explicitly required
+    DROP TABLE dbo.TenantAuth;
+END
 GO
 
 CREATE TABLE [dbo].[TenantAuth] (

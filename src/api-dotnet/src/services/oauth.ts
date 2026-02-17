@@ -23,8 +23,9 @@ export class OAuthService {
 
   /**
    * Generate admin consent URL for tenant onboarding
+   * Uses tenant-specific endpoint for better compatibility
    */
-  generateAdminConsentUrl(state: string, redirectUri: string): string {
+  generateAdminConsentUrl(state: string, redirectUri: string, tenantId: string = 'common'): string {
     const params = new URLSearchParams({
       client_id: config.auth.clientId,
       redirect_uri: redirectUri,
@@ -35,7 +36,9 @@ export class OAuthService {
       prompt: 'admin_consent'
     });
 
-    return `${this.authority}/common/v2.0/adminconsent?${params.toString()}`;
+    // Use tenant-specific endpoint for better compatibility
+    // 'common' works for most cases but tenant-specific is more reliable
+    return `${this.authority}/${tenantId}/v2.0/adminconsent?${params.toString()}`;
   }
 
   /**
@@ -110,21 +113,11 @@ export class OAuthService {
 
   /**
    * Validate that required Graph API permissions are granted
+   * Checks appRoleAssignments to verify actual granted permissions
    */
   async validatePermissions(accessToken: string): Promise<ValidatePermissionsResponse> {
     try {
-      // Get OAuth2PermissionGrants to check granted permissions
-      const response = await axios.get(
-        'https://graph.microsoft.com/v1.0/oauth2PermissionGrants',
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      // Also get application service principal to check app permissions
+      // Get application service principal
       const spResponse = await axios.get(
         `https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '${config.auth.clientId}'`,
         {
@@ -144,11 +137,42 @@ export class OAuthService {
       }
 
       const servicePrincipal = spResponse.data.value[0];
-      const appRoles = servicePrincipal.appRoles || [];
       
-      // Get granted application permissions
-      const grantedPermissions = appRoles
-        .filter((role: any) => role.isEnabled)
+      // Get Microsoft Graph service principal to map role IDs to names
+      const graphSpResponse = await axios.get(
+        `https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '00000003-0000-0000-c000-000000000000'`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (graphSpResponse.data.value.length === 0) {
+        throw new Error('Microsoft Graph service principal not found');
+      }
+
+      const graphSp = graphSpResponse.data.value[0];
+      
+      // Get app role assignments to see what permissions are actually granted
+      const assignmentsResponse = await axios.get(
+        `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipal.id}/appRoleAssignments`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Map role IDs to permission names
+      const grantedRoleIds = assignmentsResponse.data.value
+        .filter((assignment: any) => assignment.resourceId === graphSp.id)
+        .map((assignment: any) => assignment.appRoleId);
+
+      const grantedPermissions = graphSp.appRoles
+        .filter((role: any) => grantedRoleIds.includes(role.id))
         .map((role: any) => role.value);
 
       // Check which required permissions are missing
