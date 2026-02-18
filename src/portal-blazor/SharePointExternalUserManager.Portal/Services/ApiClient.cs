@@ -359,6 +359,17 @@ public class ApiClient
     {
         try
         {
+            // Validate parameters
+            if (page < 1)
+            {
+                page = 1;
+            }
+            
+            if (pageSize < 1 || pageSize > 100)
+            {
+                pageSize = 20;
+            }
+
             var url = $"/v1/client-spaces/{clientId}/search?q={Uri.EscapeDataString(query)}&page={page}&pageSize={pageSize}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();

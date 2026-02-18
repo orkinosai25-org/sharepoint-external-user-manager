@@ -194,6 +194,7 @@
     private string? errorMessage;
     private SearchResponse? searchResults;
     private int currentPage = 1;
+    // Page size aligned with API default (max 100, default 20)
     private const int pageSize = 20;
 
     private async Task ExecuteSearch()
@@ -251,8 +252,19 @@
             return;
         }
 
+        var previousPage = currentPage;
         currentPage = page;
-        await ExecuteSearch();
+        
+        try
+        {
+            await ExecuteSearch();
+        }
+        catch
+        {
+            // Revert to previous page on error
+            currentPage = previousPage;
+            throw;
+        }
     }
 
     private int GetTotalPages()
