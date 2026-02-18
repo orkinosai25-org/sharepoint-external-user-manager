@@ -50,8 +50,8 @@ export interface UserMetadata {
   department?: string;
   /** Additional notes or context */
   notes?: string;
-  /** Custom fields */
-  [key: string]: any;
+  /** Custom fields with constrained types for safety */
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**

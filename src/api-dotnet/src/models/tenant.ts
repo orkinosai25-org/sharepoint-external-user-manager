@@ -45,8 +45,8 @@ export interface TenantSettings {
   region?: string;
   /** Custom domain for the tenant (if applicable) */
   customDomain?: string;
-  /** Additional custom settings */
-  [key: string]: any;
+  /** Additional custom settings with constrained types for safety */
+  [key: string]: string | number | boolean | undefined;
 }
 
 /**
