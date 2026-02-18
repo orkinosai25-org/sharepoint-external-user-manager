@@ -204,6 +204,12 @@
             return;
         }
 
+        // Reset to page 1 if this is a new search query
+        if (searchQuery != lastSearchQuery)
+        {
+            currentPage = 1;
+        }
+
         isSearching = true;
         errorMessage = null;
         hasSearched = true;
@@ -231,6 +237,8 @@
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchQuery))
         {
+            // Reset to page 1 for new search
+            currentPage = 1;
             await ExecuteSearch();
         }
     }
@@ -259,11 +267,12 @@
         {
             await ExecuteSearch();
         }
-        catch
+        catch (Exception ex)
         {
-            // Revert to previous page on error
+            // Revert to previous page and set error message
             currentPage = previousPage;
-            throw;
+            errorMessage = "Failed to navigate to page. Please try again.";
+            Logger.LogError(ex, "Failed to navigate to page {Page}", page);
         }
     }
 
