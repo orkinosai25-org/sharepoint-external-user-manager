@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Text.Json;
+using SharePointExternalUserManager.Api.Attributes;
 using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Data.Entities;
 using SharePointExternalUserManager.Api.Models;
@@ -38,6 +39,7 @@ public class AiAssistantController : ControllerBase
     /// Send a message to the AI assistant
     /// </summary>
     [HttpPost("chat")]
+    [RequiresPlan("Pro", "AI Assistant")]
     public async Task<ActionResult<AiChatResponse>> SendMessage([FromBody] AiChatRequest request)
     {
         var stopwatch = Stopwatch.StartNew();
