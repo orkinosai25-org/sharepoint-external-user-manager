@@ -116,7 +116,9 @@ public class ChatService
             {
                 return await CallBackendApiAsync(request);
             }
-            catch (HttpRequestException ex) when (attempt < maxRetries && !ex.Message.Contains("403") && !ex.Message.Contains("429"))
+            catch (HttpRequestException ex) when (attempt < maxRetries && 
+                ex.StatusCode != System.Net.HttpStatusCode.Forbidden && 
+                ex.StatusCode != (System.Net.HttpStatusCode)429)
             {
                 // Retry transient errors, but not authorization or rate limit errors
                 lastException = ex;
@@ -129,7 +131,7 @@ public class ChatService
             }
         }
         
-        throw lastException ?? new Exception("Failed after retries");
+        throw lastException ?? new Exception("Failed to connect to AI service after multiple retry attempts");
     }
 
     private async Task<ChatResponse> CallBackendApiAsync(ChatRequest request)

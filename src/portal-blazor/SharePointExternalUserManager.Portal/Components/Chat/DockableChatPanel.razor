@@ -140,6 +140,9 @@
     [Parameter]
     public bool IsGuestUser { get; set; } = false;
 
+    private const int MaxRetries = 2;
+    private const int RetryDelayBaseMs = 1000;
+
     private string _conversationId = Guid.NewGuid().ToString();
     private List<ChatMessage> _messages = new();
     private string _currentMessage = string.Empty;
@@ -148,7 +151,6 @@
     private bool _showDisclaimer = true;
     private string? _errorMessage = null;
     private int _retryCount = 0;
-    private const int MaxRetries = 2;
     private ElementReference messagesContainer;
     
     private enum DockPosition { Bottom, Right, Top, Left }
@@ -242,7 +244,7 @@
                 // Retry logic for transient errors
                 _retryCount++;
                 _isLoading = false;
-                await Task.Delay(1000 * _retryCount); // Exponential backoff
+                await Task.Delay(RetryDelayBaseMs * _retryCount); // Exponential backoff
                 _currentMessage = message; // Restore message
                 await SendMessage(); // Retry
                 return;

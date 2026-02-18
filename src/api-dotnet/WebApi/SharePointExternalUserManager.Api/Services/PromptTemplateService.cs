@@ -245,27 +245,33 @@ Be concise but thorough. Focus on practical, actionable advice.");
     /// </summary>
     private string GetPageSpecificGuidance(string currentPage)
     {
-        var guidance = currentPage.ToLower() switch
+        var guidance = currentPage switch
         {
-            var p when p.Contains("dashboard") => 
+            var p when p.Contains("dashboard", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Overview metrics, recent activities, quick actions for client space management",
 
-            var p when p.Contains("client") && p.Contains("space") => 
+            var p when p.Contains("client", StringComparison.OrdinalIgnoreCase) && 
+                       p.Contains("space", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Creating/managing client spaces, site permissions, library setup",
 
-            var p when p.Contains("external") && p.Contains("user") => 
+            var p when p.Contains("external", StringComparison.OrdinalIgnoreCase) && 
+                       p.Contains("user", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Inviting users, managing permissions, access expiry, troubleshooting access issues",
 
-            var p when p.Contains("library") || p.Contains("document") => 
+            var p when p.Contains("library", StringComparison.OrdinalIgnoreCase) || 
+                       p.Contains("document", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Document management, versioning, permissions, content types",
 
-            var p when p.Contains("audit") || p.Contains("log") => 
+            var p when p.Contains("audit", StringComparison.OrdinalIgnoreCase) || 
+                       p.Contains("log", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Activity tracking, compliance reports, security reviews",
 
-            var p when p.Contains("settings") || p.Contains("config") => 
+            var p when p.Contains("settings", StringComparison.OrdinalIgnoreCase) || 
+                       p.Contains("config", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Tenant configuration, subscription management, security settings",
 
-            var p when p.Contains("billing") || p.Contains("subscription") => 
+            var p when p.Contains("billing", StringComparison.OrdinalIgnoreCase) || 
+                       p.Contains("subscription", StringComparison.OrdinalIgnoreCase) => 
                 "  Focus on: Plan selection, billing details, feature limits, upgrades",
 
             _ => ""
