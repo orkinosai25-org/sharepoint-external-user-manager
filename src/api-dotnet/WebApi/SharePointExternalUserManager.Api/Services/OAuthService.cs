@@ -14,14 +14,16 @@ public class OAuthService : IOAuthService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<OAuthService> _logger;
 
-    // Required Microsoft Graph permissions
-    public List<string> RequiredPermissions => new()
+    // Required Microsoft Graph permissions (static readonly to avoid allocations)
+    private static readonly List<string> _requiredPermissions = new()
     {
         "User.Read.All",
         "Sites.ReadWrite.All",
         "Sites.FullControl.All",
         "Directory.Read.All"
     };
+
+    public List<string> RequiredPermissions => _requiredPermissions;
 
     public OAuthService(
         IConfiguration configuration,
@@ -223,9 +225,19 @@ public class OAuthService : IOAuthService
             var json = Encoding.UTF8.GetString(bytes);
             return JsonSerializer.Deserialize<OAuthState>(json);
         }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning(ex, "Invalid Base64 format in OAuth state - possible tampering attempt");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Invalid JSON in OAuth state - possible tampering attempt");
+            return null;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error decoding OAuth state");
+            _logger.LogError(ex, "Unexpected error decoding OAuth state");
             return null;
         }
     }

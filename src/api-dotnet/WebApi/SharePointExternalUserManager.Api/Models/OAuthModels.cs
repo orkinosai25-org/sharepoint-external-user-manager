@@ -48,9 +48,18 @@ public class OAuthState
 /// </summary>
 public class TokenResponse
 {
-    public string? access_token { get; set; }
-    public string? token_type { get; set; }
-    public int expires_in { get; set; }
-    public string? refresh_token { get; set; }
-    public string? scope { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("access_token")]
+    public string? AccessToken { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("token_type")]
+    public string? TokenType { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("expires_in")]
+    public int ExpiresIn { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("refresh_token")]
+    public string? RefreshToken { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("scope")]
+    public string? Scope { get; set; }
 }

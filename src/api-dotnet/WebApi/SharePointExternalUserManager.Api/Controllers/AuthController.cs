@@ -19,17 +19,20 @@ public class AuthController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IOAuthService _oauthService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         ApplicationDbContext context,
         IOAuthService oauthService,
         IAuditLogService auditLogService,
+        IConfiguration configuration,
         ILogger<AuthController> logger)
     {
         _context = context;
         _oauthService = oauthService;
         _auditLogService = auditLogService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -142,13 +145,19 @@ public class AuthController : ControllerBase
         // Handle error case
         if (!string.IsNullOrEmpty(error))
         {
+            // Validate and sanitize error parameters to prevent XSS
+            var sanitizedError = error.Length > 100 ? error.Substring(0, 100) : error;
+            var sanitizedDescription = error_description?.Length > 200 
+                ? error_description.Substring(0, 200) 
+                : error_description ?? "Unknown error";
+
             _logger.LogWarning(
                 "OAuth consent failed. Error: {Error}, Description: {Description}",
-                error,
-                error_description);
+                sanitizedError,
+                sanitizedDescription);
 
-            // Redirect back to portal with error
-            return Redirect($"/onboarding/consent?error={Uri.EscapeDataString(error)}&error_description={Uri.EscapeDataString(error_description ?? "Unknown error")}");
+            // Redirect back to portal with error (using fixed portal path)
+            return Redirect($"/onboarding/consent?error={Uri.EscapeDataString(sanitizedError)}&error_description={Uri.EscapeDataString(sanitizedDescription)}");
         }
 
         // Validate required parameters
@@ -178,7 +187,7 @@ public class AuthController : ControllerBase
             // Exchange authorization code for tokens
             var tokenResponse = await _oauthService.ExchangeCodeForTokensAsync(code, oauthState.RedirectUri);
 
-            if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.access_token))
+            if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.AccessToken))
             {
                 _logger.LogError("Failed to exchange code for tokens");
                 return Redirect("/onboarding/consent?error=token_exchange_failed&error_description=Failed to obtain access tokens");
@@ -195,7 +204,7 @@ public class AuthController : ControllerBase
             }
 
             // Calculate token expiration
-            var tokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.expires_in);
+            var tokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
 
             // Store or update tenant auth tokens
             var existingAuth = await _context.TenantAuth
@@ -204,10 +213,10 @@ public class AuthController : ControllerBase
             if (existingAuth != null)
             {
                 // Update existing auth
-                existingAuth.AccessToken = tokenResponse.access_token;
-                existingAuth.RefreshToken = tokenResponse.refresh_token;
+                existingAuth.AccessToken = tokenResponse.AccessToken;
+                existingAuth.RefreshToken = tokenResponse.RefreshToken;
                 existingAuth.TokenExpiresAt = tokenExpiresAt;
-                existingAuth.Scope = tokenResponse.scope;
+                existingAuth.Scope = tokenResponse.Scope;
                 existingAuth.ConsentGrantedBy = oauthState.UserEmail;
                 existingAuth.ConsentGrantedAt = DateTime.UtcNow;
                 existingAuth.ModifiedDate = DateTime.UtcNow;
@@ -218,10 +227,10 @@ public class AuthController : ControllerBase
                 var newAuth = new TenantAuthEntity
                 {
                     TenantId = tenantEntity.Id,
-                    AccessToken = tokenResponse.access_token,
-                    RefreshToken = tokenResponse.refresh_token,
+                    AccessToken = tokenResponse.AccessToken,
+                    RefreshToken = tokenResponse.RefreshToken,
                     TokenExpiresAt = tokenExpiresAt,
-                    Scope = tokenResponse.scope,
+                    Scope = tokenResponse.Scope,
                     ConsentGrantedBy = oauthState.UserEmail,
                     ConsentGrantedAt = DateTime.UtcNow,
                     CreatedDate = DateTime.UtcNow,
@@ -249,6 +258,27 @@ public class AuthController : ControllerBase
                 "callback",
                 correlationId,
                 "Success");
+
+            // Validate redirect URI against allowed list
+            var allowedRedirectUris = _configuration.GetSection("AzureAd:AllowedRedirectUris").Get<string[]>() 
+                ?? Array.Empty<string>();
+            
+            // Check if the redirect URI is in the allowed list (checking base URI only for flexibility)
+            var redirectUri = new Uri(oauthState.RedirectUri);
+            var isAllowedRedirect = allowedRedirectUris.Any(allowed =>
+            {
+                var allowedUri = new Uri(allowed);
+                return allowedUri.Scheme == redirectUri.Scheme &&
+                       allowedUri.Host == redirectUri.Host &&
+                       allowedUri.Port == redirectUri.Port;
+            });
+
+            if (!isAllowedRedirect && allowedRedirectUris.Length > 0)
+            {
+                _logger.LogWarning("Redirect URI {RedirectUri} not in allowed list", oauthState.RedirectUri);
+                // Fall back to fixed portal path if redirect not allowed
+                return Redirect($"/onboarding/consent?admin_consent=True&tenant={Uri.EscapeDataString(oauthState.TenantId)}");
+            }
 
             // Redirect back to portal with success
             return Redirect($"{oauthState.RedirectUri}?admin_consent=True&tenant={Uri.EscapeDataString(oauthState.TenantId)}");
@@ -322,18 +352,18 @@ public class AuthController : ControllerBase
                 {
                     var tokenResponse = await _oauthService.RefreshAccessTokenAsync(tenantAuth.RefreshToken);
 
-                    if (tokenResponse != null && !string.IsNullOrEmpty(tokenResponse.access_token))
+                    if (tokenResponse != null && !string.IsNullOrEmpty(tokenResponse.AccessToken))
                     {
                         // Update tokens in database
-                        tenantAuth.AccessToken = tokenResponse.access_token;
-                        tenantAuth.RefreshToken = tokenResponse.refresh_token ?? tenantAuth.RefreshToken;
-                        tenantAuth.TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.expires_in);
+                        tenantAuth.AccessToken = tokenResponse.AccessToken;
+                        tenantAuth.RefreshToken = tokenResponse.RefreshToken ?? tenantAuth.RefreshToken;
+                        tenantAuth.TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
                         tenantAuth.LastTokenRefresh = DateTime.UtcNow;
                         tenantAuth.ModifiedDate = DateTime.UtcNow;
 
                         await _context.SaveChangesAsync();
 
-                        accessToken = tokenResponse.access_token;
+                        accessToken = tokenResponse.AccessToken;
                         tokenRefreshed = true;
 
                         _logger.LogInformation("Access token refreshed successfully for tenant {TenantId}", tenantIdClaim);
