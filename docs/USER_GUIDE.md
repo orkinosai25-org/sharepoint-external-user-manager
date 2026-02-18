@@ -625,7 +625,7 @@ A: Yes, we provide a REST API for integration. See the [API Reference](./saas/ap
 A: The web portal is fully responsive and works on mobile devices. The SPFx web parts work in the SharePoint mobile app.
 
 **Q: Can I customize the branding?**
-A: Enterprise customers can customize colors and logos. See [Branding Guide](./branding/README.md).
+A: Enterprise customers can customize colors and logos. See [Branding Guide](branding/README.md).
 
 **Q: Do you support single sign-on (SSO)?**
 A: Yes, via Azure AD. All authentication uses your Microsoft 365 credentials.
