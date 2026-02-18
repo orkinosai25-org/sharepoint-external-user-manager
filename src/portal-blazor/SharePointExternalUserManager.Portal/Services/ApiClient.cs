@@ -359,7 +359,7 @@ public class ApiClient
     {
         try
         {
-            var url = $"/client-spaces/{clientId}/search?q={Uri.EscapeDataString(query)}&page={page}&pageSize={pageSize}";
+            var url = $"/v1/client-spaces/{clientId}/search?q={Uri.EscapeDataString(query)}&page={page}&pageSize={pageSize}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
