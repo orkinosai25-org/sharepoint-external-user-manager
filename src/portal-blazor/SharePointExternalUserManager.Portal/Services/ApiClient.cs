@@ -229,4 +229,126 @@ public class ApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Get all external users for a client
+    /// </summary>
+    public async Task<List<ExternalUserDto>> GetExternalUsersAsync(int clientId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/clients/{clientId}/external-users");
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<ExternalUserDto>>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data ?? new List<ExternalUserDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to get external users for client {clientId}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Invite an external user to a client
+    /// </summary>
+    public async Task<ExternalUserDto?> InviteExternalUserAsync(int clientId, InviteExternalUserRequest request)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync($"/clients/{clientId}/external-users", content);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<ExternalUserDto>>(responseJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to invite external user to client {clientId}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Remove an external user from a client
+    /// </summary>
+    public async Task<bool> RemoveExternalUserAsync(int clientId, string email)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/clients/{clientId}/external-users/{Uri.EscapeDataString(email)}");
+            response.EnsureSuccessStatusCode();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to remove external user {email} from client {clientId}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get all libraries for a client
+    /// </summary>
+    public async Task<List<LibraryResponse>> GetLibrariesAsync(int clientId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/clients/{clientId}/libraries");
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<LibraryResponse>>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data ?? new List<LibraryResponse>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to get libraries for client {clientId}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get all lists for a client
+    /// </summary>
+    public async Task<List<ListResponse>> GetListsAsync(int clientId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/clients/{clientId}/lists");
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<ListResponse>>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data ?? new List<ListResponse>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to get lists for client {clientId}");
+            throw;
+        }
+    }
 }

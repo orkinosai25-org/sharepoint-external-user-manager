@@ -3,7 +3,9 @@
 @inject Services.ApiClient ApiClient
 @inject NavigationManager Navigation
 @inject ILogger<ClientDetail> Logger
+@inject IJSRuntime JSRuntime
 @using Microsoft.AspNetCore.WebUtilities
+@using System.Globalization
 
 <PageTitle>Client Details - ClientSpace</PageTitle>
 
@@ -34,6 +36,16 @@
     }
     else if (client != null)
     {
+        <!-- Success Message -->
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                @successMessage
+                <button type="button" class="btn-close" @onclick="@(() => successMessage = null)"></button>
+            </div>
+        }
+
         <!-- Client Header -->
         <div class="row mb-4">
             <div class="col-md-8">
@@ -44,9 +56,12 @@
                 <button class="btn btn-outline-primary me-2" @onclick="BackToDashboard">
                     <i class="bi bi-arrow-left"></i> Back to Dashboard
                 </button>
-                <button class="btn btn-success" @onclick="ShowInviteModal">
-                    <i class="bi bi-person-plus"></i> Invite User
-                </button>
+                @if (client.ProvisioningStatus == "Provisioned")
+                {
+                    <button class="btn btn-success" @onclick="ShowInviteModal">
+                        <i class="bi bi-person-plus"></i> Invite User
+                    </button>
+                }
             </div>
         </div>
 
@@ -84,7 +99,7 @@
                             </div>
                             <div class="col-md-4">
                                 <h6>Created Date</h6>
-                                <p>@client.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                                <p>@client.CreatedDate.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)</p>
                             </div>
                         </div>
                         @if (!string.IsNullOrEmpty(client.Description))
@@ -96,69 +111,220 @@
                                 </div>
                             </div>
                         }
+                        @if (!string.IsNullOrEmpty(client.ProvisioningError))
+                        {
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <div class="alert alert-danger mb-0">
+                                        <strong>Provisioning Error:</strong> @client.ProvisioningError
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Statistics Cards -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card border-info">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-people"></i> External Users</h5>
-                        <p class="display-4">@GetExternalUserCount(client.Id)</p>
-                        <p class="text-muted">Active external users</p>
+        @if (client.ProvisioningStatus == "Provisioned")
+        {
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card border-info">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="bi bi-people"></i> External Users</h5>
+                            @if (isLoadingUsers)
+                            {
+                                <div class="spinner-border spinner-border-sm" role="status"></div>
+                            }
+                            else
+                            {
+                                <p class="display-4">@externalUsers.Count</p>
+                            }
+                            <p class="text-muted">Active external users</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-secondary">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="bi bi-folder2-open"></i> Libraries & Lists</h5>
+                            @if (isLoadingLibraries)
+                            {
+                                <div class="spinner-border spinner-border-sm" role="status"></div>
+                            }
+                            else
+                            {
+                                <p class="display-4">@GetTotalLibrariesAndLists()</p>
+                            }
+                            <p class="text-muted">@libraries.Count libraries, @lists.Count lists</p>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card border-secondary">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-file-earmark-text"></i> Documents</h5>
-                        <p class="display-4">@GetDocumentCount(client.Id)</p>
-                        <p class="text-muted">Total documents shared</p>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- External Users Section -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="bi bi-people-fill"></i> External Users</h5>
-                            <button class="btn btn-light btn-sm" @onclick="ShowInviteModal">
-                                <i class="bi bi-person-plus"></i> Invite User
-                            </button>
+            <!-- External Users Section -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-people-fill"></i> External Users</h5>
+                                <button class="btn btn-light btn-sm" @onclick="ShowInviteModal">
+                                    <i class="bi bi-person-plus"></i> Invite User
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> External user management features will be available here.
+                        <div class="card-body">
+                            @if (isLoadingUsers)
+                            {
+                                <div class="text-center py-4">
+                                    <div class="spinner-border" role="status"></div>
+                                    <p class="mt-2">Loading external users...</p>
+                                </div>
+                            }
+                            else if (externalUsers.Count == 0)
+                            {
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle"></i> No external users have been invited yet. Click "Invite User" to add users to this client space.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Email</th>
+                                                <th>Display Name</th>
+                                                <th>Permission Level</th>
+                                                <th>Status</th>
+                                                <th>Invited Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var user in externalUsers)
+                                            {
+                                                <tr>
+                                                    <td>@user.Email</td>
+                                                    <td>@(user.DisplayName ?? "-")</td>
+                                                    <td>
+                                                        <span class="badge bg-@GetPermissionBadgeClass(user.PermissionLevel)">
+                                                            @user.PermissionLevel
+                                                        </span>
+                                                    </td>
+                                                    <td>@user.Status</td>
+                                                    <td>@user.InvitedDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                                                    <td>
+                                                        <button class="btn btn-danger btn-sm" @onclick="@(() => RemoveUser(user))">
+                                                            <i class="bi bi-trash"></i> Remove
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Document Libraries Section -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Document Libraries</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> Document library management features will be available here.
+            <!-- Document Libraries Section -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Document Libraries & Lists</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (isLoadingLibraries)
+                            {
+                                <div class="text-center py-4">
+                                    <div class="spinner-border" role="status"></div>
+                                    <p class="mt-2">Loading libraries and lists...</p>
+                                </div>
+                            }
+                            else if (libraries.Count == 0 && lists.Count == 0)
+                            {
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle"></i> No document libraries or lists found in this client space.
+                                </div>
+                            }
+                            else
+                            {
+                                @if (libraries.Count > 0)
+                                {
+                                    <h6 class="mt-2">Document Libraries (@libraries.Count)</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Items</th>
+                                                    <th>Last Modified</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var library in libraries)
+                                                {
+                                                    <tr>
+                                                        <td>@library.DisplayName</td>
+                                                        <td>@library.ItemCount</td>
+                                                        <td>@library.LastModifiedDateTime.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                                                        <td>
+                                                            <a href="@library.WebUrl" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                                <i class="bi bi-box-arrow-up-right"></i> Open
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                
+                                @if (lists.Count > 0)
+                                {
+                                    <h6 class="mt-4">Lists (@lists.Count)</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Items</th>
+                                                    <th>Last Modified</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var list in lists)
+                                                {
+                                                    <tr>
+                                                        <td>@list.DisplayName</td>
+                                                        <td>@list.ItemCount</td>
+                                                        <td>@list.LastModifiedDateTime.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)</td>
+                                                        <td>
+                                                            <a href="@list.WebUrl" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                                <i class="bi bi-box-arrow-up-right"></i> Open
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            }
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        }
     }
 </div>
 
@@ -170,25 +336,78 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Invite External User</h5>
-                    <button type="button" class="btn-close" @onclick="HideInviteModal"></button>
+                    <button type="button" class="btn-close" @onclick="HideInviteModal" disabled="@isInviting"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> External user invitation functionality will be implemented here.
-                    </div>
+                    @if (!string.IsNullOrEmpty(inviteErrorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @inviteErrorMessage
+                        </div>
+                    }
+                    
                     <div class="mb-3">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" class="form-control" placeholder="user@example.com" disabled />
+                        <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" 
+                               class="form-control" 
+                               placeholder="user@example.com" 
+                               @bind="inviteEmail"
+                               disabled="@isInviting"
+                               required />
                     </div>
+                    
                     <div class="mb-3">
                         <label class="form-label">Display Name</label>
-                        <input type="text" class="form-control" placeholder="John Doe" disabled />
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="John Doe" 
+                               @bind="inviteDisplayName"
+                               disabled="@isInviting" />
+                        <small class="form-text text-muted">Optional - will use email if not provided</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Permission Level <span class="text-danger">*</span></label>
+                        <select class="form-select" 
+                                @bind="invitePermissionLevel"
+                                disabled="@isInviting">
+                            <option value="Read">Read (View only)</option>
+                            <option value="Edit">Edit (Can modify files)</option>
+                            <option value="Contribute">Contribute (Can add/edit/delete)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Custom Message</label>
+                        <textarea class="form-control" 
+                                  rows="3" 
+                                  placeholder="Optional message to include in the invitation email"
+                                  @bind="inviteMessage"
+                                  disabled="@isInviting"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="HideInviteModal">Close</button>
-                    <button type="button" class="btn btn-success" disabled>
-                        <i class="bi bi-send"></i> Send Invitation
+                    <button type="button" 
+                            class="btn btn-secondary" 
+                            @onclick="HideInviteModal"
+                            disabled="@isInviting">
+                        Cancel
+                    </button>
+                    <button type="button" 
+                            class="btn btn-success" 
+                            @onclick="InviteUser"
+                            disabled="@isInviting">
+                        @if (isInviting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Sending Invitation...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-send me-2"></i>
+                            <span>Send Invitation</span>
+                        }
                     </button>
                 </div>
             </div>
@@ -201,9 +420,23 @@
     public int ClientId { get; set; }
 
     private bool isLoading = true;
+    private bool isLoadingUsers = false;
+    private bool isLoadingLibraries = false;
     private bool showInviteModal = false;
+    private bool isInviting = false;
     private string? errorMessage;
+    private string? successMessage;
+    private string? inviteErrorMessage;
     private Models.ClientResponse? client;
+    private List<Models.ExternalUserDto> externalUsers = new();
+    private List<Models.LibraryResponse> libraries = new();
+    private List<Models.ListResponse> lists = new();
+    
+    // Invite form fields
+    private string inviteEmail = string.Empty;
+    private string inviteDisplayName = string.Empty;
+    private string invitePermissionLevel = "Read";
+    private string inviteMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -232,6 +465,14 @@
             {
                 errorMessage = "Client not found.";
             }
+            else if (client.ProvisioningStatus == "Provisioned")
+            {
+                // Load external users and libraries in parallel
+                await Task.WhenAll(
+                    LoadExternalUsers(),
+                    LoadLibrariesAndLists()
+                );
+            }
         }
         catch (Exception ex)
         {
@@ -244,43 +485,178 @@
         }
     }
 
+    private async Task LoadExternalUsers()
+    {
+        if (client == null || string.IsNullOrEmpty(client.SharePointSiteId))
+            return;
+
+        isLoadingUsers = true;
+        try
+        {
+            externalUsers = await ApiClient.GetExternalUsersAsync(ClientId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load external users");
+            // Don't set errorMessage here to allow partial page load
+        }
+        finally
+        {
+            isLoadingUsers = false;
+        }
+    }
+
+    private async Task LoadLibrariesAndLists()
+    {
+        if (client == null || string.IsNullOrEmpty(client.SharePointSiteId))
+            return;
+
+        isLoadingLibraries = true;
+        try
+        {
+            var librariesTask = ApiClient.GetLibrariesAsync(ClientId);
+            var listsTask = ApiClient.GetListsAsync(ClientId);
+            
+            await Task.WhenAll(librariesTask, listsTask);
+            
+            libraries = librariesTask.Result;
+            lists = listsTask.Result;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load libraries and lists");
+            // Don't set errorMessage here to allow partial page load
+        }
+        finally
+        {
+            isLoadingLibraries = false;
+        }
+    }
+
     private void BackToDashboard()
     {
         Navigation.NavigateTo("/dashboard");
     }
 
+    private void ResetInviteForm()
+    {
+        inviteEmail = string.Empty;
+        inviteDisplayName = string.Empty;
+        invitePermissionLevel = "Read";
+        inviteMessage = string.Empty;
+        inviteErrorMessage = null;
+    }
+
     private void ShowInviteModal()
     {
         showInviteModal = true;
+        ResetInviteForm();
     }
 
     private void HideInviteModal()
     {
         showInviteModal = false;
+        ResetInviteForm();
+    }
+
+    private async Task InviteUser()
+    {
+        if (string.IsNullOrWhiteSpace(inviteEmail))
+        {
+            inviteErrorMessage = "Email address is required.";
+            return;
+        }
+
+        isInviting = true;
+        inviteErrorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var request = new Models.InviteExternalUserRequest
+            {
+                Email = inviteEmail.Trim(),
+                DisplayName = string.IsNullOrWhiteSpace(inviteDisplayName) ? null : inviteDisplayName.Trim(),
+                PermissionLevel = invitePermissionLevel,
+                Message = string.IsNullOrWhiteSpace(inviteMessage) ? null : inviteMessage.Trim()
+            };
+
+            var invitedUser = await ApiClient.InviteExternalUserAsync(ClientId, request);
+            
+            if (invitedUser != null)
+            {
+                successMessage = $"Successfully invited {invitedUser.Email} to the client space.";
+                showInviteModal = false;
+                
+                // Reload external users
+                await LoadExternalUsers();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to invite external user");
+            inviteErrorMessage = "Failed to invite user. Please try again.";
+        }
+        finally
+        {
+            isInviting = false;
+        }
+    }
+
+    private async Task RemoveUser(Models.ExternalUserDto user)
+    {
+        if (!await ConfirmRemoval(user.Email))
+            return;
+
+        successMessage = null;
+        errorMessage = null;
+
+        try
+        {
+            await ApiClient.RemoveExternalUserAsync(ClientId, user.Email);
+            successMessage = $"Successfully removed {user.Email} from the client space.";
+            
+            // Reload external users
+            await LoadExternalUsers();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to remove external user");
+            errorMessage = $"Failed to remove {user.Email}. Please try again.";
+        }
+    }
+
+    private async Task<bool> ConfirmRemoval(string email)
+    {
+        return await JSRuntime.InvokeAsync<bool>(
+            "confirm", 
+            $"Are you sure you want to remove {email} from this client space? This action cannot be undone.");
     }
 
     private string GetStatusBadgeClass(string status)
     {
         return status switch
         {
-            "Completed" => "success",
+            "Provisioned" => "success",
             "Provisioning" => "warning",
             "Failed" => "danger",
             _ => "secondary"
         };
     }
 
-    // Mock data for external user counts - In production, this would come from API
-    private int GetExternalUserCount(int clientId)
+    private string GetPermissionBadgeClass(string permission)
     {
-        // Generate consistent mock data based on client ID without Random
-        return clientId % 15;
+        if (permission.Equals("Read", StringComparison.OrdinalIgnoreCase))
+            return "info";
+        if (permission.Equals("Edit", StringComparison.OrdinalIgnoreCase) ||
+            permission.Equals("Write", StringComparison.OrdinalIgnoreCase) ||
+            permission.Equals("Contribute", StringComparison.OrdinalIgnoreCase))
+            return "warning";
+        return "secondary";
     }
 
-    // Mock data for document counts - In production, this would come from API
-    private int GetDocumentCount(int clientId)
+    private int GetTotalLibrariesAndLists()
     {
-        // Generate consistent mock data based on client ID without Random
-        return (clientId * 7) % 145 + 5;
+        return libraries.Count + lists.Count;
     }
 }

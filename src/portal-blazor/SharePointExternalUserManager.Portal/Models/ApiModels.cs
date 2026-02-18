@@ -112,3 +112,59 @@ public class CreateClientRequest
     public string ClientName { get; set; } = string.Empty;
     public string? Description { get; set; }
 }
+
+/// <summary>
+/// External user data
+/// </summary>
+public class ExternalUserDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
+    public string PermissionLevel { get; set; } = string.Empty;
+    public DateTime InvitedDate { get; set; }
+    public string InvitedBy { get; set; } = string.Empty;
+    public DateTime? LastAccessDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request to invite an external user
+/// </summary>
+public class InviteExternalUserRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
+    public string PermissionLevel { get; set; } = string.Empty;
+    public string? Message { get; set; }
+}
+
+/// <summary>
+/// Document library data
+/// </summary>
+public class LibraryResponse
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string WebUrl { get; set; } = string.Empty;
+    public DateTime CreatedDateTime { get; set; }
+    public DateTime LastModifiedDateTime { get; set; }
+    public int ItemCount { get; set; }
+}
+
+/// <summary>
+/// List data
+/// </summary>
+public class ListResponse
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string WebUrl { get; set; } = string.Empty;
+    public DateTime CreatedDateTime { get; set; }
+    public DateTime LastModifiedDateTime { get; set; }
+    public int ItemCount { get; set; }
+}
