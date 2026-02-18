@@ -237,8 +237,6 @@
     {
         if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchQuery))
         {
-            // Reset to page 1 for new search
-            currentPage = 1;
             await ExecuteSearch();
         }
     }

@@ -355,18 +355,25 @@ public class ApiClient
     /// <summary>
     /// Search within a client space
     /// </summary>
+    /// <param name="clientId">The client space ID to search within</param>
+    /// <param name="query">The search query string</param>
+    /// <param name="page">Page number (minimum 1, defaults to 1)</param>
+    /// <param name="pageSize">Results per page (minimum 1, maximum 100, defaults to 20)</param>
+    /// <returns>Search response with results and pagination metadata</returns>
     public async Task<SearchResponse?> SearchClientSpaceAsync(int clientId, string query, int page = 1, int pageSize = 20)
     {
         try
         {
-            // Validate parameters
+            // Validate and correct parameters
             if (page < 1)
             {
+                _logger.LogWarning("Invalid page number {Page} corrected to 1", page);
                 page = 1;
             }
             
             if (pageSize < 1 || pageSize > 100)
             {
+                _logger.LogWarning("Invalid page size {PageSize} corrected to 20 (valid range: 1-100)", pageSize);
                 pageSize = 20;
             }
 
