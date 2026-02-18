@@ -225,9 +225,15 @@ cd src/api-dotnet && npm test
 ## 📚 Documentation
 
 ### Getting Started
-- **[README](./README.md)**: Quick start and overview (this file)
+- **[Documentation Index](./docs/README.md)**: Complete documentation guide
+- **[Installation Guide](./docs/INSTALLATION_GUIDE.md)**: Tenant onboarding and deployment
+- **[User Guide](./docs/USER_GUIDE.md)**: Comprehensive user guide for portal features
 - **[Architecture Overview](./ARCHITECTURE.md)**: Detailed system architecture
 - **[Developer Guide](./DEVELOPER_GUIDE.md)**: Development setup and guidelines
+
+### SPFx Web Parts (Optional)
+- **[SPFx Usage Guide](./docs/SPFX_USAGE_GUIDE.md)**: Optional SharePoint Framework web parts
+- **[SPFx Client README](./src/client-spfx/README.md)**: SPFx development and deployment
 
 ### Deployment
 - **[Deployment Guide](./docs/DEPLOYMENT.md)**: Complete deployment instructions
@@ -241,15 +247,17 @@ cd src/api-dotnet && npm test
 - **[Workflows README](./.github/workflows/README.md)**: CI/CD pipeline documentation
 
 ### User Guides
+- **[User Guide](./docs/USER_GUIDE.md)**: Portal feature guide and best practices
 - **[Solicitor Guide](./SOLICITOR_GUIDE.md)**: Non-technical user guide
 - **[Technical Documentation](./TECHNICAL_DOCUMENTATION.md)**: API specifications
 
 ### SaaS Platform Documentation
-- **[SaaS Architecture](./docs/saas/)**: Complete SaaS architecture docs
-  - [Architecture](./docs/saas/architecture.md)
-  - [Data Model](./docs/saas/data-model.md)
-  - [Security](./docs/saas/security.md)
-  - [API Specification](./docs/saas/api-spec.md)
+- **[SaaS Documentation](./docs/saas/)**: Complete SaaS architecture docs
+  - [Tenant Onboarding](./docs/saas/onboarding.md) - Technical onboarding flow
+  - [API Reference](./docs/saas/api-spec.md) - OpenAPI specification
+  - [Architecture](./docs/saas/architecture.md) - System design
+  - [Data Model](./docs/saas/data-model.md) - Database schema
+  - [Security](./docs/saas/security.md) - Security architecture
 
 ## 🛠️ Technology Stack
 

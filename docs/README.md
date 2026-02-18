@@ -1,10 +1,47 @@
-# Backend Design Documentation Index
+# ClientSpace Documentation
 
 ## Overview
 
-This directory contains comprehensive documentation for the SharePoint External User Manager backend design, covering architecture, API specification, communication patterns, and user journey for marketplace buyers.
+This directory contains comprehensive documentation for ClientSpace (SharePoint External User Manager), a multi-tenant SaaS solution for managing external users, client spaces, and document collaboration in SharePoint Online.
 
-## Documentation Structure
+> **Product Name**: ClientSpace - Universal External Collaboration for Microsoft 365
+
+## 📚 Documentation Structure
+
+### Getting Started Guides
+
+#### 📦 [Installation Guide](INSTALLATION_GUIDE.md)
+**Complete installation and deployment guide**
+
+- **Tenant Onboarding**: Step-by-step signup and provisioning process
+- **Azure AD Configuration**: Multi-tenant app registration setup
+- **Backend Deployment**: API and infrastructure deployment
+- **Portal Deployment**: Blazor portal setup and configuration
+- **SPFx Installation**: SharePoint Framework web parts deployment
+- **Verification**: Testing and troubleshooting steps
+
+#### 👤 [User Guide](USER_GUIDE.md)
+**Comprehensive guide for end users and administrators**
+
+- **Portal Features**: Dashboard, clients, users, and subscriptions
+- **Client Dashboard**: Managing client spaces
+- **External User Management**: Inviting and managing external users
+- **Library & List Management**: Creating and organizing resources
+- **Subscription Management**: Plans, billing, and upgrades
+- **AI Chat Assistant**: Getting help and guidance
+- **Settings**: Tenant configuration and preferences
+- **Best Practices**: Security and organizational recommendations
+
+#### 🔧 [SPFx Optional Usage Guide](SPFX_USAGE_GUIDE.md)
+**Guide for optional SharePoint Framework web parts**
+
+- **When to Use SPFx**: Portal vs SPFx comparison
+- **Available Web Parts**: Client Dashboard, External User Manager, Library Management
+- **Installation**: Package deployment and configuration
+- **Usage Scenarios**: Common use cases and patterns
+- **Troubleshooting**: Common issues and solutions
+
+### Technical Documentation
 
 ### 🏗️ [Backend Architecture](backend-architecture.md)
 **Complete backend architecture design for multi-tenant SaaS solution**
@@ -43,7 +80,7 @@ This directory contains comprehensive documentation for the SharePoint External 
 - **Success Metrics**: KPIs for adoption and value realization
 
 ### 📖 [Solicitor Onboarding & Usage Guide](../SOLICITOR_GUIDE.md)
-**Non-technical guide for solicitors using the system**
+**Non-technical guide for legal professionals using the system**
 
 - **Getting Started**: First-time login and dashboard overview
 - **Client Management**: Adding clients and managing workspaces
@@ -51,7 +88,66 @@ This directory contains comprehensive documentation for the SharePoint External 
 - **Document Spaces**: Creating and organizing document libraries
 - **Best Practices**: Security, naming conventions, and maintenance tips
 
+### SaaS Platform Documentation
+
+#### 🏢 [Tenant Onboarding](saas/onboarding.md)
+**Technical onboarding flow and provisioning process**
+
+- **Onboarding Flow**: Step-by-step technical process
+- **Admin Consent**: Required permissions and approval
+- **Resource Provisioning**: Database and infrastructure setup
+- **Configuration Wizard**: Initial tenant configuration
+
+#### 🔌 [API Reference](saas/api-spec.md)
+**OpenAPI specification for the backend REST API**
+
+- **Authentication**: OAuth 2.0 Bearer tokens
+- **Endpoints**: Complete API endpoint documentation
+- **Data Models**: Request and response schemas
+- **Error Codes**: Comprehensive error handling
+- **Rate Limits**: Throttling and quota information
+
+#### 🏗️ [Architecture](saas/architecture.md)
+**Technical architecture and design decisions**
+
+- **System Architecture**: Multi-tenant SaaS design
+- **Data Layer**: Azure SQL, Cosmos DB, Graph API integration
+- **Security Model**: Authentication, authorization, encryption
+- **Scalability**: Horizontal scaling and performance
+- **Monitoring**: Application Insights and logging
+
+#### 🔒 [Security](saas/security.md)
+**Security architecture and compliance**
+
+- **Authentication**: Azure AD multi-tenant authentication
+- **Authorization**: RBAC and permission model
+- **Data Protection**: Encryption and tenant isolation
+- **Compliance**: SOC 2, GDPR, ISO 27001
+- **Audit Logging**: Comprehensive activity tracking
+
+#### 📊 [Data Model](saas/data-model.md)
+**Database schema and entity relationships**
+
+- **Tenant Model**: Multi-tenant data architecture
+- **Entity Schemas**: Database table definitions
+- **Relationships**: Foreign keys and associations
+- **Indexes**: Performance optimization
+- **Migration Strategy**: Version management
+
 ## Quick Start Guide
+
+### For End Users
+1. Start with the [User Guide](USER_GUIDE.md) to learn how to use ClientSpace
+2. Watch video tutorials (coming soon)
+3. Use the AI Chat Assistant for in-app help
+4. Review [Best Practices](USER_GUIDE.md#best-practices)
+
+### For Administrators
+1. Follow the [Installation Guide](INSTALLATION_GUIDE.md) for deployment
+2. Review [Tenant Onboarding](saas/onboarding.md) for technical details
+3. Configure settings as described in the [User Guide](USER_GUIDE.md#settings-and-configuration)
+4. Set up monitoring and audit logging
+5. Train your team using the documentation
 
 ### For Developers
 1. Review [Backend Architecture](backend-architecture.md) for overall system design
@@ -163,15 +259,77 @@ This directory contains comprehensive documentation for the SharePoint External 
 - **User Satisfaction**: 4.5+ star rating on AppSource
 - **Growth**: 50+ new tenants per month
 
-## Related Documentation
+## Additional Resources
 
-- [Main Architecture](../ARCHITECTURE.md) - Overall SPFx solution architecture
-- [Technical Documentation](../TECHNICAL_DOCUMENTATION.md) - Current implementation details
-- [Implementation Summary](../IMPLEMENTATION_SUMMARY.md) - Development progress
+### Root-Level Documentation
+- [Main README](../README.md) - Project overview and quick start
+- [Architecture](../ARCHITECTURE.md) - Overall solution architecture
 - [Developer Guide](../DEVELOPER_GUIDE.md) - Development setup and guidelines
+- [Technical Documentation](../TECHNICAL_DOCUMENTATION.md) - Implementation details
+- [Configuration Guide](../CONFIGURATION_GUIDE.md) - Configuration management
+- [Solicitor Guide](../SOLICITOR_GUIDE.md) - Non-technical user guide
+
+### Deployment
+- [Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions
+- [Release Checklist](RELEASE_CHECKLIST.md) - Pre-release verification
+- [Infrastructure Guide](../infra/bicep/README.md) - Azure Bicep templates
+
+### Security & Quality
+- [Security Notes](SECURITY_NOTES.md) - Security best practices
+- [Branch Protection](BRANCH_PROTECTION.md) - GitHub protection rules
+- [Workflow Documentation](../.github/workflows/README.md) - CI/CD pipelines
+
+### Branding & Design
+- [Branding Pack](branding/README.md) - ClientSpace brand assets
+- [Color Palette](branding/colors/color-palette.md) - Color system
+- [Typography](branding/typography/typography-system.md) - Type scale
+- [UI Tokens](branding/ui-tokens/ui-style-tokens.md) - Component styles
+- [Brand Guidelines](branding/guidelines/branding-guidelines.md) - Usage guidelines
+
+## Documentation Quick Reference
+
+| I want to... | Read this... |
+|--------------|--------------|
+| Install ClientSpace | [Installation Guide](INSTALLATION_GUIDE.md) |
+| Learn how to use ClientSpace | [User Guide](USER_GUIDE.md) |
+| Install SPFx web parts | [SPFx Usage Guide](SPFX_USAGE_GUIDE.md) |
+| Understand the architecture | [Architecture](saas/architecture.md) |
+| Use the API | [API Reference](saas/api-spec.md) |
+| Onboard a new tenant | [Tenant Onboarding](saas/onboarding.md) |
+| Develop features | [Developer Guide](../DEVELOPER_GUIDE.md) |
+| Deploy to Azure | [Deployment Guide](DEPLOYMENT.md) |
+| Understand security | [Security](saas/security.md) |
+| Brand the solution | [Branding Pack](branding/README.md) |
+
+## Support
+
+### Documentation Issues
+If you find errors or omissions in the documentation:
+1. Create a GitHub issue with the "documentation" label
+2. Include the document name and section
+3. Describe the problem or suggest improvements
+
+### Getting Help
+- **In-App**: Use the AI Chat Assistant (click chat icon in portal)
+- **Documentation**: Browse guides in this folder
+- **Email**: support@clientspace.com
+- **Community**: Join our forum (coming soon)
+
+## Contributing to Documentation
+
+When adding or updating documentation:
+
+1. ✅ Use clear, concise language
+2. ✅ Include examples and screenshots
+3. ✅ Follow the existing structure and style
+4. ✅ Use UK English spelling
+5. ✅ Keep language professional and accessible
+6. ✅ Test all commands and code samples
+7. ✅ Update the table of contents
+8. ✅ Update this index file
 
 ---
 
-**Last Updated**: January 2024  
-**Version**: 1.0  
-**Status**: Design Phase Complete
+**Last Updated**: February 2026  
+**Version**: 2.0  
+**Status**: MVP Documentation Complete
