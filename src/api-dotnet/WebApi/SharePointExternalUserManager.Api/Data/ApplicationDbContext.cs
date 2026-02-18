@@ -21,6 +21,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLogEntity> AuditLogs => Set<AuditLogEntity>();
     public DbSet<AiSettingsEntity> AiSettings => Set<AiSettingsEntity>();
     public DbSet<AiConversationLogEntity> AiConversationLogs => Set<AiConversationLogEntity>();
+    public DbSet<TenantAuthEntity> TenantAuth => Set<TenantAuthEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -163,6 +164,26 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.TenantId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure TenantAuth
+        modelBuilder.Entity<TenantAuthEntity>(entity =>
+        {
+            // Unique constraint: one-to-one relationship with Tenant
+            entity.HasIndex(e => e.TenantId)
+                .IsUnique()
+                .HasDatabaseName("UQ_TenantAuth_TenantId");
+
+            // Index on TokenExpiresAt for token expiration queries
+            entity.HasIndex(e => e.TokenExpiresAt)
+                .HasDatabaseName("IX_TenantAuth_TokenExpiry")
+                .HasFilter("[TokenExpiresAt] IS NOT NULL");
+
+            // Configure relationship with Tenant
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 
