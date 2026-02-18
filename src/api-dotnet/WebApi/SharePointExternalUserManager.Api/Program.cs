@@ -52,6 +52,7 @@ builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
 builder.Services.AddMemoryCache(); // For rate limiting
 builder.Services.AddHttpClient<AiAssistantService>();
 builder.Services.AddScoped<AiAssistantService>();
+builder.Services.AddScoped<PromptTemplateService>();
 builder.Services.AddSingleton<AiRateLimitService>();
 
 // Azure OpenAI configuration

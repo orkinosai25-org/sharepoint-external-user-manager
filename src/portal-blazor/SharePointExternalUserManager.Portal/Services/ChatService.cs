@@ -52,19 +52,44 @@ public class ChatService
 
         try
         {
-            // Call backend API
-            response = await CallBackendApiAsync(request);
+            // Call backend API with retry logic
+            response = await CallBackendApiWithRetryAsync(request);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calling backend API");
             
-            // Return error message
+            // Return user-friendly error message based on exception type
+            string errorMessage;
+            if (ex is HttpRequestException httpEx)
+            {
+                if (httpEx.Message.Contains("403"))
+                {
+                    errorMessage = "AI assistant is not available for guest users.";
+                }
+                else if (httpEx.Message.Contains("429"))
+                {
+                    errorMessage = "Rate limit exceeded. Please try again in a few minutes.";
+                }
+                else
+                {
+                    errorMessage = "Unable to connect to the AI service. Please check your connection and try again.";
+                }
+            }
+            else if (ex is TaskCanceledException || ex is TimeoutException)
+            {
+                errorMessage = "The request timed out. Please try again with a shorter message.";
+            }
+            else
+            {
+                errorMessage = "I'm sorry, I encountered an error processing your request. Please try again later.";
+            }
+            
             response = new ChatResponse
             {
                 ConversationId = request.ConversationId,
                 UserMessage = request.Message,
-                AssistantMessage = "I'm sorry, I encountered an error processing your request. Please try again later.",
+                AssistantMessage = errorMessage,
                 ShowDisclaimer = true,
                 Timestamp = DateTime.UtcNow
             };
@@ -79,6 +104,32 @@ public class ChatService
         });
 
         return response;
+    }
+
+    private async Task<ChatResponse> CallBackendApiWithRetryAsync(ChatRequest request, int maxRetries = 2)
+    {
+        Exception? lastException = null;
+        
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                return await CallBackendApiAsync(request);
+            }
+            catch (HttpRequestException ex) when (attempt < maxRetries && !ex.Message.Contains("403") && !ex.Message.Contains("429"))
+            {
+                // Retry transient errors, but not authorization or rate limit errors
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))); // Exponential backoff
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                throw;
+            }
+        }
+        
+        throw lastException ?? new Exception("Failed after retries");
     }
 
     private async Task<ChatResponse> CallBackendApiAsync(ChatRequest request)
