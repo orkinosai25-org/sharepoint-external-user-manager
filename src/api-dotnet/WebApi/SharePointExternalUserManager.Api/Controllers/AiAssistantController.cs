@@ -17,17 +17,20 @@ public class AiAssistantController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly AiAssistantService _aiService;
     private readonly AiRateLimitService _rateLimitService;
+    private readonly PromptTemplateService _promptTemplateService;
     private readonly ILogger<AiAssistantController> _logger;
 
     public AiAssistantController(
         ApplicationDbContext context,
         AiAssistantService aiService,
         AiRateLimitService rateLimitService,
+        PromptTemplateService promptTemplateService,
         ILogger<AiAssistantController> logger)
     {
         _context = context;
         _aiService = aiService;
         _rateLimitService = rateLimitService;
+        _promptTemplateService = promptTemplateService;
         _logger = logger;
     }
 
@@ -40,6 +43,8 @@ public class AiAssistantController : ControllerBase
         var stopwatch = Stopwatch.StartNew();
         int? tenantId = null;
         AiSettingsEntity? settings = null;
+        string? userRole = null;
+        string? userId = null;
 
         try
         {
@@ -49,14 +54,30 @@ public class AiAssistantController : ControllerBase
                 return BadRequest("Message cannot be empty");
             }
 
-            // Get tenant ID from claims if authenticated (for InProduct mode)
+            // Get tenant ID and user info from claims if authenticated (for InProduct mode)
             if (User.Identity?.IsAuthenticated == true && request.Mode == AiMode.InProduct)
             {
+                // Check if user is a guest - deny access to guests
+                var userPrincipalName = User.FindFirst("preferred_username")?.Value 
+                    ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+                
+                if (!string.IsNullOrEmpty(userPrincipalName) && IsGuestUser(userPrincipalName))
+                {
+                    _logger.LogWarning("Guest user {UserPrincipalName} attempted to access AI assistant", userPrincipalName);
+                    return StatusCode(403, "AI assistant is not available for guest users");
+                }
+
                 var tenantIdClaim = User.FindFirst("TenantId")?.Value;
                 if (int.TryParse(tenantIdClaim, out var tid))
                 {
                     tenantId = tid;
                 }
+
+                // Get user role from claims
+                userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value 
+                    ?? (User.IsInRole("Admin") ? "Admin" : "User");
+                
+                userId = User.Identity?.Name;
             }
 
             // Get AI settings for tenant (or use defaults for marketing mode)
@@ -123,15 +144,24 @@ public class AiAssistantController : ControllerBase
             // Get conversation history (last 10 messages)
             var conversationHistory = await GetConversationHistory(request.ConversationId, 10);
 
+            // Build enhanced context
+            var enhancedContext = await BuildEnhancedContext(tenantId, userRole);
+
+            // Generate context-aware system prompt
+            var systemPrompt = _promptTemplateService.GenerateSystemPrompt(
+                request.Mode,
+                request.Context,
+                settings?.CustomSystemPrompt,
+                enhancedContext
+            );
+
             // Generate AI response
             var (assistantMessage, tokensUsed) = await _aiService.GenerateResponseAsync(
                 sanitizedMessage,
-                request.Mode,
-                request.Context,
+                systemPrompt,
                 conversationHistory,
                 request.Temperature,
-                Math.Min(request.MaxTokens, settings?.MaxTokensPerRequest ?? 1000),
-                settings?.CustomSystemPrompt
+                Math.Min(request.MaxTokens, settings?.MaxTokensPerRequest ?? 1000)
             );
 
             stopwatch.Stop();
@@ -144,14 +174,14 @@ public class AiAssistantController : ControllerBase
                 await _context.SaveChangesAsync();
             }
 
-            // Log conversation
+            // Log conversation with enhanced context
             var logEntry = new AiConversationLogEntity
             {
                 TenantId = tenantId,
-                UserId = User.Identity?.Name,
+                UserId = userId,
                 ConversationId = request.ConversationId,
                 Mode = request.Mode.ToString(),
-                Context = request.Context != null ? JsonSerializer.Serialize(request.Context) : null,
+                Context = BuildContextJson(request.Context, enhancedContext),
                 UserPrompt = sanitizedMessage,
                 AssistantResponse = assistantMessage,
                 TokensUsed = tokensUsed,
@@ -176,11 +206,26 @@ public class AiAssistantController : ControllerBase
         {
             _logger.LogError(ex, "Error processing AI chat request");
 
-            // Log error
+            // Enhanced error handling with fallback messages
+            string errorMessage;
+            if (ex is HttpRequestException)
+            {
+                errorMessage = "Unable to connect to the AI service. Please check your connection and try again.";
+            }
+            else if (ex is TaskCanceledException || ex is TimeoutException)
+            {
+                errorMessage = "The request timed out. Please try again with a shorter message.";
+            }
+            else
+            {
+                errorMessage = "An error occurred while processing your request. Our team has been notified.";
+            }
+
+            // Log error with enhanced context
             var errorLog = new AiConversationLogEntity
             {
                 TenantId = tenantId,
-                UserId = User.Identity?.Name,
+                UserId = userId,
                 ConversationId = request.ConversationId,
                 Mode = request.Mode.ToString(),
                 Context = request.Context != null ? JsonSerializer.Serialize(request.Context) : null,
@@ -193,7 +238,7 @@ public class AiAssistantController : ControllerBase
             _context.AiConversationLogs.Add(errorLog);
             await _context.SaveChangesAsync();
 
-            return StatusCode(500, "An error occurred while processing your request");
+            return StatusCode(500, errorMessage);
         }
     }
 
@@ -345,6 +390,69 @@ public class AiAssistantController : ControllerBase
     }
 
     // Helper methods
+
+    /// <summary>
+    /// Check if user is a guest user
+    /// </summary>
+    private bool IsGuestUser(string userPrincipalName)
+    {
+        if (string.IsNullOrEmpty(userPrincipalName))
+            return false;
+
+        // Guest users typically have #EXT# in their UPN or specific patterns
+        return userPrincipalName.Contains("#EXT#", StringComparison.OrdinalIgnoreCase) ||
+               userPrincipalName.Contains("_", StringComparison.OrdinalIgnoreCase) && userPrincipalName.Contains("#", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Build enhanced context information
+    /// </summary>
+    private async Task<EnhancedContextInfo> BuildEnhancedContext(int? tenantId, string? userRole)
+    {
+        var enhancedContext = new EnhancedContextInfo
+        {
+            UserRole = userRole
+        };
+
+        if (tenantId.HasValue)
+        {
+            enhancedContext.TenantId = tenantId.Value;
+
+            // Get subscription tier
+            var subscription = await _context.Subscriptions
+                .Where(s => s.TenantId == tenantId.Value)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (subscription != null)
+            {
+                enhancedContext.SubscriptionTier = subscription.Tier;
+            }
+        }
+
+        return enhancedContext;
+    }
+
+    /// <summary>
+    /// Build context JSON for logging
+    /// </summary>
+    private string? BuildContextJson(AiContextInfo? context, EnhancedContextInfo? enhancedContext)
+    {
+        var combinedContext = new
+        {
+            basic = context,
+            enhanced = new
+            {
+                enhancedContext?.TenantId,
+                enhancedContext?.UserRole,
+                enhancedContext?.SubscriptionTier,
+                enhancedContext?.UserPermissionLevel,
+                enhancedContext?.CurrentScreen
+            }
+        };
+
+        return JsonSerializer.Serialize(combinedContext);
+    }
 
     private async Task<List<(string role, string content)>> GetConversationHistory(string conversationId, int maxMessages)
     {

@@ -42,25 +42,20 @@ public class AiAssistantService
     /// </summary>
     public async Task<(string response, int tokensUsed)> GenerateResponseAsync(
         string userMessage,
-        AiMode mode,
-        AiContextInfo? context,
+        string systemPrompt,
         List<(string role, string content)>? conversationHistory = null,
         double temperature = 0.7,
-        int maxTokens = 1000,
-        string? customSystemPrompt = null)
+        int maxTokens = 1000)
     {
         // Use demo mode if not configured
         if (_config.UseDemoMode || string.IsNullOrWhiteSpace(_config.Endpoint) || string.IsNullOrWhiteSpace(_config.ApiKey))
         {
             _logger.LogInformation("Using demo mode for AI response");
-            return (GetDemoResponse(userMessage, mode, context), 100);
+            return (GetDemoResponse(userMessage, systemPrompt), 100);
         }
 
         try
         {
-            // Build system prompt based on mode
-            var systemPrompt = customSystemPrompt ?? GetSystemPrompt(mode, context);
-
             // Build messages array
             var messages = new List<object>
             {
@@ -160,130 +155,22 @@ public class AiAssistantService
     }
 
     /// <summary>
-    /// Get system prompt based on mode and context
-    /// </summary>
-    private string GetSystemPrompt(AiMode mode, AiContextInfo? context)
-    {
-        if (mode == AiMode.Marketing)
-        {
-            return GetMarketingModePrompt();
-        }
-        else
-        {
-            return GetInProductModePrompt(context);
-        }
-    }
-
-    /// <summary>
-    /// Marketing mode system prompt
-    /// </summary>
-    private string GetMarketingModePrompt()
-    {
-        return @"You are a helpful AI assistant for ClientSpace, a SaaS platform for managing external users and client spaces in Microsoft 365 and SharePoint Online.
-
-ClientSpace helps organizations:
-- Manage external users with granular permissions
-- Create dedicated SharePoint sites for each client (Client Spaces)
-- Maintain security and compliance with multi-tenant architecture
-- Track all activities with comprehensive audit logging
-- Integrate billing through Stripe
-
-Key Features:
-1. External User Management: Invite, manage, and remove external users
-2. Client Spaces: Dedicated SharePoint sites with isolated access
-3. Library & List Management: Create and manage document libraries and lists
-4. Security: Complete tenant isolation and audit trails
-5. Blazor Portal: Admin dashboard for subscription and tenant management
-
-Available Plans:
-- Starter: Basic external user management, up to 5 client spaces
-- Professional: Advanced features, up to 20 client spaces, AI setup guidance
-- Business: Unlimited client spaces, AI audit explanations, priority support
-- Enterprise: Custom solutions, AI governance insights, dedicated support
-
-Architecture:
-- SPFx web parts (installed in customer's SharePoint)
-- ASP.NET Core backend API (multi-tenant)
-- Blazor admin portal (SaaS platform)
-- Azure infrastructure (SQL Database, Key Vault, App Insights)
-
-Answer questions about the product, features, pricing, setup, and integration. Be friendly, concise, and helpful. Focus on business value and how ClientSpace solves collaboration challenges. If you don't know something specific, recommend checking the documentation or contacting support.";
-    }
-
-    /// <summary>
-    /// In-product mode system prompt
-    /// </summary>
-    private string GetInProductModePrompt(AiContextInfo? context)
-    {
-        var basePrompt = @"You are an AI assistant integrated into ClientSpace, helping users perform tasks and understand the platform.
-
-Your role:
-- Help administrators manage external users and client spaces
-- Explain SharePoint permissions and security concepts
-- Guide users through setup and configuration
-- Suggest best practices for external collaboration
-- Answer ""how do I..."" questions with actionable steps
-- Explain audit results and compliance features
-
-Available actions (describe steps, don't execute):
-- Add external users to a client space
-- Create new client spaces
-- Manage document library permissions
-- Set up list templates
-- Review audit logs
-- Configure security settings
-
-When giving instructions:
-1. Provide clear, step-by-step guidance
-2. Explain why each step matters
-3. Mention relevant SharePoint concepts
-4. Highlight security implications
-5. Reference UI locations specifically
-
-Be concise but thorough. Focus on practical, actionable advice.";
-
-        if (context != null)
-        {
-            var contextInfo = new StringBuilder();
-            contextInfo.AppendLine("\n\nCurrent Context:");
-
-            if (!string.IsNullOrEmpty(context.ClientSpaceName))
-                contextInfo.AppendLine($"- Client Space: {context.ClientSpaceName}");
-            
-            if (!string.IsNullOrEmpty(context.LibraryName))
-                contextInfo.AppendLine($"- Library: {context.LibraryName}");
-            
-            if (!string.IsNullOrEmpty(context.CurrentPage))
-                contextInfo.AppendLine($"- Current Page: {context.CurrentPage}");
-
-            if (context.AdditionalData != null && context.AdditionalData.Any())
-            {
-                foreach (var kvp in context.AdditionalData)
-                {
-                    contextInfo.AppendLine($"- {kvp.Key}: {kvp.Value}");
-                }
-            }
-
-            basePrompt += contextInfo.ToString();
-        }
-
-        return basePrompt;
-    }
-
-    /// <summary>
     /// Get demo response for when Azure OpenAI is not configured
     /// </summary>
-    private string GetDemoResponse(string userMessage, AiMode mode, AiContextInfo? context)
+    private string GetDemoResponse(string userMessage, string systemPrompt)
     {
         var lowerMessage = userMessage.ToLower();
 
-        if (mode == AiMode.Marketing)
+        // Determine mode from system prompt
+        bool isMarketingMode = systemPrompt.Contains("SaaS platform for managing external users");
+
+        if (isMarketingMode)
         {
             return GetMarketingDemoResponse(lowerMessage);
         }
         else
         {
-            return GetInProductDemoResponse(lowerMessage, context);
+            return GetInProductDemoResponse(lowerMessage);
         }
     }
 
@@ -354,13 +241,11 @@ Be concise but thorough. Focus on practical, actionable advice.";
         }
     }
 
-    private string GetInProductDemoResponse(string lowerMessage, AiContextInfo? context)
+    private string GetInProductDemoResponse(string lowerMessage)
     {
-        var contextStr = context?.ClientSpaceName != null ? $" in {context.ClientSpaceName}" : "";
-
         if (lowerMessage.Contains("add") && lowerMessage.Contains("user"))
         {
-            return $"To add an external user{contextStr}:\n\n" +
+            return "To add an external user:\n\n" +
                    "1. Open the **External User Manager** web part\n" +
                    "2. Click **Add User** button\n" +
                    "3. Enter the user's email address\n" +
@@ -389,7 +274,7 @@ Be concise but thorough. Focus on practical, actionable advice.";
         }
         else if (lowerMessage.Contains("library") || lowerMessage.Contains("document"))
         {
-            return $"Managing document libraries{contextStr}:\n\n" +
+            return "Managing document libraries:\n\n" +
                    "• **Create**: Use the 'Add Library' button in the dashboard\n" +
                    "• **Configure**: Set versioning, approval workflows if needed\n" +
                    "• **Permissions**: Manage at library level for consistency\n" +
@@ -427,7 +312,7 @@ Be concise but thorough. Focus on practical, actionable advice.";
         }
         else
         {
-            return $"I'm here to help you{contextStr}! I can assist with:\n\n" +
+            return "I'm here to help you! I can assist with:\n\n" +
                    "• Adding and managing external users\n" +
                    "• Understanding permissions and access\n" +
                    "• Creating and configuring client spaces\n" +

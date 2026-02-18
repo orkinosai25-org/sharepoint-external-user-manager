@@ -3,6 +3,8 @@
 @inject ChatService ChatService
 @inject IJSRuntime JSRuntime
 
+@if (!IsGuestUser)
+{
 <div class="chat-widget @(IsOpen ? "open" : "closed") @DockPositionClass">
     @if (!IsOpen)
     {
@@ -120,6 +122,7 @@
         </div>
     }
 </div>
+}
 
 @code {
     [Parameter]
@@ -134,12 +137,20 @@
     [Parameter]
     public ChatContextInfo? Context { get; set; }
 
+    [Parameter]
+    public bool IsGuestUser { get; set; } = false;
+
+    private const int MaxRetries = 2;
+    private const int RetryDelayBaseMs = 1000;
+
     private string _conversationId = Guid.NewGuid().ToString();
     private List<ChatMessage> _messages = new();
     private string _currentMessage = string.Empty;
     private bool _isLoading = false;
     private bool _showClearButton = true;
     private bool _showDisclaimer = true;
+    private string? _errorMessage = null;
+    private int _retryCount = 0;
     private ElementReference messagesContainer;
     
     private enum DockPosition { Bottom, Right, Top, Left }
@@ -191,6 +202,7 @@
 
         var message = _currentMessage.Trim();
         _currentMessage = string.Empty;
+        _errorMessage = null;
         _isLoading = true;
 
         try
@@ -208,22 +220,61 @@
             var response = await ChatService.SendMessageAsync(request);
             _messages = ChatService.GetConversationHistory(_conversationId);
             _showDisclaimer = response.ShowDisclaimer;
+            _retryCount = 0; // Reset retry count on success
             
             await ScrollToBottom();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"HTTP error sending message: {ex.Message}");
+            
+            // Check if it's a 403 (guest user)
+            if (ex.Message.Contains("403"))
+            {
+                _errorMessage = "AI assistant is not available for guest users.";
+                _messages.Add(new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = _errorMessage,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+            else if (_retryCount < MaxRetries)
+            {
+                // Retry logic for transient errors
+                _retryCount++;
+                _isLoading = false;
+                await Task.Delay(RetryDelayBaseMs * _retryCount); // Exponential backoff
+                _currentMessage = message; // Restore message
+                await SendMessage(); // Retry
+                return;
+            }
+            else
+            {
+                _errorMessage = "Unable to connect to the AI service. Please check your connection and try again.";
+                _messages.Add(new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = _errorMessage,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error sending message: {ex.Message}");
+            _errorMessage = "I apologize, but I encountered an error. Please try again.";
             _messages.Add(new ChatMessage
             {
                 Role = "assistant",
-                Content = "I apologize, but I encountered an error. Please try again.",
+                Content = _errorMessage,
                 Timestamp = DateTime.UtcNow
             });
         }
         finally
         {
             _isLoading = false;
+            _retryCount = 0;
             StateHasChanged();
             await Task.Delay(100);
             await ScrollToBottom();
