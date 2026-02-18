@@ -168,3 +168,66 @@ public class ListResponse
     public DateTime LastModifiedDateTime { get; set; }
     public int ItemCount { get; set; }
 }
+
+/// <summary>
+/// Search result type
+/// </summary>
+public enum SearchResultType
+{
+    Document,
+    User,
+    ClientSpace,
+    Library
+}
+
+/// <summary>
+/// Search result data
+/// </summary>
+public class SearchResultDto
+{
+    public string Id { get; set; } = string.Empty;
+    public SearchResultType Type { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Url { get; set; }
+    public int? ClientId { get; set; }
+    public string? ClientName { get; set; }
+    public string? OwnerEmail { get; set; }
+    public string? OwnerDisplayName { get; set; }
+    public DateTime? CreatedDate { get; set; }
+    public DateTime? ModifiedDate { get; set; }
+    public double Score { get; set; }
+    public Dictionary<string, string>? Metadata { get; set; }
+}
+
+/// <summary>
+/// Search response with pagination
+/// </summary>
+public class SearchResponse
+{
+    public bool Success { get; set; }
+    public List<SearchResultDto> Data { get; set; } = new();
+    public PaginationMeta? Pagination { get; set; }
+    public SearchInfo? SearchInfo { get; set; }
+}
+
+/// <summary>
+/// Pagination metadata
+/// </summary>
+public class PaginationMeta
+{
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int Total { get; set; }
+    public bool HasNext { get; set; }
+}
+
+/// <summary>
+/// Search information
+/// </summary>
+public class SearchInfo
+{
+    public string Query { get; set; } = string.Empty;
+    public string Scope { get; set; } = string.Empty;
+    public long SearchTimeMs { get; set; }
+}

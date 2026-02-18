@@ -351,4 +351,28 @@ public class ApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Search within a client space
+    /// </summary>
+    public async Task<SearchResponse?> SearchClientSpaceAsync(int clientId, string query, int page = 1, int pageSize = 20)
+    {
+        try
+        {
+            var url = $"/client-spaces/{clientId}/search?q={Uri.EscapeDataString(query)}&page={page}&pageSize={pageSize}";
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<SearchResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to search client space {clientId} with query '{query}'");
+            throw;
+        }
+    }
 }
