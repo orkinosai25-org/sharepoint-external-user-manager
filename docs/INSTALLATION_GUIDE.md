@@ -193,6 +193,7 @@ az deployment group create \
 
 #### Build and Deploy API
 
+**For Azure Functions (TypeScript)**:
 ```bash
 # Navigate to API directory
 cd src/api-dotnet
@@ -206,6 +207,30 @@ npm run build
 # Deploy to Azure Functions
 func azure functionapp publish clientspace-api-prod
 ```
+
+**For .NET Web API** (if using the new ASP.NET Core API):
+```bash
+# Navigate to Web API directory
+cd src/api-dotnet/WebApi/SharePointExternalUserManager.Api
+
+# Restore dependencies
+dotnet restore
+
+# Build the API
+dotnet build -c Release
+
+# Publish for deployment
+dotnet publish -c Release -o ./publish
+
+# Deploy to Azure App Service
+az webapp deploy \
+  --name clientspace-api-prod \
+  --resource-group rg-clientspace-prod \
+  --src-path ./publish \
+  --type zip
+```
+
+> **Note**: The project includes both TypeScript Azure Functions (legacy) and .NET Web API. Use the approach that matches your deployment.
 
 #### Configure App Settings
 
@@ -341,15 +366,23 @@ Each web part can be configured with:
 
 ### Configure Database
 
+**For .NET Web API with Entity Framework**:
 ```bash
-# Navigate to API directory
-cd src/api-dotnet
+# Navigate to Web API directory
+cd src/api-dotnet/WebApi/SharePointExternalUserManager.Api
 
 # Run migrations
 dotnet ef database update
 
 # Seed initial data (optional)
 dotnet run --seed
+```
+
+**For TypeScript Azure Functions**:
+The database schema is managed through SQL scripts in the `database/` directory. Run the initialization scripts:
+```bash
+cd src/api-dotnet/database
+# Execute SQL scripts against your Azure SQL database
 ```
 
 ### Configure Stripe (Optional)
