@@ -191,7 +191,8 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load pricing plans");
-            // Use default plans on error
+            // Use default plans on error - don't show error to user
+            errorMessage = null;
             plans = GetDefaultPlans();
         }
         finally
