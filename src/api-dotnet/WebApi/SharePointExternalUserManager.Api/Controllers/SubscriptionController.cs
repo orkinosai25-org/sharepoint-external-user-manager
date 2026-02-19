@@ -10,6 +10,19 @@ using ApiSubscriptionTier = SharePointExternalUserManager.Api.Models.Subscriptio
 namespace SharePointExternalUserManager.Api.Controllers;
 
 /// <summary>
+/// Subscription status constants
+/// </summary>
+public static class SubscriptionStatus
+{
+    public const string Active = "Active";
+    public const string Trial = "Trial";
+    public const string Cancelled = "Cancelled";
+    public const string Suspended = "Suspended";
+    public const string Expired = "Expired";
+    public const string None = "None";
+}
+
+/// <summary>
 /// Controller for subscription management operations
 /// </summary>
 [Authorize]
@@ -75,7 +88,7 @@ public class SubscriptionController : ControllerBase
 
             // Get active subscription
             var subscription = tenant.Subscriptions
-                .Where(s => s.Status == "Active" || s.Status == "Trial")
+                .Where(s => s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Trial)
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefault();
 
@@ -86,7 +99,7 @@ public class SubscriptionController : ControllerBase
                 return Ok(ApiResponse<SubscriptionStatusResponse>.SuccessResponse(new SubscriptionStatusResponse
                 {
                     Tier = "Starter",
-                    Status = "None",
+                    Status = SubscriptionStatus.None,
                     IsActive = false,
                     Limits = defaultPlan.Limits,
                     Features = defaultPlan.Features
@@ -104,7 +117,7 @@ public class SubscriptionController : ControllerBase
                 StartDate = subscription.StartDate,
                 EndDate = subscription.EndDate,
                 TrialExpiry = subscription.TrialExpiry,
-                IsActive = subscription.Status == "Active" || subscription.Status == "Trial",
+                IsActive = subscription.Status == SubscriptionStatus.Active || subscription.Status == SubscriptionStatus.Trial,
                 StripeSubscriptionId = subscription.StripeSubscriptionId,
                 StripeCustomerId = subscription.StripeCustomerId,
                 Limits = planDef.Limits,
@@ -183,7 +196,7 @@ public class SubscriptionController : ControllerBase
 
             // Get current subscription
             var currentSubscription = tenant.Subscriptions
-                .Where(s => s.Status == "Active" || s.Status == "Trial")
+                .Where(s => s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Trial)
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefault();
 
@@ -295,7 +308,7 @@ public class SubscriptionController : ControllerBase
 
             // Get current subscription
             var currentSubscription = tenant.Subscriptions
-                .Where(s => s.Status == "Active" || s.Status == "Trial")
+                .Where(s => s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Trial)
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefault();
 
@@ -333,7 +346,7 @@ public class SubscriptionController : ControllerBase
             }
 
             // Update subscription status
-            currentSubscription.Status = "Cancelled";
+            currentSubscription.Status = SubscriptionStatus.Cancelled;
             currentSubscription.EndDate = DateTime.UtcNow;
             currentSubscription.GracePeriodEnd = DateTime.UtcNow.AddDays(GracePeriodDays);
             currentSubscription.ModifiedDate = DateTime.UtcNow;
