@@ -70,7 +70,13 @@ if (validationResult.HasWarnings)
 // Add authentication with Microsoft Entra ID
 // Always use configuration from appsettings.json for MVP
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        builder.Configuration.Bind("AzureAd", options);
+        // Use authorization code flow only (more secure and doesn't require implicit grant)
+        // This prevents the AADSTS700054 error about 'id_token' not being enabled
+        options.ResponseType = "code";
+    });
 
 // Add authorization
 builder.Services.AddAuthorization();
