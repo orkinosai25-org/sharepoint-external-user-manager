@@ -26,6 +26,31 @@ public class ApiClient
     }
 
     /// <summary>
+    /// Get dashboard summary with aggregated statistics
+    /// </summary>
+    public async Task<DashboardSummaryResponse?> GetDashboardSummaryAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/dashboard/summary");
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<DashboardSummaryResponse>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get dashboard summary");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Get available subscription plans
     /// </summary>
     public async Task<PlansResponse?> GetPlansAsync(bool includeEnterprise = false)
