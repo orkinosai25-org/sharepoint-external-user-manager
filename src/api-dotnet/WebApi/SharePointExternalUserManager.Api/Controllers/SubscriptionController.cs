@@ -5,6 +5,7 @@ using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Models;
 using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
+using ApiSubscriptionTier = SharePointExternalUserManager.Api.Models.SubscriptionTier;
 
 namespace SharePointExternalUserManager.Api.Controllers;
 
@@ -79,7 +80,7 @@ public class SubscriptionController : ControllerBase
             if (subscription == null)
             {
                 // Return default starter plan
-                var defaultPlan = PlanConfiguration.GetPlanDefinition(SubscriptionTier.Starter);
+                var defaultPlan = PlanConfiguration.GetPlanDefinition(ApiSubscriptionTier.Starter);
                 return Ok(ApiResponse<SubscriptionStatusResponse>.SuccessResponse(new SubscriptionStatusResponse
                 {
                     Tier = "Starter",
@@ -92,7 +93,7 @@ public class SubscriptionController : ControllerBase
 
             // Get plan definition
             var planDef = PlanConfiguration.GetPlanDefinitionByName(subscription.Tier)
-                ?? PlanConfiguration.GetPlanDefinition(SubscriptionTier.Starter);
+                ?? PlanConfiguration.GetPlanDefinition(ApiSubscriptionTier.Starter);
 
             var response = new SubscriptionStatusResponse
             {
@@ -148,7 +149,7 @@ public class SubscriptionController : ControllerBase
             }
 
             // Validate new plan tier
-            if (!Enum.TryParse<SubscriptionTier>(request.NewPlanTier, out var newTier))
+            if (!Enum.TryParse<ApiSubscriptionTier>(request.NewPlanTier, out var newTier))
             {
                 return BadRequest(ApiResponse<object>.ErrorResponse(
                     "INVALID_PLAN",
@@ -157,7 +158,7 @@ public class SubscriptionController : ControllerBase
             }
 
             // Enterprise plans require custom sales process
-            if (newTier == SubscriptionTier.Enterprise)
+            if (newTier == ApiSubscriptionTier.Enterprise)
             {
                 return BadRequest(ApiResponse<object>.ErrorResponse(
                     "ENTERPRISE_REQUIRES_SALES",

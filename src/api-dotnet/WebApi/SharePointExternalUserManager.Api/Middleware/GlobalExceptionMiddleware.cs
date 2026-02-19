@@ -99,15 +99,15 @@ public class GlobalExceptionMiddleware
                 "NOT_FOUND",
                 "The requested resource was not found."
             ),
-            ArgumentException ex => (
-                HttpStatusCode.BadRequest,
-                "INVALID_INPUT",
-                ex.Message
-            ),
             ArgumentNullException ex => (
                 HttpStatusCode.BadRequest,
                 "INVALID_INPUT",
                 $"Required parameter missing: {ex.ParamName}"
+            ),
+            ArgumentException ex => (
+                HttpStatusCode.BadRequest,
+                "INVALID_INPUT",
+                ex.Message
             ),
             NotImplementedException _ => (
                 HttpStatusCode.NotImplemented,
