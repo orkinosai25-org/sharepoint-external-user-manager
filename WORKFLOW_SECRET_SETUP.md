@@ -4,64 +4,115 @@
 
 This guide explains how to configure the required secrets for automated deployment workflows.
 
-## Required Secrets
+## Overview
 
-### 1. PUBLISH_PROFILE (for main_clientspace.yml)
-**Purpose**: Deploy the Blazor Portal application to Azure App Service "ClientSpace"
+The SharePoint External User Manager uses **publish profiles** for deploying .NET applications to Azure App Services. This approach is simpler and more reliable than service principal authentication.
 
-**How to obtain**:
-1. Log in to [Azure Portal](https://portal.azure.com)
-2. Navigate to App Service → "ClientSpace"
-3. Click **"Get publish profile"** in the Overview or Deployment Center
-4. Save the downloaded `.PublishSettings` file
-5. Open the file in a text editor
-6. Copy the **entire XML content**
+### Why Publish Profiles?
 
-**How to add to GitHub**:
-1. Go to repository **Settings**
-2. Navigate to **Secrets and variables** → **Actions**
-3. Click **"New repository secret"**
-4. Name: `PUBLISH_PROFILE`
-5. Value: Paste the complete XML from the publish profile
-6. Click **"Add secret"**
+- ✅ **Simpler Setup**: No need for Azure AD app registrations or service principals
+- ✅ **More Reliable**: Direct authentication to App Service
+- ✅ **Easier Troubleshooting**: Clear error messages when deployment fails
+- ✅ **No Azure CLI Required**: Works directly with Azure Web Apps Deploy action
+- ✅ **Scoped Permissions**: Each profile only has access to its specific App Service
 
-### 2. AZURE_CREDENTIALS (for deploy-dev.yml, deploy-backend.yml)
-**Purpose**: Deploy infrastructure and applications to Azure using service principal
+## Required Secrets by Workflow
 
-**How to obtain**:
-```bash
-# Create a service principal with contributor role
-az ad sp create-for-rbac \
-  --name "sharepoint-external-user-manager-github" \
-  --role contributor \
-  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP> \
-  --sdk-auth
+### For Development Deployments (deploy-dev.yml)
+
+| Secret Name | Purpose | Required |
+|-------------|---------|----------|
+| `API_PUBLISH_PROFILE` | Deploy API to development | Yes |
+| `PORTAL_PUBLISH_PROFILE` | Deploy Portal to development | Yes |
+
+### For Production Deployments (deploy-prod.yml)
+
+| Secret Name | Purpose | Required |
+|-------------|---------|----------|
+| `API_PUBLISH_PROFILE_PROD` | Deploy API to production | Yes |
+| `PORTAL_PUBLISH_PROFILE_PROD` | Deploy Portal to production | Yes |
+
+### For ClientSpace Deployment (main_clientspace.yml)
+
+| Secret Name | Purpose | Required |
+|-------------|---------|----------|
+| `PUBLISH_PROFILE` | Deploy Portal to ClientSpace App Service | Yes |
+
+### For SPFx Deployment (deploy-spfx.yml)
+
+| Secret Name | Purpose | Required |
+|-------------|---------|----------|
+| `SPO_URL` | SharePoint tenant URL | Yes |
+| `SPO_CLIENT_ID` | Azure AD App Client ID | Yes |
+| `SPO_CLIENT_SECRET` | Azure AD App Client Secret | Yes |
+| `SPO_TENANT_ID` | Azure AD Tenant ID | Optional |
+
+## How to Obtain Publish Profiles
+
+### Step 1: Navigate to Azure Portal
+
+1. Open [Azure Portal](https://portal.azure.com)
+2. Sign in with your Azure account
+
+### Step 2: Find Your App Service
+
+1. Click **"App Services"** in the left menu (or search for it)
+2. Select your App Service from the list
+   - For API: `spexternal-api-dev` or `spexternal-api-prod`
+   - For Portal: `spexternal-portal-dev` or `spexternal-portal-prod`
+   - For ClientSpace: `ClientSpace`
+
+### Step 3: Download Publish Profile
+
+1. In the App Service **Overview** page
+2. Click **"Get publish profile"** button (top toolbar)
+3. A `.PublishSettings` XML file will download automatically
+
+### Step 4: Copy the XML Content
+
+1. Open the downloaded `.PublishSettings` file in a text editor (Notepad, VS Code, etc.)
+2. Select and copy **ALL** the content (Ctrl+A, Ctrl+C)
+
+### Step 5: Add to GitHub Secrets
+
+1. Go to your GitHub repository
+2. Click **Settings** (top menu)
+3. Navigate to **Secrets and variables** → **Actions** (left sidebar)
+4. Click **"New repository secret"** button
+5. Enter the secret name:
+   - For dev API: `API_PUBLISH_PROFILE`
+   - For dev Portal: `PORTAL_PUBLISH_PROFILE`
+   - For prod API: `API_PUBLISH_PROFILE_PROD`
+   - For prod Portal: `PORTAL_PUBLISH_PROFILE_PROD`
+   - For ClientSpace: `PUBLISH_PROFILE`
+6. Paste the entire XML content in the **Value** field
+7. Click **"Add secret"**
+
+## Publish Profile XML Format
+
+The publish profile is an XML document that looks like this:
+
+```xml
+<publishData>
+  <publishProfile 
+    profileName="your-app-name - Web Deploy"
+    publishMethod="MSDeploy"
+    publishUrl="your-app-name.scm.azurewebsites.net:443"
+    msdeploySite="your-app-name"
+    userName="$your-app-name"
+    userPWD="your-password-here"
+    ...
+  />
+  <publishProfile 
+    profileName="your-app-name - FTP"
+    ...
+  />
+</publishData>
 ```
 
-**Expected format** (JSON):
-```json
-{
-  "clientId": "<CLIENT_ID>",
-  "clientSecret": "<CLIENT_SECRET>",
-  "subscriptionId": "<SUBSCRIPTION_ID>",
-  "tenantId": "<TENANT_ID>",
-  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
-  "resourceManagerEndpointUrl": "https://management.azure.com/",
-  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
-  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
-  "galleryEndpointUrl": "https://gallery.azure.com/",
-  "managementEndpointUrl": "https://management.core.windows.net/"
-}
-```
+**Important**: Copy the entire XML, including multiple `<publishProfile>` sections.
 
-**How to add to GitHub**:
-1. Go to repository **Settings** → **Secrets and variables** → **Actions**
-2. Click **"New repository secret"**
-3. Name: `AZURE_CREDENTIALS`
-4. Value: Paste the complete JSON output from the `az ad sp create-for-rbac` command
-5. Click **"Add secret"**
-
-### 3. SharePoint Deployment Secrets (for deploy-spfx.yml)
+## SharePoint Deployment Secrets (SPFx)
 
 #### SPO_URL
 **Purpose**: SharePoint tenant URL  
@@ -123,10 +174,24 @@ az ad sp create-for-rbac \
 
 | Workflow File | Required Secrets | Purpose |
 |--------------|------------------|---------|
-| `main_clientspace.yml` | `PUBLISH_PROFILE` | Deploy Blazor Portal to Azure |
-| `deploy-dev.yml` | `AZURE_CREDENTIALS`, `API_APP_NAME`, `PORTAL_APP_NAME` | Deploy to dev environment |
-| `deploy-spfx.yml` | `SPO_URL`, `SPO_CLIENT_ID`, `SPO_CLIENT_SECRET` | Deploy SPFx to SharePoint |
-| `deploy-backend.yml` | `AZURE_CREDENTIALS` | Deploy backend to Azure Functions |
+| `main_clientspace.yml` | `PUBLISH_PROFILE` | Deploy Blazor Portal to ClientSpace App Service |
+| `deploy-dev.yml` | `API_PUBLISH_PROFILE`, `PORTAL_PUBLISH_PROFILE` | Deploy API and Portal to dev environment |
+| `deploy-prod.yml` | `API_PUBLISH_PROFILE_PROD`, `PORTAL_PUBLISH_PROFILE_PROD` | Deploy API and Portal to production |
+| `deploy-spfx.yml` | `SPO_URL`, `SPO_CLIENT_ID`, `SPO_CLIENT_SECRET`, `SPO_TENANT_ID` (optional) | Deploy SPFx to SharePoint |
+| `build-api.yml` | None | Build and test API only |
+| `build-blazor.yml` | None | Build and test Blazor Portal only |
+
+## Optional Infrastructure Deployment Secrets
+
+These are only needed if you want to deploy Azure infrastructure using Bicep templates:
+
+| Secret Name | Purpose | Workflow |
+|-------------|---------|----------|
+| `AZURE_CREDENTIALS` | Service principal for infrastructure deployment | `deploy-dev.yml`, `deploy-prod.yml` |
+| `SQL_ADMIN_USERNAME` | SQL Server admin username | `deploy-dev.yml`, `deploy-prod.yml` |
+| `SQL_ADMIN_PASSWORD` | SQL Server admin password | `deploy-dev.yml`, `deploy-prod.yml` |
+
+**Note**: Infrastructure deployment is only triggered manually via `workflow_dispatch` with `deploy_infrastructure: true`
 
 ## Verification
 
