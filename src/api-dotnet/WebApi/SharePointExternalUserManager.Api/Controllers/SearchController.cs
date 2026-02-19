@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SharePointExternalUserManager.Api.Data;
+using SharePointExternalUserManager.Api.Models;
+using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
 using SharePointExternalUserManager.Functions.Models.Search;
 using SharePointExternalUserManager.Functions.Services.Search;
@@ -18,15 +20,18 @@ public class SearchController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ISearchService _searchService;
+    private readonly IPlanEnforcementService _planEnforcementService;
     private readonly ILogger<SearchController> _logger;
 
     public SearchController(
         ApplicationDbContext context,
         ISearchService searchService,
+        IPlanEnforcementService planEnforcementService,
         ILogger<SearchController> logger)
     {
         _context = context;
         _searchService = searchService;
+        _planEnforcementService = planEnforcementService;
         _logger = logger;
     }
 
@@ -179,9 +184,15 @@ public class SearchController : ControllerBase
             if (tenant == null)
                 return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found"));
 
-            // Check subscription tier - global search requires Pro or Enterprise
-            // TODO: Implement subscription tier check when PlanEnforcementService is available
-            // For MVP, allow all authenticated users
+            // Check subscription tier - global search requires Pro, Business, or Enterprise
+            var hasGlobalSearch = await _planEnforcementService.HasFeatureAccessAsync(tenant.Id, nameof(PlanFeatures.GlobalSearch));
+            if (!hasGlobalSearch)
+            {
+                _logger.LogWarning("Tenant {TenantId} attempted to use global search without proper subscription", tenant.Id);
+                return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                    "FEATURE_NOT_AVAILABLE",
+                    "Global search is only available for Professional, Business, and Enterprise plans. Please upgrade your subscription to access this feature."));
+            }
 
             // Validate query
             if (string.IsNullOrWhiteSpace(q))

@@ -56,4 +56,5 @@ public class PlanFeatures
     public bool DedicatedSupport { get; set; }
     public bool SlaGuarantees { get; set; }
     public bool AdvancedSecurity { get; set; }
+    public bool GlobalSearch { get; set; }
 }
