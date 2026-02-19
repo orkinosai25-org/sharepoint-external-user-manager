@@ -228,6 +228,13 @@ cd src/api-dotnet && npm test
 
 ## 📚 Documentation
 
+### MVP Getting Started (⭐ Start Here!)
+- **[MVP Quick Start Guide](./docs/MVP_QUICK_START.md)**: Get running in 5 minutes
+- **[MVP UX Guide](./docs/MVP_UX_GUIDE.md)**: Complete screen-by-screen user experience guide
+- **[MVP API Reference](./docs/MVP_API_REFERENCE.md)**: Complete REST API documentation
+- **[MVP Deployment Runbook](./docs/MVP_DEPLOYMENT_RUNBOOK.md)**: Deploy and operate ClientSpace
+- **[MVP Support Runbook](./docs/MVP_SUPPORT_RUNBOOK.md)**: Troubleshooting and support procedures
+
 ### Getting Started
 - **[Documentation Index](./docs/README.md)**: Complete documentation guide
 - **[Installation Guide](./docs/INSTALLATION_GUIDE.md)**: Tenant onboarding and deployment
