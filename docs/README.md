@@ -10,6 +10,15 @@ This directory contains comprehensive documentation for ClientSpace (SharePoint 
 
 ### Getting Started Guides
 
+#### 🚀 [MVP Quick Start Guide](MVP_QUICK_START.md) ⭐ **NEW**
+**Get up and running with ClientSpace in 5 minutes**
+
+- **First Login**: Access portal and complete profile
+- **Create Client Space**: Provision your first client workspace
+- **Invite External User**: Grant access to external collaborators
+- **Quick Actions**: Common tasks and keyboard shortcuts
+- **Video Walkthroughs**: Step-by-step visual guides
+
 #### 📦 [Installation Guide](INSTALLATION_GUIDE.md)
 **Complete installation and deployment guide**
 
@@ -40,6 +49,54 @@ This directory contains comprehensive documentation for ClientSpace (SharePoint 
 - **Installation**: Package deployment and configuration
 - **Usage Scenarios**: Common use cases and patterns
 - **Troubleshooting**: Common issues and solutions
+
+### MVP Documentation (Complete Set)
+
+#### 📖 [MVP UX Guide](MVP_UX_GUIDE.md) ⭐ **NEW**
+**Complete user experience guide for all portal screens**
+
+- **Dashboard**: Overview metrics and quick actions
+- **Client Management**: List, create, edit client spaces
+- **External Users**: Invitation, management, bulk operations
+- **Libraries & Lists**: Create and manage SharePoint resources
+- **Search**: Global and client-scoped search
+- **Subscription**: Billing, plans, and usage
+- **Settings**: Tenant configuration and security
+- **Navigation**: Common UI elements and patterns
+
+#### 🔧 [MVP Deployment Runbook](MVP_DEPLOYMENT_RUNBOOK.md) ⭐ **NEW**
+**Complete deployment and operational guide**
+
+- **Infrastructure Setup**: Azure resources and Bicep deployment
+- **Application Deployment**: API, Portal, and SPFx
+- **Post-Deployment**: Configuration, secrets, and validation
+- **Health Checks**: Monitoring and verification procedures
+- **Troubleshooting**: Common issues and solutions
+- **Rollback**: Recovery procedures
+- **Maintenance**: Regular maintenance tasks
+
+#### 🔌 [MVP API Reference](MVP_API_REFERENCE.md) ⭐ **NEW**
+**Complete REST API endpoint documentation**
+
+- **Authentication**: OAuth 2.0 and token management
+- **Endpoints**: Tenants, clients, users, libraries, search
+- **Request/Response**: Formats and examples
+- **Error Handling**: Error codes and troubleshooting
+- **Rate Limits**: Quotas per tier
+- **Pagination**: Filtering and sorting
+
+#### 🆘 [MVP Support Runbook](MVP_SUPPORT_RUNBOOK.md) ⭐ **NEW**
+**Comprehensive troubleshooting and support guide**
+
+- **Common Issues**: Sign-in, invitations, provisioning, search, billing
+- **Debug Procedures**: Authentication, SharePoint, performance
+- **Log Analysis**: Application Insights queries
+- **Performance**: Database, API, app service optimization
+- **Security**: Incident response procedures
+- **Data Recovery**: Backup and restore procedures
+- **Escalation**: When and how to escalate
+
+---
 
 ### Technical Documentation
 
@@ -290,14 +347,18 @@ This directory contains comprehensive documentation for ClientSpace (SharePoint 
 
 | I want to... | Read this... |
 |--------------|--------------|
+| **Get started in 5 minutes** | **[MVP Quick Start](MVP_QUICK_START.md)** ⭐ |
 | Install ClientSpace | [Installation Guide](INSTALLATION_GUIDE.md) |
 | Learn how to use ClientSpace | [User Guide](USER_GUIDE.md) |
+| **Understand each portal screen** | **[MVP UX Guide](MVP_UX_GUIDE.md)** ⭐ |
 | Install SPFx web parts | [SPFx Usage Guide](SPFX_USAGE_GUIDE.md) |
+| **Deploy to Azure** | **[MVP Deployment Runbook](MVP_DEPLOYMENT_RUNBOOK.md)** ⭐ |
+| Use the API | **[MVP API Reference](MVP_API_REFERENCE.md)** ⭐ |
+| **Troubleshoot issues** | **[MVP Support Runbook](MVP_SUPPORT_RUNBOOK.md)** ⭐ |
 | Understand the architecture | [Architecture](saas/architecture.md) |
-| Use the API | [API Reference](saas/api-spec.md) |
 | Onboard a new tenant | [Tenant Onboarding](saas/onboarding.md) |
 | Develop features | [Developer Guide](../DEVELOPER_GUIDE.md) |
-| Deploy to Azure | [Deployment Guide](DEPLOYMENT.md) |
+| Deploy to Azure (legacy) | [Deployment Guide](DEPLOYMENT.md) |
 | Understand security | [Security](saas/security.md) |
 | Brand the solution | [Branding Pack](branding/README.md) |
 
