@@ -4,6 +4,7 @@ using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Services;
+using SharePointExternalUserManager.Functions.Services.Search;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +51,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
+builder.Services.AddSingleton<ISearchService, SearchService>(); // Search service with mock data
 builder.Services.AddHttpClient(); // For OAuth service HTTP calls
 
 // AI Assistant services
