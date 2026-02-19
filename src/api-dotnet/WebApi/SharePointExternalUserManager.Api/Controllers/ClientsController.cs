@@ -23,17 +23,20 @@ public class ClientsController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly ISharePointService _sharePointService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IPlanEnforcementService _planEnforcementService;
     private readonly ILogger<ClientsController> _logger;
 
     public ClientsController(
         ApplicationDbContext context,
         ISharePointService sharePointService,
         IAuditLogService auditLogService,
+        IPlanEnforcementService planEnforcementService,
         ILogger<ClientsController> logger)
     {
         _context = context;
         _sharePointService = sharePointService;
         _auditLogService = auditLogService;
+        _planEnforcementService = planEnforcementService;
         _logger = logger;
     }
 
@@ -145,6 +148,25 @@ public class ClientsController : ControllerBase
             return NotFound(ApiResponse<object>.ErrorResponse(
                 "TENANT_NOT_FOUND",
                 "Tenant not found. Please complete onboarding first."));
+        }
+
+        // Enforce plan-based client space limits
+        try
+        {
+            await _planEnforcementService.EnforceClientSpaceLimitAsync(tenant.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Plan limit exceeded for tenant {TenantId}. CorrelationId: {CorrelationId}",
+                tenant.Id,
+                correlationId);
+
+            return StatusCode(403, ApiResponse<object>.ErrorResponse(
+                "PLAN_LIMIT_EXCEEDED",
+                ex.Message,
+                correlationId));
         }
 
         // Check if client reference already exists for this tenant

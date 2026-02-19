@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 using SharePointExternalUserManager.Api.Data;
+using SharePointExternalUserManager.Api.Middleware;
 using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Services.Search;
 using System.Reflection;
@@ -139,6 +140,10 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Global exception handling middleware (must be early in pipeline)
+app.UseGlobalExceptionHandler();
+
+// Swagger is only enabled in Development environment for security
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
