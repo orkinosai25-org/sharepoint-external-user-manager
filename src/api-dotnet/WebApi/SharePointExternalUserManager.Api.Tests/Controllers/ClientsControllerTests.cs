@@ -21,6 +21,7 @@ public class ClientsControllerTests : IDisposable
     private readonly ClientsController _controller;
     private readonly Mock<ISharePointService> _mockSharePointService;
     private readonly IAuditLogService _auditLogService;
+    private readonly Mock<IPlanEnforcementService> _mockPlanEnforcementService;
 
     public ClientsControllerTests()
     {
@@ -32,11 +33,13 @@ public class ClientsControllerTests : IDisposable
         _context = new ApplicationDbContext(options);
         _mockSharePointService = new Mock<ISharePointService>();
         _auditLogService = new MockAuditLogService();
+        _mockPlanEnforcementService = new Mock<IPlanEnforcementService>();
         
         _controller = new ClientsController(
             _context,
             _mockSharePointService.Object,
             _auditLogService,
+            _mockPlanEnforcementService.Object,
             new NullLogger<ClientsController>());
     }
 
