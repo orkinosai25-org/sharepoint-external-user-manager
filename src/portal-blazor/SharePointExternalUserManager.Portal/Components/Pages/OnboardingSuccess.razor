@@ -1,5 +1,6 @@
 @page "/onboarding/success"
 @attribute [Authorize]
+@implements IDisposable
 @inject NavigationManager Navigation
 
 <PageTitle>Welcome to ClientSpace!</PageTitle>
@@ -81,13 +82,39 @@
 </style>
 
 @code {
+    private bool hasNavigated = false;
+    private CancellationTokenSource? autoRedirectCts;
+
+    protected override void OnInitialized()
+    {
+        // Create cancellation token for auto-redirect
+        autoRedirectCts = new CancellationTokenSource();
+    }
+
     // Auto-redirect to dashboard after 10 seconds if user doesn't click
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !hasNavigated)
         {
-            await Task.Delay(10000); // 10 seconds
-            Navigation.NavigateTo("/dashboard");
+            try
+            {
+                await Task.Delay(10000, autoRedirectCts!.Token); // 10 seconds
+                if (!hasNavigated)
+                {
+                    hasNavigated = true;
+                    Navigation.NavigateTo("/dashboard");
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected when component is disposed or navigation happens
+            }
         }
+    }
+
+    public void Dispose()
+    {
+        autoRedirectCts?.Cancel();
+        autoRedirectCts?.Dispose();
     }
 }

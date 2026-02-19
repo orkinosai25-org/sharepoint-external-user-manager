@@ -221,7 +221,7 @@
             
             if (response != null)
             {
-                Logger.LogInformation("Tenant registered successfully with ID {TenantId}", response.TenantId);
+                Logger.LogInformation("Tenant registered successfully with ID {TenantId}", response.InternalTenantId);
                 
                 // Registration successful - redirect to consent page
                 Navigation.NavigateTo("/onboarding/consent", forceLoad: true);
@@ -235,17 +235,24 @@
         {
             Logger.LogError(ex, "HTTP error during tenant registration");
             
-            if (ex.Message.Contains("409") || ex.Message.Contains("Conflict"))
+            // Try to get status code from exception
+            var statusCode = ex.StatusCode;
+            
+            if (statusCode == System.Net.HttpStatusCode.Conflict)
             {
                 errorMessage = "This organization is already registered. Please contact support if you believe this is an error.";
             }
-            else if (ex.Message.Contains("400") || ex.Message.Contains("Bad Request"))
+            else if (statusCode == System.Net.HttpStatusCode.BadRequest)
             {
                 errorMessage = "Invalid registration data. Please check your inputs and try again.";
             }
-            else
+            else if (statusCode == null)
             {
                 errorMessage = "Unable to connect to the registration service. Please check your internet connection and try again.";
+            }
+            else
+            {
+                errorMessage = $"Registration failed (Error {(int)statusCode}). Please try again or contact support.";
             }
         }
         catch (Exception ex)

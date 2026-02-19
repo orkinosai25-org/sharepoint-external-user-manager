@@ -313,7 +313,7 @@ public class TenantSettingsDto
 /// </summary>
 public class TenantRegistrationResponse
 {
-    public int TenantId { get; set; }
+    public int InternalTenantId { get; set; }
     public string EntraIdTenantId { get; set; } = string.Empty;
     public string OrganizationName { get; set; } = string.Empty;
     public string SubscriptionTier { get; set; } = string.Empty;

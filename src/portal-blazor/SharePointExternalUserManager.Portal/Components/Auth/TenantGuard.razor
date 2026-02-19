@@ -92,18 +92,25 @@
         {
             "/onboarding/register",
             "/onboarding/consent",
-            "/onboarding/success",
-            "/onboarding"
+            "/onboarding/success"
         };
 
-        return onboardingPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+        // Check exact matches or path segments
+        return onboardingPaths.Any(p => 
+            path.Equals(p, StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase));
     }
 
     private bool IsPublicPath(string path)
     {
+        // Root path needs special handling
+        if (path.Equals("/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         var publicPaths = new[]
         {
-            "/",
             "/home",
             "/pricing",
             "/about",
@@ -111,8 +118,9 @@
             "/microsoftidentity"
         };
 
-        return publicPaths.Any(p => path.Equals(p, StringComparison.OrdinalIgnoreCase) || 
-                                     path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase));
+        return publicPaths.Any(p => 
+            path.Equals(p, StringComparison.OrdinalIgnoreCase) || 
+            path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase));
     }
 }
 
