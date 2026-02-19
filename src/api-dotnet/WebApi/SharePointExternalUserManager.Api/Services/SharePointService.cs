@@ -753,7 +753,9 @@ public class SharePointService : ISharePointService
             }
 
             // Ensure it's a SharePoint URL
-            if (!uri.Host.Contains("sharepoint.com"))
+            // Use EndsWith to prevent matching fake domains like "fakesharepoint.com.example.com"
+            if (!uri.Host.EndsWith(".sharepoint.com", StringComparison.OrdinalIgnoreCase) && 
+                !uri.Host.Equals("sharepoint.com", StringComparison.OrdinalIgnoreCase))
             {
                 return SiteValidationResult.Failure(
                     SiteValidationErrorCode.InvalidUrl,

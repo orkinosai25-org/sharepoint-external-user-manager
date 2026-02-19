@@ -14,8 +14,10 @@ public class SharePointValidationServiceTests
 
     public SharePointValidationServiceTests()
     {
-        // Create a mock GraphServiceClient using null since we won't actually call Graph API in these tests
-        // The validation logic checks URL format before making API calls
+        // Create a null GraphServiceClient for these tests since we only test URL validation
+        // before any Graph API calls are made. These tests validate input parameters and
+        // URL format, which don't require Graph API access. 
+        // For tests that need Graph API interaction, a proper mock would be required.
         var graphClient = null as GraphServiceClient;
         _mockLogger = new Mock<ILogger<SharePointService>>();
         _service = new SharePointService(graphClient!, _mockLogger.Object);
@@ -50,6 +52,18 @@ public class SharePointValidationServiceTests
     {
         // Act
         var result = await _service.ValidateSiteAsync("https://example.com/site");
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Equal(SiteValidationErrorCode.InvalidUrl, result.ErrorCode);
+        Assert.Contains("SharePoint site", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ValidateSiteAsync_WithFakeSharePointDomain_ReturnsInvalidUrl()
+    {
+        // Act
+        var result = await _service.ValidateSiteAsync("https://fakesharepoint.com.example.com/sites/test");
 
         // Assert
         Assert.False(result.IsValid);
