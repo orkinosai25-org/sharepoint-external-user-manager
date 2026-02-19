@@ -466,4 +466,46 @@ public class ApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Get current subscription for authenticated user (new endpoint)
+    /// </summary>
+    public async Task<SubscriptionStatusResponse?> GetMySubscriptionAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/subscription/me");
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<SubscriptionStatusResponse>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get my subscription");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Cancel current subscription
+    /// </summary>
+    public async Task CancelSubscriptionAsync()
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync("/api/subscription/cancel", null);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cancel subscription");
+            throw;
+        }
+    }
 }

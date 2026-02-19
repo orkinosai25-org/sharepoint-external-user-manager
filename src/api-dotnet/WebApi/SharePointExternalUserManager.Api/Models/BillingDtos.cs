@@ -44,3 +44,12 @@ public class PlansResponse
 {
     public List<PlanDefinition> Plans { get; set; } = new();
 }
+
+/// <summary>
+/// Request to change subscription plan
+/// </summary>
+public class ChangePlanRequest
+{
+    public string NewPlanTier { get; set; } = string.Empty;
+}
+
