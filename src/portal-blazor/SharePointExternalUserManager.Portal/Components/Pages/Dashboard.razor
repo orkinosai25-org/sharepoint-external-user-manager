@@ -201,11 +201,11 @@
         }
 
         <!-- Subscription Details -->
-        @if (!summary.IsActive || summary.TrialDaysRemaining.HasValue)
+        @if (!summary.IsActive || (summary.TrialDaysRemaining.HasValue && summary.TrialDaysRemaining.Value <= 7))
         {
             <div class="row mb-4">
                 <div class="col-md-12">
-                    <div class="alert alert-@(summary.TrialDaysRemaining <= 3 ? "danger" : "warning")">
+                    <div class="alert alert-@(summary.TrialDaysRemaining.HasValue && summary.TrialDaysRemaining.Value <= 3 ? "danger" : "warning")">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -214,14 +214,14 @@
                                     <strong>Subscription Inactive:</strong>
                                     <span>Your subscription is not active. Please complete onboarding or upgrade your plan.</span>
                                 }
-                                else if (summary.TrialDaysRemaining.HasValue && summary.TrialDaysRemaining <= 7)
+                                else if (summary.TrialDaysRemaining.HasValue && summary.TrialDaysRemaining.Value <= 7)
                                 {
                                     <strong>Trial Expiring Soon:</strong>
                                     <span>Your trial expires in @summary.TrialDaysRemaining days (@summary.TrialExpiryDate?.ToString("MMM dd, yyyy")). Upgrade now to continue using all features.</span>
                                 }
                             </div>
                             <div>
-                                <a href="/pricing" class="btn btn-@(summary.TrialDaysRemaining <= 3 ? "danger" : "warning")">
+                                <a href="/pricing" class="btn btn-@(summary.TrialDaysRemaining.HasValue && summary.TrialDaysRemaining.Value <= 3 ? "danger" : "warning")">
                                     <i class="bi bi-arrow-up-circle"></i> Upgrade Now
                                 </a>
                             </div>

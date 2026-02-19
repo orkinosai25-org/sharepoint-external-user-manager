@@ -206,7 +206,7 @@ public class DashboardController : ControllerBase
                 Id = "create-client",
                 Label = "Create Client Space",
                 Description = "Add a new client space to manage external users and documents",
-                Action = "/dashboard?action=create",
+                Action = "/dashboard",
                 Type = "modal",
                 Priority = "primary",
                 Icon = "plus-circle"

@@ -124,6 +124,7 @@ public class DashboardControllerTests : IDisposable
         Assert.Equal("Trial", summary.Status);
         Assert.True(summary.IsActive);
         Assert.NotNull(summary.TrialDaysRemaining);
+        // Allow ±1 day tolerance due to test execution timing (DateTime.UtcNow may vary slightly)
         Assert.True(summary.TrialDaysRemaining.Value >= 9 && summary.TrialDaysRemaining.Value <= 11);
         Assert.NotEmpty(summary.QuickActions);
     }
