@@ -508,4 +508,65 @@ public class ApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Get current tenant information from /tenants/me
+    /// Returns null if tenant is not yet registered
+    /// </summary>
+    public async Task<TenantInfoResponse?> GetTenantInfoAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/tenants/me");
+            
+            // If 401/403, tenant doesn't exist yet or auth failed
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Tenant info request failed with status {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<TenantInfoResponse>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get tenant info");
+            // Return null instead of throwing - tenant might not exist yet
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Register a new tenant
+    /// </summary>
+    public async Task<TenantRegistrationResponse?> RegisterTenantAsync(TenantRegistrationRequest request)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/tenants/register", content);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<TenantRegistrationResponse>>(responseJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register tenant");
+            throw;
+        }
+    }
 }
