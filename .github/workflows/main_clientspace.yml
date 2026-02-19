@@ -82,12 +82,13 @@ jobs:
           
       - name: Deployment Summary
         run: |
+          $utcDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
           Write-Host "## 🚀 ClientSpace Deployment Summary" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "**Status**: ✅ Deployed Successfully" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "**App Service**: ClientSpace" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "**Slot**: Production" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          Write-Host "**Deployment Date**: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "**Deployment Date**: $utcDate UTC" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "**Commit**: ${{ github.sha }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "### Next Steps" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
