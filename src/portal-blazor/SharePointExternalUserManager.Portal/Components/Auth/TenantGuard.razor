@@ -1,0 +1,145 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject Services.ApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILogger<TenantGuard> Logger
+
+@* This component checks if the authenticated user's tenant is registered *@
+@* If not registered, redirect to registration page *@
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool isChecking = true;
+    private bool isRegistered = false;
+    private string? currentPath;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask == null)
+        {
+            Logger.LogWarning("AuthenticationStateTask is null");
+            isChecking = false;
+            return;
+        }
+
+        try
+        {
+            var authState = await AuthenticationStateTask;
+            var user = authState.User;
+
+            currentPath = new Uri(Navigation.Uri).AbsolutePath;
+
+            // Skip check if user is not authenticated
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                Logger.LogDebug("User not authenticated, skipping tenant check");
+                isChecking = false;
+                return;
+            }
+
+            // Skip check if already on registration or consent pages
+            if (IsOnboardingPath(currentPath))
+            {
+                Logger.LogDebug("Already on onboarding path: {Path}", currentPath);
+                isChecking = false;
+                isRegistered = true; // Allow access to onboarding pages
+                return;
+            }
+
+            // Skip check for non-protected pages (home, pricing, etc.)
+            if (IsPublicPath(currentPath))
+            {
+                Logger.LogDebug("Public path, skipping tenant check: {Path}", currentPath);
+                isChecking = false;
+                isRegistered = true;
+                return;
+            }
+
+            Logger.LogInformation("Checking tenant registration status for authenticated user");
+
+            // Check if tenant is registered
+            var tenantInfo = await ApiClient.GetTenantInfoAsync();
+            
+            if (tenantInfo == null)
+            {
+                Logger.LogWarning("Tenant not registered, redirecting to registration");
+                Navigation.NavigateTo("/onboarding/register", forceLoad: true);
+                return;
+            }
+
+            Logger.LogInformation("Tenant registered: {OrgName}", tenantInfo.OrganizationName);
+            isRegistered = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking tenant registration status");
+            // On error, allow through (fail open for better UX)
+            isRegistered = true;
+        }
+        finally
+        {
+            isChecking = false;
+        }
+    }
+
+    private bool IsOnboardingPath(string path)
+    {
+        var onboardingPaths = new[]
+        {
+            "/onboarding/register",
+            "/onboarding/consent",
+            "/onboarding/success",
+            "/onboarding"
+        };
+
+        return onboardingPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool IsPublicPath(string path)
+    {
+        var publicPaths = new[]
+        {
+            "/",
+            "/home",
+            "/pricing",
+            "/about",
+            "/contact",
+            "/microsoftidentity"
+        };
+
+        return publicPaths.Any(p => path.Equals(p, StringComparison.OrdinalIgnoreCase) || 
+                                     path.StartsWith(p + "/", StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+@if (isChecking)
+{
+    @* Show loading state while checking *@
+    <div class="d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Checking your account...</p>
+        </div>
+    </div>
+}
+else if (isRegistered)
+{
+    @* Tenant is registered or on allowed path, render child content *@
+    @ChildContent
+}
+else
+{
+    @* Should not reach here as we redirect, but show message just in case *@
+    <div class="container mt-5">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Redirecting to registration...
+        </div>
+    </div>
+}

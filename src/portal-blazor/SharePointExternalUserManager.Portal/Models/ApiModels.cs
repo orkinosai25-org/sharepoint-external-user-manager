@@ -274,3 +274,49 @@ public class QuickAction
     public string Priority { get; set; } = "secondary";
     public string Icon { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Tenant information response from GET /tenants/me
+/// </summary>
+public class TenantInfoResponse
+{
+    public string TenantId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string? UserPrincipalName { get; set; }
+    public bool IsActive { get; set; }
+    public string SubscriptionTier { get; set; } = string.Empty;
+    public string OrganizationName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request to register a new tenant
+/// </summary>
+public class TenantRegistrationRequest
+{
+    public string OrganizationName { get; set; } = string.Empty;
+    public string PrimaryAdminEmail { get; set; } = string.Empty;
+    public TenantSettingsDto? Settings { get; set; }
+}
+
+/// <summary>
+/// Tenant settings
+/// </summary>
+public class TenantSettingsDto
+{
+    public string? CompanyWebsite { get; set; }
+    public string? Industry { get; set; }
+    public string? Country { get; set; }
+}
+
+/// <summary>
+/// Response from tenant registration
+/// </summary>
+public class TenantRegistrationResponse
+{
+    public int TenantId { get; set; }
+    public string EntraIdTenantId { get; set; } = string.Empty;
+    public string OrganizationName { get; set; } = string.Empty;
+    public string SubscriptionTier { get; set; } = string.Empty;
+    public DateTime? TrialExpiryDate { get; set; }
+    public DateTime RegisteredDate { get; set; }
+}
