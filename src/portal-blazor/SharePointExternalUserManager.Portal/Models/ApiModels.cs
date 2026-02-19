@@ -231,3 +231,46 @@ public class SearchInfo
     public string Scope { get; set; } = string.Empty;
     public long SearchTimeMs { get; set; }
 }
+
+/// <summary>
+/// Dashboard summary response containing aggregated statistics
+/// </summary>
+public class DashboardSummaryResponse
+{
+    public int TotalClientSpaces { get; set; }
+    public int TotalExternalUsers { get; set; }
+    public int ActiveInvitations { get; set; }
+    public string PlanTier { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int? TrialDaysRemaining { get; set; }
+    public DateTime? TrialExpiryDate { get; set; }
+    public bool IsActive { get; set; }
+    public DashboardPlanLimits Limits { get; set; } = new();
+    public List<QuickAction> QuickActions { get; set; } = new();
+}
+
+/// <summary>
+/// Plan limits for dashboard
+/// </summary>
+public class DashboardPlanLimits
+{
+    public int? MaxClientSpaces { get; set; }
+    public int? MaxExternalUsers { get; set; }
+    public int? MaxStorageGB { get; set; }
+    public int? ClientSpacesUsagePercent { get; set; }
+    public int? ExternalUsersUsagePercent { get; set; }
+}
+
+/// <summary>
+/// Quick action suggestion
+/// </summary>
+public class QuickAction
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Type { get; set; } = "navigate";
+    public string Priority { get; set; } = "secondary";
+    public string Icon { get; set; } = string.Empty;
+}
