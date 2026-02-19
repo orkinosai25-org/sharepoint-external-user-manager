@@ -20,6 +20,7 @@ public class ClientsControllerTests : IDisposable
     private readonly ApplicationDbContext _context;
     private readonly ClientsController _controller;
     private readonly Mock<ISharePointService> _mockSharePointService;
+    private readonly Mock<IPlanEnforcementService> _mockPlanEnforcementService;
     private readonly IAuditLogService _auditLogService;
 
     public ClientsControllerTests()
@@ -31,12 +32,19 @@ public class ClientsControllerTests : IDisposable
 
         _context = new ApplicationDbContext(options);
         _mockSharePointService = new Mock<ISharePointService>();
+        _mockPlanEnforcementService = new Mock<IPlanEnforcementService>();
         _auditLogService = new MockAuditLogService();
+        
+        // Setup default behavior for plan enforcement (allow by default in tests)
+        _mockPlanEnforcementService
+            .Setup(x => x.EnforceClientSpaceLimitAsync(It.IsAny<int>()))
+            .Returns(Task.CompletedTask);
         
         _controller = new ClientsController(
             _context,
             _mockSharePointService.Object,
             _auditLogService,
+            _mockPlanEnforcementService.Object,
             new NullLogger<ClientsController>());
     }
 
@@ -167,6 +175,43 @@ public class ClientsControllerTests : IDisposable
         var response = Assert.IsType<ApiResponse<object>>(conflictResult.Value);
         Assert.False(response.Success);
         Assert.Equal("CLIENT_EXISTS", response.Error?.Code);
+    }
+
+    [Fact]
+    public async Task CreateClient_WhenPlanLimitExceeded_ReturnsForbidden()
+    {
+        // Arrange
+        var tenantId = "test-tenant-id";
+        var userId = "test-user-id";
+        var upn = "testuser@example.com";
+
+        var tenant = await CreateTestTenantAsync(tenantId);
+        SetupControllerContext(tenantId, userId, upn);
+
+        // Setup plan enforcement to throw exception (limit exceeded)
+        _mockPlanEnforcementService
+            .Setup(x => x.EnforceClientSpaceLimitAsync(tenant.Id))
+            .ThrowsAsync(new InvalidOperationException(
+                "You have reached the maximum number of client spaces (5) for your Starter plan. " +
+                "Please upgrade your subscription to create more client spaces."));
+
+        var request = new CreateClientRequest
+        {
+            ClientReference = "CLIENT-LIMIT",
+            ClientName = "Limited Client",
+            Description = "Test"
+        };
+
+        // Act
+        var result = await _controller.CreateClient(request);
+
+        // Assert
+        var forbiddenResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+        var response = Assert.IsType<ApiResponse<object>>(forbiddenResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("PLAN_LIMIT_EXCEEDED", response.Error?.Code);
+        Assert.Contains("maximum number of client spaces", response.Error?.Message);
     }
 
     #endregion
