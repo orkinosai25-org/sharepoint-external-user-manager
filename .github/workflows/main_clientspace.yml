@@ -1,22 +1,27 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy ASP.Net Core app to Azure Web App - ClientSpace
+name: Deploy Portal to ClientSpace (Production)
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'src/portal-blazor/**'
+      - '.github/workflows/main_clientspace.yml'
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build Blazor Portal
     runs-on: windows-latest
     permissions:
-      contents: read #This is required for actions/checkout
-
+      contents: read
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
@@ -27,7 +32,7 @@ jobs:
         run: dotnet build --configuration Release
         working-directory: ./src/portal-blazor/SharePointExternalUserManager.Portal
 
-      - name: dotnet publish
+      - name: Publish with dotnet
         run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
         working-directory: ./src/portal-blazor/SharePointExternalUserManager.Portal
 
@@ -38,10 +43,11 @@ jobs:
           path: ${{env.DOTNET_ROOT}}/myapp
 
   deploy:
+    name: Deploy to Azure App Service
     runs-on: windows-latest
     needs: build
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - name: Download artifact from build job
@@ -56,8 +62,11 @@ jobs:
           if ([string]::IsNullOrEmpty($env:PUBLISH_PROFILE)) {
             Write-Host "❌ PUBLISH_PROFILE secret is not configured"
             Write-Host "ℹ️ To enable deployment:"
-            Write-Host "  1. Go to repository Settings > Secrets and variables > Actions"
-            Write-Host "  2. Add PUBLISH_PROFILE secret with Azure Web App publish profile"
+            Write-Host "  1. Go to Azure Portal → ClientSpace App Service"
+            Write-Host "  2. Click 'Get publish profile' in Overview"
+            Write-Host "  3. Copy the entire XML content"
+            Write-Host "  4. Go to repository Settings > Secrets and variables > Actions"
+            Write-Host "  5. Add secret named 'PUBLISH_PROFILE' with the XML content"
             exit 1
           }
           Write-Host "✅ Publish profile validated"
@@ -70,4 +79,20 @@ jobs:
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.PUBLISH_PROFILE }}
+          
+      - name: Deployment Summary
+        run: |
+          $utcDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
+          Write-Host "## 🚀 ClientSpace Deployment Summary" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "**Status**: ✅ Deployed Successfully" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "**App Service**: ClientSpace" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "**Slot**: Production" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "**Deployment Date**: $utcDate UTC" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "**Commit**: ${{ github.sha }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "### Next Steps" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "- Verify the application is running correctly" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "- Check application logs for any errors" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "- Run smoke tests to ensure functionality" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           

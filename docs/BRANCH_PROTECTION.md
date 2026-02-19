@@ -254,6 +254,9 @@ While not recommended, administrators can bypass branch protection if absolutely
 
 ## Related Documentation
 
+- [ISSUE_F_CI_CD_IMPLEMENTATION.md](../ISSUE_F_CI_CD_IMPLEMENTATION.md) - Complete CI/CD documentation
+- [ISSUE_F_SECURITY_SUMMARY.md](../ISSUE_F_SECURITY_SUMMARY.md) - CI/CD security considerations
+- [WORKFLOW_SECRET_SETUP.md](../WORKFLOW_SECRET_SETUP.md) - GitHub Actions secrets configuration
 - [Release Checklist](./RELEASE_CHECKLIST.md) - Pre-release verification steps
 - [Security Notes](./SECURITY_NOTES.md) - Security best practices
 - [Developer Guide](../DEVELOPER_GUIDE.md) - Local development setup
@@ -268,5 +271,6 @@ For questions or issues with branch protection:
 
 ---
 
-**Last Updated**: 2026-02-08  
-**Maintained By**: Repository Administrators
+**Last Updated**: 2026-02-19  
+**Maintained By**: Repository Administrators  
+**Related Issue**: ISSUE F — CI/CD and Deployment
