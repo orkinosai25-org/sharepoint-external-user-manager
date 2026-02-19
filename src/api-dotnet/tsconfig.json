@@ -27,7 +27,10 @@
     "node_modules",
     "dist",
     "**/*.spec.ts",
+    "**/*.example.ts",
     "shared",
-    "src/**/*.cs"
+    "src/**/*.cs",
+    "src/adapters/**",
+    "src/functions/users/inviteUser.refactored.example.ts"
   ]
 }

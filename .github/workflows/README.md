@@ -306,11 +306,43 @@ Deploys the complete platform to development environment.
 - Manual dispatch
 
 **Jobs**:
-1. Deploy infrastructure (Bicep)
-2. Deploy .NET API
-3. Deploy Blazor Portal
-4. Deploy Azure Functions
-5. Build SPFx package
+1. Build all components (API, Portal, SPFx)
+2. Deploy infrastructure (Bicep templates, optional via manual trigger)
+3. Deploy .NET API to Azure App Service
+4. Deploy Blazor Portal to Azure App Service
+5. Run health checks
+
+**Environment**: `development`
+
+**Required Secrets**:
+- `AZURE_CREDENTIALS` - Azure service principal credentials
+- `API_APP_NAME` - Azure App Service name for API
+- `PORTAL_APP_NAME` - Azure App Service name for Portal
+- `API_APP_URL` - API URL for health checks (optional)
+- `PORTAL_APP_URL` - Portal URL for health checks (optional)
+- `SQL_ADMIN_USERNAME` - SQL admin username (for infrastructure)
+- `SQL_ADMIN_PASSWORD` - SQL admin password (for infrastructure)
+
+### Deploy Production (`deploy-prod.yml`)
+
+Deploys the complete platform to production environment.
+
+**Triggers**:
+- Push to `main` branch
+- Manual dispatch
+
+**Jobs**: Same as development deployment but targeting production
+
+**Environment**: `production` (requires approval)
+
+**Required Secrets**: Same as development but with `_PROD` suffix:
+- `AZURE_CREDENTIALS_PROD`
+- `API_APP_NAME_PROD`
+- `PORTAL_APP_NAME_PROD`
+- `API_APP_URL_PROD`
+- `PORTAL_APP_URL_PROD`
+
+**Important**: Production deployments require manual approval before proceeding. Configure this in repository Settings > Environments.
 
 ### Deploy Backend (`deploy-backend.yml`)
 
@@ -352,21 +384,28 @@ Deploy to Production
 **Common issues**:
 
 1. **Build failures**
-   - Check Node.js version matches 18.19.0 for SPFx
+   - Check Node.js version: 20.x for Azure Functions API, 18.19.0 for SPFx
    - Verify dependencies are up-to-date
    - Look for TypeScript compilation errors
+   - Check for missing imports or unused variables
 
 2. **Lint failures**
    - Run `npm run lint` locally to see errors
-   - Fix code style issues
+   - Fix code style issues (unused imports, console statements, etc.)
    - Update ESLint rules if needed
+   - Ensure example files are ignored (*.example.ts)
 
-3. **Test failures**
+3. **Node version mismatch errors**
+   - Error: "Unsupported engine" or "requires node >=20.0.0"
+   - Solution: Workflows use Node 20.x for Azure Functions, 18.19.0 for SPFx
+   - Check package.json engines field matches workflow Node version
+
+4. **Test failures**
    - Run tests locally: `npm test`
    - Check for failing unit tests
    - Verify mocks and test data
 
-4. **Security scan warnings**
+5. **Security scan warnings**
    - Review TruffleHog findings
    - Check for accidentally committed secrets
    - Update vulnerable dependencies

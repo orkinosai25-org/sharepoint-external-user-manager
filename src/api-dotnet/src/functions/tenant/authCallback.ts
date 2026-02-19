@@ -10,8 +10,8 @@ import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { oauthService } from '../../services/oauth';
 import { databaseService } from '../../services/database';
 import { auditLogger } from '../../services/auditLogger';
-import { AdminConsentRequest } from '../../models/tenant-auth';
 import { UnauthorizedError, BadRequestError } from '../../models/common';
+import { config } from '../../utils/config';
 
 async function authCallback(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
@@ -78,7 +78,7 @@ async function authCallback(req: HttpRequest, _context: InvocationContext): Prom
     const redirectUri = req.query.get('redirect_uri');
     
     // Validate redirect URI against whitelist
-    const allowedRedirectUris = (config.cors.allowedOrigins || []).map(origin => 
+    const allowedRedirectUris = (config.cors.allowedOrigins || []).map((origin: string) => 
       `${origin}/onboarding/consent`
     );
     

@@ -15,7 +15,7 @@ module.exports = {
     sourceType: 'module',
     project: './tsconfig.json'
   },
-  ignorePatterns: ['**/*.spec.ts', '**/*.test.ts'],
+  ignorePatterns: ['**/*.spec.ts', '**/*.test.ts', '**/*.example.ts', '**/example/**'],
   rules: {
     '@typescript-eslint/explicit-function-return-type': 'warn',
     '@typescript-eslint/no-explicit-any': 'warn',
