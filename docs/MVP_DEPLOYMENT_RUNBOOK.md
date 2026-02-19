@@ -230,6 +230,14 @@ az webapp show \
   --name $API_APP_NAME \
   --resource-group spexternal-dev-rg \
   --query state
+
+# Test API health endpoint
+API_URL=$(az webapp show \
+  --name $API_APP_NAME \
+  --resource-group spexternal-dev-rg \
+  --query defaultHostName -o tsv)
+
+curl -f https://$API_URL/health || echo "Warning: Health check failed"
 ```
 
 ### Deploy Blazor Portal
@@ -262,6 +270,14 @@ az webapp show \
   --name $PORTAL_APP_NAME \
   --resource-group spexternal-dev-rg \
   --query state
+
+# Test Portal health endpoint
+PORTAL_URL=$(az webapp show \
+  --name $PORTAL_APP_NAME \
+  --resource-group spexternal-dev-rg \
+  --query defaultHostName -o tsv)
+
+curl -fI https://$PORTAL_URL || echo "Warning: Portal check failed"
 ```
 
 ### Build SPFx Package (Optional)
