@@ -1,6 +1,7 @@
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using SharePointExternalUserManager.Api.Data.Entities;
+using SharePointExternalUserManager.Api.Models;
 using SharePointExternalUserManager.Functions.Models.ExternalUsers;
 using SharePointExternalUserManager.Functions.Models.Libraries;
 using SharePointExternalUserManager.Functions.Models.Lists;
@@ -61,6 +62,14 @@ public interface ISharePointService
     /// Create a new list in a client site
     /// </summary>
     Task<ListResponse> CreateListAsync(string siteId, string name, string? description, string? template);
+
+    /// <summary>
+    /// Validate a SharePoint site URL before client creation
+    /// Checks if site exists, validates permissions, and verifies Graph access
+    /// </summary>
+    /// <param name="siteUrl">The SharePoint site URL to validate</param>
+    /// <returns>Validation result with site details or error information</returns>
+    Task<SiteValidationResult> ValidateSiteAsync(string siteUrl);
 }
 
 public class SharePointService : ISharePointService
@@ -720,5 +729,139 @@ public class SharePointService : ISharePointService
         }
 
         return "genericList";
+    }
+
+    public async Task<SiteValidationResult> ValidateSiteAsync(string siteUrl)
+    {
+        try
+        {
+            _logger.LogInformation("Validating SharePoint site: {SiteUrl}", siteUrl);
+
+            // Validate URL format
+            if (string.IsNullOrWhiteSpace(siteUrl))
+            {
+                return SiteValidationResult.Failure(
+                    SiteValidationErrorCode.InvalidUrl,
+                    "Site URL cannot be empty");
+            }
+
+            if (!Uri.TryCreate(siteUrl, UriKind.Absolute, out var uri))
+            {
+                return SiteValidationResult.Failure(
+                    SiteValidationErrorCode.InvalidUrl,
+                    "Site URL is not a valid URL format");
+            }
+
+            // Ensure it's a SharePoint URL
+            if (!uri.Host.Contains("sharepoint.com"))
+            {
+                return SiteValidationResult.Failure(
+                    SiteValidationErrorCode.InvalidUrl,
+                    "URL must be a SharePoint site (*.sharepoint.com)");
+            }
+
+            // Extract site information from URL
+            // Format: https://{tenant}.sharepoint.com/sites/{sitename}
+            var sitePath = uri.AbsolutePath;
+            if (string.IsNullOrEmpty(sitePath) || sitePath == "/")
+            {
+                return SiteValidationResult.Failure(
+                    SiteValidationErrorCode.InvalidUrl,
+                    "Site URL must include a site path (e.g., /sites/sitename)");
+            }
+
+            try
+            {
+                // Use the hostname and path to construct the site identifier
+                // Format for Graph API: {hostname}:{sitePath}
+                // Example: contoso.sharepoint.com:/sites/clientsite
+                var siteIdentifier = $"{uri.Host}:{sitePath}";
+                
+                _logger.LogInformation("Attempting to get site with identifier: {SiteIdentifier}", siteIdentifier);
+
+                // Try to get the site using the identifier
+                var site = await _graphClient.Sites[siteIdentifier].GetAsync();
+
+                if (site == null || string.IsNullOrEmpty(site.Id))
+                {
+                    return SiteValidationResult.Failure(
+                        SiteValidationErrorCode.SiteNotFound,
+                        "Site exists but could not retrieve site details");
+                }
+
+                // Verify we can access site details (tests read permission)
+                if (string.IsNullOrEmpty(site.DisplayName))
+                {
+                    _logger.LogWarning("Site {SiteId} found but DisplayName is empty", site.Id);
+                }
+
+                // Try to access site permissions to verify we have adequate access
+                try
+                {
+                    var permissions = await _graphClient.Sites[site.Id].Permissions.GetAsync();
+                    // If we can read permissions, we have adequate access
+                }
+                catch (Microsoft.Graph.Models.ODataErrors.ODataError permError)
+                {
+                    // If we can't read permissions but can read the site, it might be a permission issue
+                    if (permError.Error?.Code == "accessDenied")
+                    {
+                        _logger.LogWarning("Can access site but not permissions for {SiteId}", site.Id);
+                        // This is still acceptable - we just need to be able to read the site
+                    }
+                }
+
+                _logger.LogInformation(
+                    "Site validation successful: {SiteId} - {DisplayName}",
+                    site.Id,
+                    site.DisplayName);
+
+                return SiteValidationResult.Success(site.Id, siteUrl);
+            }
+            catch (Microsoft.Graph.Models.ODataErrors.ODataError odataError)
+            {
+                var errorCode = odataError.Error?.Code;
+                var errorMessage = odataError.Error?.Message ?? "Unknown Graph API error";
+
+                _logger.LogWarning(
+                    "Graph API error during site validation: Code={ErrorCode}, Message={ErrorMessage}",
+                    errorCode,
+                    errorMessage);
+
+                // Map OData errors to validation error codes
+                if (errorCode == "itemNotFound" || errorCode == "ResourceNotFound")
+                {
+                    return SiteValidationResult.Failure(
+                        SiteValidationErrorCode.SiteNotFound,
+                        $"SharePoint site not found at {siteUrl}. Please verify the URL is correct and the site exists.");
+                }
+
+                if (errorCode == "accessDenied" || errorCode == "Forbidden")
+                {
+                    return SiteValidationResult.Failure(
+                        SiteValidationErrorCode.InsufficientPermissions,
+                        "You do not have permission to access this SharePoint site. Please ensure you have at least read access.");
+                }
+
+                if (errorCode == "unauthenticated" || errorCode == "InvalidAuthenticationToken")
+                {
+                    return SiteValidationResult.Failure(
+                        SiteValidationErrorCode.ConsentRequired,
+                        "Microsoft Graph API consent is required. Please complete the consent flow.");
+                }
+
+                // Generic Graph API error
+                return SiteValidationResult.Failure(
+                    SiteValidationErrorCode.GraphAccessFailed,
+                    $"Graph API error: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error validating site: {SiteUrl}", siteUrl);
+            return SiteValidationResult.Failure(
+                SiteValidationErrorCode.UnexpectedError,
+                $"An unexpected error occurred: {ex.Message}");
+        }
     }
 }
