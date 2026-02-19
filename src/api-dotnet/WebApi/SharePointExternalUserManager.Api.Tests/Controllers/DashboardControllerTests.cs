@@ -388,4 +388,7 @@ public class MockSharePointService : ISharePointService
 
     public Task<ListResponse> CreateListAsync(string siteId, string name, string? description, string? template) 
         => throw new NotImplementedException();
+
+    public Task<SiteValidationResult> ValidateSiteAsync(string siteUrl)
+        => throw new NotImplementedException();
 }
