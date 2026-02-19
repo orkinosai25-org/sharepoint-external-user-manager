@@ -17,7 +17,7 @@ on:
 
 env:
   DOTNET_VERSION: '8.0.x'
-  NODE_VERSION: '18.19.0'
+  NODE_VERSION: '20.x'
   AZURE_RESOURCE_GROUP: 'spexternal-dev-rg'
   ENVIRONMENT: 'dev'
 
