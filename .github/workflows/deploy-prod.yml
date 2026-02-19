@@ -198,7 +198,7 @@ jobs:
       env:
         PORTAL_PUBLISH_PROFILE_PROD: ${{ secrets.PORTAL_PUBLISH_PROFILE_PROD }}
       run: |
-        if [ -z "$PORTAL_PUBLISH_PROFILE_PROFILE_PROD" ]; then
+        if [ -z "$PORTAL_PUBLISH_PROFILE_PROD" ]; then
           echo "❌ Portal deployment skipped - PORTAL_PUBLISH_PROFILE_PROD secret not configured"
           echo ""
           echo "ℹ️ To enable Portal deployment to production:"
