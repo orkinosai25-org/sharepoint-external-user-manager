@@ -1,0 +1,387 @@
+@page "/search"
+@attribute [Authorize]
+@inject Services.ApiClient ApiClient
+@inject ILogger<Search> Logger
+
+<PageTitle>Search - ClientSpace</PageTitle>
+
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Search</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1><i class="bi bi-search"></i> Search</h1>
+            <p class="text-muted">Search across all your client spaces, documents, and users</p>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="Search for documents, users, client spaces, or libraries..." 
+                               @bind="searchQuery"
+                               @bind:event="oninput"
+                               @onkeydown="HandleKeyDown"
+                               aria-label="Search query" />
+                        @if (!string.IsNullOrWhiteSpace(searchQuery))
+                        {
+                            <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch" aria-label="Clear search">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        }
+                        <button class="btn btn-primary" type="button" @onclick="ExecuteSearch" disabled="@isSearching">
+                            @if (isSearching)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Searching...</span>
+                            }
+                            else
+                            {
+                                <span>Search</span>
+                            }
+                        </button>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <label class="form-label small">Search Scope</label>
+                            <select class="form-select form-select-sm" @bind="searchScope">
+                                <option value="current">Current Client Only</option>
+                                <option value="all">All Client Spaces</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Result Type</label>
+                            <select class="form-select form-select-sm" @bind="resultTypeFilter">
+                                <option value="">All Types</option>
+                                <option value="Document">Documents</option>
+                                <option value="User">Users</option>
+                                <option value="ClientSpace">Client Spaces</option>
+                                <option value="Library">Libraries</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @errorMessage
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    @if (searchResults != null && hasSearched)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                @if (searchResults.Data.Count == 0)
+                                {
+                                    <text>No results found</text>
+                                }
+                                else
+                                {
+                                    <text>@searchResults.Pagination?.Total results</text>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(lastSearchQuery))
+                                {
+                                    <span class="text-muted"> for "@lastSearchQuery"</span>
+                                }
+                            </h5>
+                            @if (searchResults.SearchInfo != null)
+                            {
+                                <small class="text-muted">Search completed in @searchResults.SearchInfo.SearchTimeMs ms</small>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (searchResults.Data.Count == 0)
+                        {
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                No matching results found. Try different search terms or adjust your filters.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group">
+                                @foreach (var result in searchResults.Data)
+                                {
+                                    <div class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center mb-1">
+                                                    @if (result.Type == SearchResultType.User)
+                                                    {
+                                                        <i class="bi bi-person-circle text-primary me-2 fs-4"></i>
+                                                        <span class="badge bg-primary me-2">User</span>
+                                                    }
+                                                    else if (result.Type == SearchResultType.Document)
+                                                    {
+                                                        <i class="bi bi-file-earmark-text text-success me-2 fs-4"></i>
+                                                        <span class="badge bg-success me-2">Document</span>
+                                                    }
+                                                    else if (result.Type == SearchResultType.Library)
+                                                    {
+                                                        <i class="bi bi-folder text-info me-2 fs-4"></i>
+                                                        <span class="badge bg-info me-2">Library</span>
+                                                    }
+                                                    else if (result.Type == SearchResultType.ClientSpace)
+                                                    {
+                                                        <i class="bi bi-building text-warning me-2 fs-4"></i>
+                                                        <span class="badge bg-warning text-dark me-2">Client Space</span>
+                                                    }
+                                                    
+                                                    <h6 class="mb-0">@result.Title</h6>
+                                                </div>
+                                                
+                                                @if (!string.IsNullOrWhiteSpace(result.Description))
+                                                {
+                                                    <p class="mb-1 text-muted small">@result.Description</p>
+                                                }
+                                                
+                                                <div class="d-flex gap-3 small text-muted">
+                                                    @if (!string.IsNullOrWhiteSpace(result.ClientName))
+                                                    {
+                                                        <span>
+                                                            <i class="bi bi-building me-1"></i>@result.ClientName
+                                                        </span>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(result.OwnerDisplayName))
+                                                    {
+                                                        <span>
+                                                            <i class="bi bi-person me-1"></i>@result.OwnerDisplayName
+                                                        </span>
+                                                    }
+                                                    @if (result.ModifiedDate.HasValue)
+                                                    {
+                                                        <span>
+                                                            <i class="bi bi-clock me-1"></i>@result.ModifiedDate.Value.ToString("dd MMM yyyy")
+                                                        </span>
+                                                    }
+                                                    @if (result.Metadata != null && result.Metadata.Count > 0)
+                                                    {
+                                                        @foreach (var meta in result.Metadata.Take(2))
+                                                        {
+                                                            <span>
+                                                                <strong>@meta.Key:</strong> @meta.Value
+                                                            </span>
+                                                        }
+                                                    }
+                                                </div>
+                                            </div>
+                                            
+                                            @if (!string.IsNullOrWhiteSpace(result.Url))
+                                            {
+                                                <a href="@result.Url" target="_blank" class="btn btn-sm btn-outline-primary ms-3">
+                                                    Open <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                                </a>
+                                            }
+                                            else if (result.Type == SearchResultType.ClientSpace && result.ClientId.HasValue)
+                                            {
+                                                <a href="/clients/@result.ClientId" class="btn btn-sm btn-outline-primary ms-3">
+                                                    View <i class="bi bi-arrow-right ms-1"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Pagination -->
+                            @if (searchResults.Pagination != null && searchResults.Pagination.Total > searchResults.Pagination.PageSize)
+                            {
+                                <nav aria-label="Search results pagination" class="mt-3">
+                                    <ul class="pagination justify-content-center">
+                                        <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => GoToPage(currentPage - 1)" disabled="@(currentPage <= 1)">
+                                                Previous
+                                            </button>
+                                        </li>
+                                        
+                                        @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(GetTotalPages(), currentPage + 2); i++)
+                                        {
+                                            var pageNumber = i;
+                                            <li class="page-item @(currentPage == pageNumber ? "active" : "")">
+                                                <button class="page-link" @onclick="() => GoToPage(pageNumber)">
+                                                    @pageNumber
+                                                </button>
+                                            </li>
+                                        }
+                                        
+                                        <li class="page-item @(!searchResults.Pagination.HasNext ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => GoToPage(currentPage + 1)" disabled="@(!searchResults.Pagination.HasNext)">
+                                                Next
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (!hasSearched)
+    {
+        <!-- Search tips -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-search display-1 text-muted mb-3"></i>
+                        <h4>Start searching</h4>
+                        <p class="text-muted">Enter a search query above to find documents, users, client spaces, and libraries</p>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6 offset-md-3">
+                                <div class="text-start">
+                                    <h6>Search tips:</h6>
+                                    <ul class="text-muted small">
+                                        <li>Use specific keywords to narrow your search</li>
+                                        <li>Select "All Client Spaces" to search across all your clients</li>
+                                        <li>Filter by result type to find specific content</li>
+                                        <li>Results are ranked by relevance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string searchQuery = string.Empty;
+    private string lastSearchQuery = string.Empty;
+    private string searchScope = "all";
+    private string resultTypeFilter = "";
+    private bool isSearching = false;
+    private bool hasSearched = false;
+    private string? errorMessage;
+    private SearchResponse? searchResults;
+    private int currentPage = 1;
+    private const int pageSize = 20;
+
+    private async Task ExecuteSearch()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            return;
+        }
+
+        // Reset to page 1 if this is a new search query
+        if (searchQuery != lastSearchQuery)
+        {
+            currentPage = 1;
+        }
+
+        isSearching = true;
+        errorMessage = null;
+        hasSearched = true;
+        lastSearchQuery = searchQuery;
+
+        try
+        {
+            Logger.LogInformation("Executing global search with query: {Query}", searchQuery);
+            
+            // Call the global search endpoint
+            searchResults = await ApiClient.GlobalSearchAsync(
+                searchQuery, 
+                searchScope, 
+                string.IsNullOrWhiteSpace(resultTypeFilter) ? null : resultTypeFilter,
+                currentPage, 
+                pageSize);
+            
+            Logger.LogInformation("Search completed with {Count} results", searchResults?.Data.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to execute search");
+            errorMessage = "Failed to execute search. Please try again.";
+            searchResults = null;
+        }
+        finally
+        {
+            isSearching = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchQuery))
+        {
+            await ExecuteSearch();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        lastSearchQuery = string.Empty;
+        searchResults = null;
+        hasSearched = false;
+        errorMessage = null;
+        currentPage = 1;
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || (searchResults?.Pagination != null && page > GetTotalPages()))
+        {
+            return;
+        }
+
+        var previousPage = currentPage;
+        currentPage = page;
+        
+        try
+        {
+            await ExecuteSearch();
+        }
+        catch (Exception ex)
+        {
+            // Revert to previous page and set error message
+            currentPage = previousPage;
+            errorMessage = "Failed to navigate to page. Please try again.";
+            Logger.LogError(ex, "Failed to navigate to page {Page}", page);
+        }
+    }
+
+    private int GetTotalPages()
+    {
+        if (searchResults?.Pagination == null)
+        {
+            return 1;
+        }
+
+        return (int)Math.Ceiling((double)searchResults.Pagination.Total / searchResults.Pagination.PageSize);
+    }
+}

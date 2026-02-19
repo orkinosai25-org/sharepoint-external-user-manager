@@ -47,7 +47,8 @@ public static class PlanConfiguration
                 CustomBranding = false,
                 DedicatedSupport = false,
                 SlaGuarantees = false,
-                AdvancedSecurity = false
+                AdvancedSecurity = false,
+                GlobalSearch = false // Starter only has client space search
             }
         },
         [SubscriptionTier.Professional] = new PlanDefinition
@@ -87,7 +88,8 @@ public static class PlanConfiguration
                 CustomBranding = false,
                 DedicatedSupport = false,
                 SlaGuarantees = false,
-                AdvancedSecurity = false
+                AdvancedSecurity = false,
+                GlobalSearch = true // Professional has global search
             }
         },
         [SubscriptionTier.Business] = new PlanDefinition
@@ -127,7 +129,8 @@ public static class PlanConfiguration
                 CustomBranding = false,
                 DedicatedSupport = false,
                 SlaGuarantees = false,
-                AdvancedSecurity = false
+                AdvancedSecurity = false,
+                GlobalSearch = true // Business has global search
             }
         },
         [SubscriptionTier.Enterprise] = new PlanDefinition
@@ -167,7 +170,8 @@ public static class PlanConfiguration
                 CustomBranding = true,
                 DedicatedSupport = true,
                 SlaGuarantees = true,
-                AdvancedSecurity = true
+                AdvancedSecurity = true,
+                GlobalSearch = true // Enterprise has global search
             }
         }
     };

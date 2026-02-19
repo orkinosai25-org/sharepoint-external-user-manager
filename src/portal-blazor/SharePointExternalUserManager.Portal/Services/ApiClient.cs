@@ -393,4 +393,52 @@ public class ApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Execute global search across all client spaces (Pro/Enterprise feature)
+    /// </summary>
+    public async Task<SearchResponse?> GlobalSearchAsync(
+        string query, 
+        string scope = "all", 
+        string? type = null,
+        int page = 1, 
+        int pageSize = 20)
+    {
+        try
+        {
+            // Validate and correct parameters
+            if (page < 1)
+            {
+                _logger.LogWarning("Invalid page number {Page} corrected to 1", page);
+                page = 1;
+            }
+            
+            if (pageSize < 1 || pageSize > 100)
+            {
+                _logger.LogWarning("Invalid page size {PageSize} corrected to 20 (valid range: 1-100)", pageSize);
+                pageSize = 20;
+            }
+
+            var url = $"/v1/search?q={Uri.EscapeDataString(query)}&scope={scope}&page={page}&pageSize={pageSize}";
+            
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                url += $"&type={type}";
+            }
+
+            var response = await _httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<SearchResponse>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to execute global search with query '{query}'");
+            throw;
+        }
+    }
 }
