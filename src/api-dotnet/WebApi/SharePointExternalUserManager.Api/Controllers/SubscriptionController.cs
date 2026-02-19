@@ -17,6 +17,8 @@ namespace SharePointExternalUserManager.Api.Controllers;
 [Route("api/[controller]")]
 public class SubscriptionController : ControllerBase
 {
+    private const int GracePeriodDays = 7; // Grace period after subscription cancellation
+    
     private readonly ApplicationDbContext _context;
     private readonly IStripeService _stripeService;
     private readonly IAuditLogService _auditLogService;
@@ -214,7 +216,7 @@ public class SubscriptionController : ControllerBase
             }
 
             // Update subscription tier directly (for trial/free plans)
-            currentSubscription.Tier = request.NewPlanTier;
+            currentSubscription.Tier = newTier.ToString();
             currentSubscription.ModifiedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -325,7 +327,7 @@ public class SubscriptionController : ControllerBase
                     
                     return StatusCode(500, ApiResponse<object>.ErrorResponse(
                         "STRIPE_ERROR",
-                        "Failed to cancel subscription with payment provider.",
+                        $"Failed to cancel subscription with payment provider. Please contact support with correlation ID: {correlationId}",
                         correlationId));
                 }
             }
@@ -333,7 +335,7 @@ public class SubscriptionController : ControllerBase
             // Update subscription status
             currentSubscription.Status = "Cancelled";
             currentSubscription.EndDate = DateTime.UtcNow;
-            currentSubscription.GracePeriodEnd = DateTime.UtcNow.AddDays(7); // 7-day grace period
+            currentSubscription.GracePeriodEnd = DateTime.UtcNow.AddDays(GracePeriodDays);
             currentSubscription.ModifiedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -359,7 +361,7 @@ public class SubscriptionController : ControllerBase
             {
                 message = "Subscription cancelled successfully",
                 gracePeriodEnd = currentSubscription.GracePeriodEnd,
-                gracePeriodDays = 7
+                gracePeriodDays = GracePeriodDays
             }));
         }
         catch (Exception ex)

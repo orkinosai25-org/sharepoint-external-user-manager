@@ -67,14 +67,13 @@
                                     </p>
                                 }
 
-                                @if (subscription.TrialExpiry.HasValue)
+                                @if (subscription.TrialExpiry.HasValue && trialDaysRemaining.HasValue)
                                 {
-                                    var daysRemaining = (subscription.TrialExpiry.Value - DateTime.UtcNow).Days;
                                     <p class="mb-2">
                                         <strong>Trial Expires:</strong>
-                                        <span class="@(daysRemaining <= 3 ? "text-danger" : "text-warning")">
+                                        <span class="@(trialDaysRemaining <= 3 ? "text-danger" : "text-warning")">
                                             @subscription.TrialExpiry.Value.ToString("MMM dd, yyyy")
-                                            (@daysRemaining days remaining)
+                                            (@trialDaysRemaining days remaining)
                                         </span>
                                     </p>
                                 }
@@ -132,44 +131,16 @@
                             </div>
                         }
 
-                        @if (subscription.Features != null)
+                        @if (subscription.Features != null && subscription.Features.Any())
                         {
                             <div class="mt-3 pt-3 border-top">
                                 <h6 class="text-muted mb-2">Enabled Features</h6>
                                 <ul class="list-unstyled mb-0">
-                                    @if (subscription.Features.BulkOperations)
+                                    @foreach (var feature in subscription.Features)
                                     {
                                         <li class="mb-1">
                                             <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                            Bulk Operations
-                                        </li>
-                                    }
-                                    @if (subscription.Features.AuditLogs)
-                                    {
-                                        <li class="mb-1">
-                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                            Audit Logs
-                                        </li>
-                                    }
-                                    @if (subscription.Features.AdvancedSearch)
-                                    {
-                                        <li class="mb-1">
-                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                            Advanced Search
-                                        </li>
-                                    }
-                                    @if (subscription.Features.AiAssistant)
-                                    {
-                                        <li class="mb-1">
-                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                            AI Assistant
-                                        </li>
-                                    }
-                                    @if (subscription.Features.PremiumSupport)
-                                    {
-                                        <li class="mb-1">
-                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                            Premium Support
+                                            @feature
                                         </li>
                                     }
                                 </ul>
@@ -181,30 +152,25 @@
         </div>
 
         <!-- Trial Expiring Warning -->
-        @if (subscription.Status == "Trial" && subscription.TrialExpiry.HasValue)
+        @if (subscription.Status == "Trial" && trialDaysRemaining.HasValue && trialDaysRemaining.Value <= 7 && subscription.TrialExpiry.HasValue)
         {
-            var daysRemaining = (subscription.TrialExpiry.Value - DateTime.UtcNow).Days;
-            
-            if (daysRemaining <= 7)
-            {
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <div class="alert alert-@(daysRemaining <= 3 ? "danger" : "warning")">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                    <strong>Trial Expiring Soon!</strong>
-                                    Your trial expires in @daysRemaining days (@subscription.TrialExpiry.Value.ToString("MMM dd, yyyy")).
-                                    Upgrade now to continue using all features without interruption.
-                                </div>
-                                <a href="/pricing" class="btn btn-@(daysRemaining <= 3 ? "danger" : "warning")">
-                                    <i class="bi bi-arrow-up-circle"></i> Upgrade Now
-                                </a>
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="alert alert-@(trialDaysRemaining.Value <= 3 ? "danger" : "warning")">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>Trial Expiring Soon!</strong>
+                                Your trial expires in @trialDaysRemaining.Value days (@subscription.TrialExpiry.Value.ToString("MMM dd, yyyy")).
+                                Upgrade now to continue using all features without interruption.
                             </div>
+                            <a href="/pricing" class="btn btn-@(trialDaysRemaining.Value <= 3 ? "danger" : "warning")">
+                                <i class="bi bi-arrow-up-circle"></i> Upgrade Now
+                            </a>
                         </div>
                     </div>
                 </div>
-            }
+            </div>
         }
 
         <!-- Billing Information -->
@@ -299,6 +265,7 @@
     private bool isCancelling = false;
     private string? errorMessage;
     private string? cancelError;
+    private int? trialDaysRemaining;
     
     private Models.SubscriptionStatusResponse? subscription;
 
@@ -315,6 +282,17 @@
         try
         {
             subscription = await ApiClient.GetMySubscriptionAsync();
+            
+            // Calculate trial days remaining once during load
+            if (subscription?.Status == "Trial" && subscription.TrialExpiry.HasValue)
+            {
+                var daysRemaining = (subscription.TrialExpiry.Value - DateTime.UtcNow).TotalDays;
+                trialDaysRemaining = (int)Math.Max(0, Math.Ceiling(daysRemaining));
+            }
+            else
+            {
+                trialDaysRemaining = null;
+            }
         }
         catch (Exception ex)
         {
