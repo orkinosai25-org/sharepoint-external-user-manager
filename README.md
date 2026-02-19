@@ -202,13 +202,17 @@ cd src/api-dotnet && npm test
 - ✅ **Audit Logging**: Comprehensive activity tracking
 - ✅ **Rate Limiting**: Per-tenant throttling and quotas
 - ✅ **Authentication**: Azure AD multi-tenant with JWT validation
+- ✅ **Search API**: Client space and global search with filtering and pagination
 
-### Blazor Portal (Coming Soon)
+### Blazor Portal
 - ✅ **AI Chat Assistant**: Azure OpenAI-powered chat widget for product assistance
-- 🔄 **Pricing Page**: Display subscription tiers
-- 🔄 **Onboarding Wizard**: Streamlined tenant setup
-- 🔄 **Admin Dashboard**: Manage clients and subscriptions
-- 🔄 **Billing Integration**: Stripe checkout and subscription management
+- ✅ **Pricing Page**: Display subscription tiers with Stripe integration
+- ✅ **Onboarding Wizard**: Streamlined tenant setup with Azure AD OAuth
+- ✅ **Admin Dashboard**: Manage clients and subscriptions
+- ✅ **Client Detail Pages**: View and manage external users, libraries, and lists
+- ✅ **Global Search**: Search across all client spaces (Pro/Enterprise)
+- ✅ **Client Space Search**: Search within specific client spaces (All tiers)
+- ✅ **Billing Integration**: Stripe checkout and subscription management
 
 ## 🔒 Security
 
@@ -249,6 +253,7 @@ cd src/api-dotnet && npm test
 ### User Guides
 - **[User Guide](./docs/USER_GUIDE.md)**: Portal feature guide and best practices
 - **[Solicitor Guide](./SOLICITOR_GUIDE.md)**: Non-technical user guide
+- **[Search Feature Guide](./SEARCH_FEATURE_GUIDE.md)**: Complete search functionality guide
 - **[Technical Documentation](./TECHNICAL_DOCUMENTATION.md)**: API specifications
 
 ### SaaS Platform Documentation
