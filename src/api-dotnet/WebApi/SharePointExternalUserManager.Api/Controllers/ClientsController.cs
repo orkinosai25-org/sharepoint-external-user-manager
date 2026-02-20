@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SharePointExternalUserManager.Api.Attributes;
 using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Data.Entities;
+using SharePointExternalUserManager.Api.Models;
 using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
 using SharePointExternalUserManager.Functions.Models.Clients;
@@ -128,6 +130,7 @@ public class ClientsController : ControllerBase
     /// Create a new client space with SharePoint site provisioning
     /// </summary>
     [HttpPost]
+    [RequiresTenantRole("Create Client", TenantRole.Owner, TenantRole.Admin)]
     public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -377,6 +380,7 @@ public class ClientsController : ControllerBase
     /// Invite an external user to a client site
     /// </summary>
     [HttpPost("{id}/external-users")]
+    [RequiresTenantRole("Invite External User", TenantRole.Owner, TenantRole.Admin)]
     public async Task<IActionResult> InviteExternalUser(int id, [FromBody] InviteExternalUserRequest request)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -478,6 +482,7 @@ public class ClientsController : ControllerBase
     /// Remove an external user from a client site
     /// </summary>
     [HttpDelete("{id}/external-users/{email}")]
+    [RequiresTenantRole("Remove External User", TenantRole.Owner, TenantRole.Admin)]
     public async Task<IActionResult> RemoveExternalUser(int id, string email)
     {
         var correlationId = Guid.NewGuid().ToString();
