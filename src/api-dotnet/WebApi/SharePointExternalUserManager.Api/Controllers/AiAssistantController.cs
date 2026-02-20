@@ -130,6 +130,38 @@ public class AiAssistantController : ControllerBase
                     return StatusCode(429, "Monthly token budget exceeded");
                 }
 
+                // Check plan-based monthly message limit
+                var subscription = await _context.Subscriptions
+                    .Where(s => s.TenantId == tenantId.Value)
+                    .OrderByDescending(s => s.StartDate)
+                    .FirstOrDefaultAsync();
+
+                if (subscription != null)
+                {
+                    // Get plan definition for the subscription tier
+                    var planDef = PlanConfiguration.GetPlanDefinitionByName(subscription.Tier);
+                    if (planDef != null && planDef.Limits.MaxAiMessagesPerMonth.HasValue)
+                    {
+                        // Count messages this month for this tenant
+                        var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                        var messagesThisMonth = await _context.AiConversationLogs
+                            .Where(l => l.TenantId == tenantId.Value && l.Timestamp >= startOfMonth)
+                            .CountAsync();
+
+                        if (messagesThisMonth >= planDef.Limits.MaxAiMessagesPerMonth.Value)
+                        {
+                            return StatusCode(429, new
+                            {
+                                error = "MessageLimitExceeded",
+                                message = $"Monthly AI message limit of {planDef.Limits.MaxAiMessagesPerMonth.Value} messages exceeded for {planDef.Name} plan. Upgrade to send more messages.",
+                                currentUsage = messagesThisMonth,
+                                limit = planDef.Limits.MaxAiMessagesPerMonth.Value,
+                                planTier = planDef.Name
+                            });
+                        }
+                    }
+                }
+
                 // Reset monthly counter if needed
                 if (settings.LastMonthlyReset.Month != DateTime.UtcNow.Month ||
                     settings.LastMonthlyReset.Year != DateTime.UtcNow.Year)
@@ -355,11 +387,38 @@ public class AiAssistantController : ControllerBase
             l.Timestamp.Month == DateTime.UtcNow.Month && 
             l.Timestamp.Year == DateTime.UtcNow.Year);
 
+        // Get subscription and plan limits for message count
+        var subscription = await _context.Subscriptions
+            .Where(s => s.TenantId == tenantId)
+            .OrderByDescending(s => s.StartDate)
+            .FirstOrDefaultAsync();
+
+        int? maxMessagesPerMonth = null;
+        decimal? messageLimitUsedPercentage = null;
+        string? planTier = null;
+
+        if (subscription != null)
+        {
+            planTier = subscription.Tier;
+            var planDef = PlanConfiguration.GetPlanDefinitionByName(subscription.Tier);
+            if (planDef != null)
+            {
+                maxMessagesPerMonth = planDef.Limits.MaxAiMessagesPerMonth;
+                if (maxMessagesPerMonth.HasValue && maxMessagesPerMonth.Value > 0)
+                {
+                    messageLimitUsedPercentage = (decimal)thisMonth.Count() / maxMessagesPerMonth.Value * 100;
+                }
+            }
+        }
+
         var stats = new AiUsageStats
         {
             TenantId = tenantId,
             TotalConversations = logs.Select(l => l.ConversationId).Distinct().Count(),
             TotalMessages = logs.Count,
+            MessagesThisMonth = thisMonth.Count(),
+            MaxMessagesPerMonth = maxMessagesPerMonth,
+            MessageLimitUsedPercentage = messageLimitUsedPercentage,
             TokensUsedThisMonth = settings?.TokensUsedThisMonth ?? 0,
             MonthlyTokenBudget = settings?.MonthlyTokenBudget ?? 0,
             BudgetUsedPercentage = settings != null && settings.MonthlyTokenBudget > 0
@@ -369,7 +428,8 @@ public class AiAssistantController : ControllerBase
             MaxRequestsPerHour = settings?.MaxRequestsPerHour ?? 100,
             AverageResponseTimeMs = logs.Any() ? (int)logs.Average(l => l.ResponseTimeMs) : 0,
             MessagesByMode = logs.GroupBy(l => l.Mode)
-                .ToDictionary(g => g.Key, g => g.Count())
+                .ToDictionary(g => g.Key, g => g.Count()),
+            PlanTier = planTier
         };
 
         return Ok(stats);

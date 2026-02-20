@@ -161,6 +161,9 @@ public class AiUsageStats
     public int TenantId { get; set; }
     public int TotalConversations { get; set; }
     public int TotalMessages { get; set; }
+    public int MessagesThisMonth { get; set; }
+    public int? MaxMessagesPerMonth { get; set; }
+    public decimal? MessageLimitUsedPercentage { get; set; }
     public int TokensUsedThisMonth { get; set; }
     public int MonthlyTokenBudget { get; set; }
     public decimal BudgetUsedPercentage { get; set; }
@@ -168,4 +171,5 @@ public class AiUsageStats
     public int MaxRequestsPerHour { get; set; }
     public int AverageResponseTimeMs { get; set; }
     public Dictionary<string, int> MessagesByMode { get; set; } = new();
+    public string? PlanTier { get; set; }
 }

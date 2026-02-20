@@ -25,6 +25,7 @@ public static class PlanConfiguration
                 MaxAdmins = 2,
                 AuditRetentionDays = 30,
                 MaxApiCallsPerMonth = 10000,
+                MaxAiMessagesPerMonth = 20,
                 SupportLevel = "Community",
                 IsUnlimited = false
             },
@@ -66,6 +67,7 @@ public static class PlanConfiguration
                 MaxAdmins = 5,
                 AuditRetentionDays = 90,
                 MaxApiCallsPerMonth = 50000,
+                MaxAiMessagesPerMonth = 1000,
                 SupportLevel = "Email",
                 IsUnlimited = false
             },
@@ -107,6 +109,7 @@ public static class PlanConfiguration
                 MaxAdmins = 15,
                 AuditRetentionDays = 365,
                 MaxApiCallsPerMonth = 250000,
+                MaxAiMessagesPerMonth = 5000,
                 SupportLevel = "Priority",
                 IsUnlimited = false
             },
@@ -148,6 +151,7 @@ public static class PlanConfiguration
                 MaxAdmins = 999,
                 AuditRetentionDays = null, // Unlimited
                 MaxApiCallsPerMonth = null, // Unlimited
+                MaxAiMessagesPerMonth = null, // Unlimited
                 SupportLevel = "Dedicated",
                 IsUnlimited = true
             },

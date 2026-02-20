@@ -25,6 +25,7 @@ public class PlanLimits
     public int? MaxAdmins { get; set; }
     public int? AuditRetentionDays { get; set; }
     public int? MaxApiCallsPerMonth { get; set; }
+    public int? MaxAiMessagesPerMonth { get; set; }
     public string SupportLevel { get; set; } = "Community";
     
     /// <summary>
