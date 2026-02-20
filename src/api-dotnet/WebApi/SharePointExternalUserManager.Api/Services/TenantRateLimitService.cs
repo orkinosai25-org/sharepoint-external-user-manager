@@ -3,7 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 namespace SharePointExternalUserManager.Api.Services;
 
 /// <summary>
-/// Service for per-tenant rate limiting using token bucket algorithm
+/// Service for per-tenant rate limiting using sliding window algorithm
 /// </summary>
 public interface ITenantRateLimitService
 {
