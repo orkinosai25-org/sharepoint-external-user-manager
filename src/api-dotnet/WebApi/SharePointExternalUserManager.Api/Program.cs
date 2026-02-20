@@ -62,6 +62,9 @@ builder.Services.AddScoped<AiAssistantService>();
 builder.Services.AddScoped<PromptTemplateService>();
 builder.Services.AddSingleton<AiRateLimitService>();
 
+// Per-tenant rate limiting service
+builder.Services.AddSingleton<ITenantRateLimitService, TenantRateLimitService>();
+
 // Azure OpenAI configuration
 var azureOpenAIConfig = builder.Configuration.GetSection("AzureOpenAI");
 builder.Services.Configure<AzureOpenAIConfiguration>(options =>
@@ -152,6 +155,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Per-tenant rate limiting (after authentication to access tenant claims)
+app.UseTenantRateLimiting();
 
 app.MapControllers();
 
