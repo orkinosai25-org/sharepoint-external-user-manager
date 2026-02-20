@@ -154,7 +154,6 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 100,
                 Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0 // No queueing - reject immediately when limit exceeded
             });
     });
@@ -172,14 +171,13 @@ builder.Services.AddRateLimiter(options =>
             tenantId,
             context.HttpContext.Request.Path);
 
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         context.HttpContext.Response.ContentType = "application/json";
         
         var response = new
         {
             error = "RATE_LIMIT_EXCEEDED",
             message = "Too many requests. Please try again later.",
-            retryAfter = "60 seconds"
+            retryAfter = 60
         };
         
         await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);

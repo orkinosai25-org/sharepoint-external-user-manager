@@ -58,9 +58,11 @@ When a client exceeds the rate limit, the API returns:
 {
   "error": "RATE_LIMIT_EXCEEDED",
   "message": "Too many requests. Please try again later.",
-  "retryAfter": "60 seconds"
+  "retryAfter": 60
 }
 ```
+
+Note: `retryAfter` is in seconds.
 
 ## Best Practices for Clients
 
