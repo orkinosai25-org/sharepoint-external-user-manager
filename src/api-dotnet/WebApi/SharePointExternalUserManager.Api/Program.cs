@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
@@ -7,6 +8,7 @@ using SharePointExternalUserManager.Api.Middleware;
 using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Services.Search;
 using System.Reflection;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -138,6 +140,52 @@ builder.Services.AddSwaggerGen(options =>
     options.OrderActionsBy(apiDesc => $"{apiDesc.RelativePath}_{apiDesc.HttpMethod}");
 });
 
+// Configure rate limiting per tenant
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        // Extract tenant ID from JWT claims
+        var tenantId = context.User?.FindFirst("tid")?.Value ?? "anonymous";
+        
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: tenantId,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0 // No queueing - reject immediately when limit exceeded
+            });
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    
+    // Customize the response when rate limit is exceeded
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var tenantId = context.HttpContext.User?.FindFirst("tid")?.Value ?? "anonymous";
+        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogWarning(
+            "Rate limit exceeded for tenant {TenantId} on path {Path}",
+            tenantId,
+            context.HttpContext.Request.Path);
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+        
+        var response = new
+        {
+            error = "RATE_LIMIT_EXCEEDED",
+            message = "Too many requests. Please try again later.",
+            retryAfter = "60 seconds"
+        };
+        
+        await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+    };
+});
+
 var app = builder.Build();
 
 // Global exception handling middleware (must be early in pipeline)
@@ -150,9 +198,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Rate limiting middleware (after exception handler, before authentication)
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
+
+// Make Program class accessible to integration tests
+public partial class Program { }
