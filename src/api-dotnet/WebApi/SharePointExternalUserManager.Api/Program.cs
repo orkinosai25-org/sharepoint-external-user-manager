@@ -189,11 +189,69 @@ var app = builder.Build();
 // Global exception handling middleware (must be early in pipeline)
 app.UseGlobalExceptionHandler();
 
-// Swagger is only enabled in Development environment for security
-if (app.Environment.IsDevelopment())
+// Swagger configuration with security
+var swaggerEnabled = builder.Configuration.GetValue<bool>("Swagger:Enabled", true);
+var swaggerRequireAuth = builder.Configuration.GetValue<bool>("Swagger:RequireAuthentication", false);
+var swaggerAllowedRoles = builder.Configuration.GetSection("Swagger:AllowedRoles").Get<string[]>() ?? Array.Empty<string>();
+
+// In Development: Swagger is always enabled without authentication
+// In Production: Swagger is disabled by default, but can be enabled with authentication
+var enableSwagger = app.Environment.IsDevelopment() || (swaggerEnabled && !app.Environment.IsProduction());
+
+if (enableSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else if (swaggerEnabled && app.Environment.IsProduction() && swaggerRequireAuth)
+{
+    // Production with authentication required - enable Swagger with auth middleware
+    app.UseWhen(
+        context => context.Request.Path.StartsWithSegments("/swagger"),
+        appBuilder =>
+        {
+            appBuilder.Use(async (context, next) =>
+            {
+                // Check if user is authenticated
+                if (!context.User.Identity?.IsAuthenticated ?? true)
+                {
+                    context.Response.StatusCode = 401;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "UNAUTHORIZED",
+                        message = "Authentication required to access Swagger documentation"
+                    });
+                    return;
+                }
+
+                // Check if role-based access is configured
+                if (swaggerAllowedRoles.Length > 0)
+                {
+                    var hasRequiredRole = swaggerAllowedRoles.Any(role =>
+                        context.User.IsInRole(role) ||
+                        context.User.HasClaim("roles", role));
+
+                    if (!hasRequiredRole)
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            error = "FORBIDDEN",
+                            message = "Insufficient permissions to access Swagger documentation"
+                        });
+                        return;
+                    }
+                }
+
+                await next();
+            });
+        });
+
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+    });
 }
 
 // Rate limiting middleware (after exception handler, before authentication)
