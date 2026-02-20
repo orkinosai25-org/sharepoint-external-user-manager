@@ -31,10 +31,12 @@ public class AiAssistantControllerTests : IDisposable
             .Options;
         _context = new ApplicationDbContext(options);
 
-        // Create mocks - we'll use null for services not needed in GetUsageStats
+        // Create mocks
         _mockLogger = new Mock<ILogger<AiAssistantController>>();
 
-        // Create controller with null services (GetUsageStats doesn't use them)
+        // Create controller with null services for tests that only use GetUsageStats
+        // GetUsageStats doesn't use AiAssistantService, AiRateLimitService, or PromptTemplateService
+        // If testing other endpoints, these services must be properly mocked
         _controller = new AiAssistantController(
             _context,
             null!, // AiAssistantService not used in GetUsageStats

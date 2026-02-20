@@ -396,6 +396,7 @@ public class AiAssistantController : ControllerBase
         int? maxMessagesPerMonth = null;
         decimal? messageLimitUsedPercentage = null;
         string? planTier = null;
+        int messagesThisMonthCount = thisMonth.Count();
 
         if (subscription != null)
         {
@@ -406,7 +407,7 @@ public class AiAssistantController : ControllerBase
                 maxMessagesPerMonth = planDef.Limits.MaxAiMessagesPerMonth;
                 if (maxMessagesPerMonth.HasValue && maxMessagesPerMonth.Value > 0)
                 {
-                    messageLimitUsedPercentage = (decimal)thisMonth.Count() / maxMessagesPerMonth.Value * 100;
+                    messageLimitUsedPercentage = (decimal)messagesThisMonthCount / maxMessagesPerMonth.Value * 100;
                 }
             }
         }
@@ -416,7 +417,7 @@ public class AiAssistantController : ControllerBase
             TenantId = tenantId,
             TotalConversations = logs.Select(l => l.ConversationId).Distinct().Count(),
             TotalMessages = logs.Count,
-            MessagesThisMonth = thisMonth.Count(),
+            MessagesThisMonth = messagesThisMonthCount,
             MaxMessagesPerMonth = maxMessagesPerMonth,
             MessageLimitUsedPercentage = messageLimitUsedPercentage,
             TokensUsedThisMonth = settings?.TokensUsedThisMonth ?? 0,
