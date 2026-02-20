@@ -195,15 +195,16 @@ var swaggerRequireAuth = builder.Configuration.GetValue<bool>("Swagger:RequireAu
 var swaggerAllowedRoles = builder.Configuration.GetSection("Swagger:AllowedRoles").Get<string[]>() ?? Array.Empty<string>();
 
 // In Development: Swagger is always enabled without authentication
-// In Production: Swagger is disabled by default, but can be enabled with authentication
-var enableSwagger = app.Environment.IsDevelopment() || (swaggerEnabled && !app.Environment.IsProduction());
+// In other environments: Respect configuration (disabled by default in Production)
+var enableSwaggerWithoutAuth = app.Environment.IsDevelopment() || 
+                               (swaggerEnabled && !app.Environment.IsProduction() && !swaggerRequireAuth);
 
-if (enableSwagger)
+if (enableSwaggerWithoutAuth)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-else if (swaggerEnabled && app.Environment.IsProduction() && swaggerRequireAuth)
+else if (swaggerEnabled && swaggerRequireAuth)
 {
     // Production with authentication required - enable Swagger with auth middleware
     app.UseWhen(
@@ -213,7 +214,7 @@ else if (swaggerEnabled && app.Environment.IsProduction() && swaggerRequireAuth)
             appBuilder.Use(async (context, next) =>
             {
                 // Check if user is authenticated
-                if (!context.User.Identity?.IsAuthenticated ?? true)
+                if (context.User.Identity == null || !context.User.Identity.IsAuthenticated)
                 {
                     context.Response.StatusCode = 401;
                     await context.Response.WriteAsJsonAsync(new
