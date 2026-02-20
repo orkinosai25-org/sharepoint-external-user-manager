@@ -56,8 +56,9 @@ public class RoleAuthorizationHandler : AuthorizationHandler<RoleRequirement>
         }
 
         // Check if user is the primary admin (automatic TenantOwner)
-        if (tenant.PrimaryAdminEmail.Equals(context.User.FindFirst("email")?.Value, 
-            StringComparison.OrdinalIgnoreCase))
+        var email = context.User.FindFirst("email")?.Value;
+        if (!string.IsNullOrEmpty(email) && 
+            tenant.PrimaryAdminEmail.Equals(email, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogInformation("User {UserId} is primary admin for tenant {TenantId}", 
                 userId, tenant.Id);
