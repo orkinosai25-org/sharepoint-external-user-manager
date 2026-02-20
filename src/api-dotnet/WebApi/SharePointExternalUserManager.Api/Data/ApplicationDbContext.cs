@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AiSettingsEntity> AiSettings => Set<AiSettingsEntity>();
     public DbSet<AiConversationLogEntity> AiConversationLogs => Set<AiConversationLogEntity>();
     public DbSet<TenantAuthEntity> TenantAuth => Set<TenantAuthEntity>();
+    public DbSet<TenantUserEntity> TenantUsers => Set<TenantUserEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -178,6 +179,37 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.TokenExpiresAt)
                 .HasDatabaseName("IX_TenantAuth_TokenExpiry")
                 .HasFilter("[TokenExpiresAt] IS NOT NULL");
+
+            // Configure relationship with Tenant
+            entity.HasOne(e => e.Tenant)
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure TenantUser
+        modelBuilder.Entity<TenantUserEntity>(entity =>
+        {
+            // Index on TenantId for tenant isolation
+            entity.HasIndex(e => e.TenantId)
+                .HasDatabaseName("IX_TenantUsers_TenantId");
+
+            // Unique constraint: one user can have only one role per tenant
+            entity.HasIndex(e => new { e.TenantId, e.UserId })
+                .IsUnique()
+                .HasDatabaseName("UQ_TenantUsers_TenantId_UserId");
+
+            // Index on UserId for user lookup across tenants
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_TenantUsers_UserId");
+
+            // Index on Email for email-based searches
+            entity.HasIndex(e => new { e.TenantId, e.Email })
+                .HasDatabaseName("IX_TenantUsers_TenantId_Email");
+
+            // Index on Role for role-based queries
+            entity.HasIndex(e => new { e.TenantId, e.Role })
+                .HasDatabaseName("IX_TenantUsers_TenantId_Role");
 
             // Configure relationship with Tenant
             entity.HasOne(e => e.Tenant)
