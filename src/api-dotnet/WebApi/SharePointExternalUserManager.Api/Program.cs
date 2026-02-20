@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
+using SharePointExternalUserManager.Api.Authorization;
 using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Middleware;
 using SharePointExternalUserManager.Api.Services;
@@ -56,6 +58,26 @@ builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddSingleton<ISearchService, SearchService>(); // Search service with mock data
 builder.Services.AddHttpClient(); // For OAuth service HTTP calls
+
+// Register authorization services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
+
+// Configure authorization policies for RBAC
+builder.Services.AddAuthorization(options =>
+{
+    // TenantOwner and TenantAdmin can create, update, delete resources
+    options.AddPolicy("RequireAdmin", policy =>
+        policy.Requirements.Add(new RoleRequirement("TenantOwner", "TenantAdmin")));
+
+    // All authenticated users (including Viewer) can read resources
+    options.AddPolicy("RequireViewer", policy =>
+        policy.Requirements.Add(new RoleRequirement("TenantOwner", "TenantAdmin", "Viewer")));
+
+    // Only TenantOwner can manage subscriptions and tenant settings
+    options.AddPolicy("RequireOwner", policy =>
+        policy.Requirements.Add(new RoleRequirement("TenantOwner")));
+});
 
 // AI Assistant services
 builder.Services.AddMemoryCache(); // For rate limiting
