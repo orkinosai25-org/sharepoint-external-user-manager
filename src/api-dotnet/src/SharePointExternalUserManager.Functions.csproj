@@ -17,9 +17,9 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.7" />
     
     <!-- Authentication & Authorization -->
-    <PackageReference Include="Microsoft.Identity.Web" Version="3.6.0" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.6.1" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.1" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.10.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.12.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
     
     <!-- Database Access -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />

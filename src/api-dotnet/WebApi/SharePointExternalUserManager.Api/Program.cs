@@ -189,18 +189,52 @@ var app = builder.Build();
 // Global exception handling middleware (must be early in pipeline)
 app.UseGlobalExceptionHandler();
 
-// Swagger is only enabled in Development environment for security
+// Configure Swagger based on environment and settings
+// ISSUE-08: Secure Swagger in Production
+// Options:
+// 1. Disabled in Production (default, most secure)
+// 2. Protected by authentication (set SwaggerSettings:EnableInProduction = true)
+var enableSwaggerInProduction = builder.Configuration.GetValue<bool>("SwaggerSettings:EnableInProduction", false);
+
 if (app.Environment.IsDevelopment())
 {
+    // Always enabled in Development
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "SharePoint External User Manager API v1");
+        options.RoutePrefix = "swagger";
+    });
 }
+else if (enableSwaggerInProduction)
+{
+    // Production with Swagger enabled - requires authentication
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "SharePoint External User Manager API v1");
+        options.RoutePrefix = "swagger";
+        
+        // Add authentication requirement for Swagger UI in production
+        options.ConfigObject.AdditionalItems.Add("persistAuthorization", "true");
+    });
+    
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogWarning("Swagger is enabled in Production environment. Ensure proper authentication is configured.");
+}
+// else: Swagger is disabled in Production (default secure behavior)
 
 // Rate limiting middleware (after exception handler, before authentication)
 app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add Swagger authorization middleware if Swagger is enabled in production
+if (!app.Environment.IsDevelopment() && enableSwaggerInProduction)
+{
+    app.UseSwaggerAuthorization();
+}
 
 app.MapControllers();
 
