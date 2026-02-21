@@ -68,8 +68,7 @@ The Central Tenant Dashboard API requested in this issue has been **completely i
 
 #### Key Features
 - **Efficient Data Aggregation**: Minimizes database queries
-- **Parallel Processing**: External user counts fetched in parallel across sites
-- **Error Resilience**: Continues processing even if one site fails
+- **Sequential Processing with Error Resilience**: External user counts fetched sequentially; continues processing even if one site fails
 - **Smart Quick Actions**: Context-aware suggestions based on:
   - Plan limits
   - Trial expiry status
@@ -79,7 +78,7 @@ The Central Tenant Dashboard API requested in this issue has been **completely i
 #### Performance Metrics
 - **Target Response Time**: < 2 seconds
 - **Database Queries**: Optimized to 2 main queries
-- **External API Calls**: Parallelized SharePoint Graph API calls
+- **External API Calls**: Sequential SharePoint Graph API calls with error resilience
 
 ---
 
@@ -255,7 +254,7 @@ The endpoint is fully documented in Swagger/OpenAPI:
 ### SharePoint Service
 - Fetches external users via `ISharePointService`
 - Handles Graph API failures gracefully
-- Parallel processing for multiple sites
+- Sequential processing for multiple sites with error resilience
 
 ### Audit Logging
 - Request tracking with correlation IDs
@@ -292,6 +291,7 @@ The code is production-ready with:
 
 ### Optimization Opportunities (for future)
 - Add caching layer for frequently accessed data
+- Implement parallel external user fetches using Task.WhenAll for better performance
 - Implement background aggregation for large tenants
 - Use materialized views for statistics
 
@@ -301,7 +301,7 @@ The code is production-ready with:
 
 ### Current Limitations
 1. **No Caching**: Fresh data fetched on every request
-2. **Synchronous Processing**: External user counts fetched sequentially per site (mitigated by try-catch)
+2. **Sequential Processing**: External user counts fetched sequentially per site (error-resilient with try-catch)
 3. **Storage Tracking**: `MaxStorageGB` not currently tracked
 
 ### Recommended Future Enhancements
