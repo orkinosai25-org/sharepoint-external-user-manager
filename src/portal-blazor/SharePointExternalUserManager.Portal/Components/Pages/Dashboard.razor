@@ -287,7 +287,7 @@
                     @if (isLoadingClients)
                     {
                         <SharePointExternalUserManager.Portal.Components.Shared.SkeletonTable 
-                            Headers="@(new List<string> { "Client Reference", "Client Name", "Status", "External Users", "Documents", "SharePoint Site", "Created Date", "Actions" })"
+                            Headers="@ClientSpacesTableHeaders"
                             RowCount="3" />
                     }
                     else if (!string.IsNullOrEmpty(clientsError))
@@ -479,6 +479,12 @@
 </style>
 
 @code {
+    private static readonly List<string> ClientSpacesTableHeaders = new()
+    {
+        "Client Reference", "Client Name", "Status", "External Users",
+        "Documents", "SharePoint Site", "Created Date", "Actions"
+    };
+
     private bool isLoadingDashboard = true;
     private bool isLoadingClients = true;
     private bool showCreateModal = false;

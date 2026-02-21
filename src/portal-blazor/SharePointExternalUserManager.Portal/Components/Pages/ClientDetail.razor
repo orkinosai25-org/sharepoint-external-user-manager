@@ -41,7 +41,7 @@
                     </div>
                     <div class="card-body">
                         <SharePointExternalUserManager.Portal.Components.Shared.SkeletonTable 
-                            Headers="@(new List<string> { "Email", "Name", "Status", "Actions" })"
+                            Headers="@ExternalUsersTableHeaders"
                             RowCount="3" />
                     </div>
                 </div>
@@ -453,6 +453,11 @@
 }
 
 @code {
+    private static readonly List<string> ExternalUsersTableHeaders = new()
+    {
+        "Email", "Name", "Status", "Actions"
+    };
+
     [Parameter]
     public int ClientId { get; set; }
 

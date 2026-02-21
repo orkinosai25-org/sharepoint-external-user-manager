@@ -32,4 +32,10 @@
 
     [Parameter]
     public int RowCount { get; set; } = 3;
+
+    protected override void OnParametersSet()
+    {
+        // Ensure Headers is never null to prevent errors in the foreach loop
+        Headers ??= new List<string>();
+    }
 }
