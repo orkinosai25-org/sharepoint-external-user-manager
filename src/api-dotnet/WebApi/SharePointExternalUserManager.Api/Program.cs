@@ -54,6 +54,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddScoped<IPlanEnforcementService, PlanEnforcementService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
+builder.Services.AddScoped<ITenantUserService, TenantUserService>();
 builder.Services.AddSingleton<ISearchService, SearchService>(); // Search service with mock data
 builder.Services.AddHttpClient(); // For OAuth service HTTP calls
 
