@@ -1,0 +1,78 @@
+@using SharePointExternalUserManager.Portal.Models
+@implements IDisposable
+
+<div class="toast-notification toast-@Type.ToString().ToLower() @(IsVisible ? "show" : "")" role="alert">
+    <div class="toast-icon">
+        @switch (Type)
+        {
+            case NotificationType.Success:
+                <i class="bi bi-check-circle-fill"></i>
+                break;
+            case NotificationType.Error:
+                <i class="bi bi-exclamation-circle-fill"></i>
+                break;
+            case NotificationType.Warning:
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                break;
+            case NotificationType.Info:
+                <i class="bi bi-info-circle-fill"></i>
+                break;
+        }
+    </div>
+    <div class="toast-message">
+        @Message
+    </div>
+    <button type="button" class="toast-close" @onclick="Dismiss">
+        <i class="bi bi-x"></i>
+    </button>
+</div>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    [Parameter]
+    public NotificationType Type { get; set; } = NotificationType.Info;
+
+    [Parameter]
+    public int DurationMs { get; set; } = 5000;
+
+    [Parameter]
+    public bool AutoDismiss { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private bool IsVisible { get; set; } = false;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Delay to trigger animation
+        await Task.Delay(100);
+        IsVisible = true;
+        
+        if (AutoDismiss && DurationMs > 0)
+        {
+            _timer = new System.Threading.Timer(async _ =>
+            {
+                await InvokeAsync(Dismiss);
+            }, null, DurationMs, System.Threading.Timeout.Infinite);
+        }
+    }
+
+    private async Task Dismiss()
+    {
+        IsVisible = false;
+        await InvokeAsync(StateHasChanged);
+        
+        // Wait for animation to complete before notifying parent
+        await Task.Delay(300);
+        await OnDismiss.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

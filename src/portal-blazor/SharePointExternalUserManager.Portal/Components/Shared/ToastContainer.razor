@@ -1,0 +1,33 @@
+@using SharePointExternalUserManager.Portal.Services
+@using SharePointExternalUserManager.Portal.Models
+@inject NotificationService NotificationService
+@implements IDisposable
+
+<div class="toast-container">
+    @foreach (var notification in NotificationService.Notifications)
+    {
+        <ToastNotification 
+            Message="@notification.Message"
+            Type="@notification.Type"
+            DurationMs="@notification.DurationMs"
+            AutoDismiss="@notification.AutoDismiss"
+            OnDismiss="@(() => HandleDismiss(notification.Id))" />
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NotificationService.OnChange += StateHasChanged;
+    }
+
+    private void HandleDismiss(Guid notificationId)
+    {
+        NotificationService.Remove(notificationId);
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnChange -= StateHasChanged;
+    }
+}

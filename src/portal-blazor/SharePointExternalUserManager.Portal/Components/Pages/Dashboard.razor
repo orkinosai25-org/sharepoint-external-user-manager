@@ -1,6 +1,7 @@
 @page "/dashboard"
 @attribute [Authorize]
 @inject Services.ApiClient ApiClient
+@inject Services.NotificationService NotificationService
 @inject NavigationManager Navigation
 @inject ILogger<Dashboard> Logger
 
@@ -642,7 +643,7 @@
 
         if (string.IsNullOrWhiteSpace(newClientReference) || string.IsNullOrWhiteSpace(newClientName))
         {
-            createError = "Client Reference and Client Name are required";
+            NotificationService.ShowError("Client Reference and Client Name are required");
             return;
         }
 
@@ -659,6 +660,9 @@
             var result = await ApiClient.CreateClientAsync(request);
             if (result != null)
             {
+                // Show success notification
+                NotificationService.ShowSuccess($"Client space '{result.ClientName}' created successfully!");
+                
                 // Refresh client list
                 await LoadClients();
                 HideCreateClientModal();
@@ -667,7 +671,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to create client");
-            createError = "Failed to create client space. Please try again.";
+            NotificationService.ShowError("Failed to create client space. Please try again.");
         }
         finally
         {
