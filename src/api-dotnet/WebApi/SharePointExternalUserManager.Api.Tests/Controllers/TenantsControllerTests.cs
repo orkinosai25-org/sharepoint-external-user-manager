@@ -18,6 +18,7 @@ public class TenantsControllerTests : IDisposable
     private readonly ApplicationDbContext _context;
     private readonly TenantsController _controller;
     private readonly IAuditLogService _auditLogService;
+    private readonly MockTenantUserService _tenantUserService;
 
     public TenantsControllerTests()
     {
@@ -28,9 +29,11 @@ public class TenantsControllerTests : IDisposable
 
         _context = new ApplicationDbContext(options);
         _auditLogService = new MockAuditLogService();
+        _tenantUserService = new MockTenantUserService();
         _controller = new TenantsController(
             _context,
             _auditLogService,
+            _tenantUserService,
             new NullLogger<TenantsController>());
     }
 
@@ -262,10 +265,59 @@ public class TenantsControllerTests : IDisposable
 /// </summary>
 internal class MockAuditLogService : IAuditLogService
 {
-    public Task LogActionAsync(int tenantId, string userId, string userEmail, string actionType,
-        string entityType, string entityId, string description, string? ipAddress,
-        string? correlationId, string result)
+    public Task LogActionAsync(int tenantId, string? userId, string? userEmail, string action,
+        string? resourceType, string? resourceId, string? details, string? ipAddress,
+        string? correlationId, string status)
     {
         return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Mock tenant user service for testing
+/// </summary>
+internal class MockTenantUserService : ITenantUserService
+{
+    public Task<List<TenantUserResponse>> GetTenantUsersAsync(int tenantId)
+    {
+        return Task.FromResult(new List<TenantUserResponse>());
+    }
+
+    public Task<TenantUserResponse?> GetTenantUserAsync(int tenantId, string azureAdObjectId)
+    {
+        return Task.FromResult<TenantUserResponse?>(null);
+    }
+
+    public Task<TenantUserResponse> AssignRoleAsync(int tenantId, AssignRoleRequest request, string createdByUserId)
+    {
+        return Task.FromResult(new TenantUserResponse
+        {
+            Id = 1,
+            AzureAdObjectId = request.AzureAdObjectId,
+            UserPrincipalName = request.UserPrincipalName,
+            Role = request.Role,
+            IsActive = true,
+            CreatedDate = DateTime.UtcNow
+        });
+    }
+
+    public Task<TenantUserResponse> UpdateRoleAsync(int tenantId, string azureAdObjectId, TenantRole newRole)
+    {
+        return Task.FromResult(new TenantUserResponse());
+    }
+
+    public Task<bool> RemoveUserAsync(int tenantId, string azureAdObjectId)
+    {
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> HasRoleAsync(int tenantId, string azureAdObjectId, TenantRole minimumRole)
+    {
+        return Task.FromResult(true);
+    }
+
+    public Task<TenantRole?> GetUserRoleAsync(int tenantId, string azureAdObjectId)
+    {
+        return Task.FromResult<TenantRole?>(TenantRole.TenantOwner);
     }
 }
