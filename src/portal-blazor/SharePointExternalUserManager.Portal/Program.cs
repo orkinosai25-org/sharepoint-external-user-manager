@@ -107,6 +107,9 @@ builder.Services.AddHttpClient<ApiClient>(client =>
 builder.Services.AddHttpClient<ChatService>();
 builder.Services.AddScoped<ChatService>();
 
+// Add Notification Service
+builder.Services.AddScoped<NotificationService>();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
