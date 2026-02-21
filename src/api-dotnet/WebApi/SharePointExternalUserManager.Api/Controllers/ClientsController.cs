@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SharePointExternalUserManager.Api.Attributes;
 using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Data.Entities;
+using SharePointExternalUserManager.Api.Models;
 using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
 using SharePointExternalUserManager.Functions.Models.Clients;
@@ -44,6 +46,7 @@ public class ClientsController : ControllerBase
     /// Get all clients for the authenticated tenant
     /// </summary>
     [HttpGet]
+    [RequiresRole(TenantRole.Viewer)]
     public async Task<IActionResult> GetClients()
     {
         var tenantIdClaim = User.FindFirst("tid")?.Value;
@@ -86,6 +89,7 @@ public class ClientsController : ControllerBase
     /// Get a specific client by ID
     /// </summary>
     [HttpGet("{id}")]
+    [RequiresRole(TenantRole.Viewer)]
     public async Task<IActionResult> GetClient(int id)
     {
         var tenantIdClaim = User.FindFirst("tid")?.Value;
@@ -128,6 +132,7 @@ public class ClientsController : ControllerBase
     /// Create a new client space with SharePoint site provisioning
     /// </summary>
     [HttpPost]
+    [RequiresRole(TenantRole.TenantAdmin)]
     public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -332,6 +337,7 @@ public class ClientsController : ControllerBase
     /// Get all external users for a client site
     /// </summary>
     [HttpGet("{id}/external-users")]
+    [RequiresRole(TenantRole.Viewer)]
     public async Task<IActionResult> GetExternalUsers(int id)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -377,6 +383,7 @@ public class ClientsController : ControllerBase
     /// Invite an external user to a client site
     /// </summary>
     [HttpPost("{id}/external-users")]
+    [RequiresRole(TenantRole.TenantAdmin)]
     public async Task<IActionResult> InviteExternalUser(int id, [FromBody] InviteExternalUserRequest request)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -478,6 +485,7 @@ public class ClientsController : ControllerBase
     /// Remove an external user from a client site
     /// </summary>
     [HttpDelete("{id}/external-users/{email}")]
+    [RequiresRole(TenantRole.TenantAdmin)]
     public async Task<IActionResult> RemoveExternalUser(int id, string email)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -568,6 +576,7 @@ public class ClientsController : ControllerBase
     /// Get all document libraries for a client site
     /// </summary>
     [HttpGet("{id}/libraries")]
+    [RequiresRole(TenantRole.Viewer)]
     public async Task<IActionResult> GetLibraries(int id)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -611,6 +620,7 @@ public class ClientsController : ControllerBase
     /// Create a new document library in a client site
     /// </summary>
     [HttpPost("{id}/libraries")]
+    [RequiresRole(TenantRole.TenantAdmin)]
     public async Task<IActionResult> CreateLibrary(int id, [FromBody] CreateLibraryRequest request)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -708,6 +718,7 @@ public class ClientsController : ControllerBase
     /// Get all lists for a client site
     /// </summary>
     [HttpGet("{id}/lists")]
+    [RequiresRole(TenantRole.Viewer)]
     public async Task<IActionResult> GetLists(int id)
     {
         var correlationId = Guid.NewGuid().ToString();
@@ -751,6 +762,7 @@ public class ClientsController : ControllerBase
     /// Create a new list in a client site
     /// </summary>
     [HttpPost("{id}/lists")]
+    [RequiresRole(TenantRole.TenantAdmin)]
     public async Task<IActionResult> CreateList(int id, [FromBody] CreateListRequest request)
     {
         var correlationId = Guid.NewGuid().ToString();
