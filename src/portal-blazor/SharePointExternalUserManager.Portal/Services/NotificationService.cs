@@ -1,4 +1,5 @@
 using SharePointExternalUserManager.Portal.Models;
+using System.Collections.Concurrent;
 
 namespace SharePointExternalUserManager.Portal.Services;
 
@@ -7,7 +8,7 @@ namespace SharePointExternalUserManager.Portal.Services;
 /// </summary>
 public class NotificationService
 {
-    private readonly List<NotificationMessage> _notifications = new();
+    private readonly ConcurrentBag<NotificationMessage> _notifications = new();
     
     /// <summary>
     /// Event raised when the notification list changes
@@ -17,7 +18,7 @@ public class NotificationService
     /// <summary>
     /// Get all current notifications
     /// </summary>
-    public IReadOnlyList<NotificationMessage> Notifications => _notifications.AsReadOnly();
+    public IReadOnlyList<NotificationMessage> Notifications => _notifications.ToList().AsReadOnly();
 
     /// <summary>
     /// Show a success notification
@@ -56,12 +57,17 @@ public class NotificationService
     /// </summary>
     public void Remove(Guid notificationId)
     {
-        var notification = _notifications.FirstOrDefault(n => n.Id == notificationId);
-        if (notification != null)
+        var updatedList = _notifications.Where(n => n.Id != notificationId).ToList();
+        
+        // Clear and repopulate (ConcurrentBag doesn't support direct removal)
+        while (_notifications.TryTake(out _)) { }
+        
+        foreach (var notification in updatedList)
         {
-            _notifications.Remove(notification);
-            NotifyStateChanged();
+            _notifications.Add(notification);
         }
+        
+        NotifyStateChanged();
     }
 
     /// <summary>
@@ -69,7 +75,7 @@ public class NotificationService
     /// </summary>
     public void ClearAll()
     {
-        _notifications.Clear();
+        while (_notifications.TryTake(out _)) { }
         NotifyStateChanged();
     }
 

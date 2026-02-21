@@ -49,17 +49,18 @@
     protected override void OnInitialized()
     {
         // Delay to trigger animation
-        Task.Delay(100).ContinueWith(_ =>
+        _ = Task.Run(async () =>
         {
+            await Task.Delay(100);
             IsVisible = true;
-            InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
         });
 
         if (AutoDismiss && DurationMs > 0)
         {
             _timer = new System.Threading.Timer(_ =>
             {
-                InvokeAsync(Dismiss);
+                _ = InvokeAsync(Dismiss);
             }, null, DurationMs, System.Threading.Timeout.Infinite);
         }
     }
