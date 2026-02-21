@@ -1,5 +1,4 @@
 using SharePointExternalUserManager.Portal.Models;
-using System.Collections.Concurrent;
 
 namespace SharePointExternalUserManager.Portal.Services;
 
@@ -8,7 +7,8 @@ namespace SharePointExternalUserManager.Portal.Services;
 /// </summary>
 public class NotificationService
 {
-    private readonly ConcurrentBag<NotificationMessage> _notifications = new();
+    private readonly List<NotificationMessage> _notifications = new();
+    private readonly object _lock = new();
     
     /// <summary>
     /// Event raised when the notification list changes
@@ -18,7 +18,16 @@ public class NotificationService
     /// <summary>
     /// Get all current notifications
     /// </summary>
-    public IReadOnlyList<NotificationMessage> Notifications => _notifications.ToList().AsReadOnly();
+    public IReadOnlyList<NotificationMessage> Notifications
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _notifications.ToList().AsReadOnly();
+            }
+        }
+    }
 
     /// <summary>
     /// Show a success notification
@@ -57,16 +66,14 @@ public class NotificationService
     /// </summary>
     public void Remove(Guid notificationId)
     {
-        var updatedList = _notifications.Where(n => n.Id != notificationId).ToList();
-        
-        // Clear and repopulate (ConcurrentBag doesn't support direct removal)
-        while (_notifications.TryTake(out _)) { }
-        
-        foreach (var notification in updatedList)
+        lock (_lock)
         {
-            _notifications.Add(notification);
+            var notification = _notifications.FirstOrDefault(n => n.Id == notificationId);
+            if (notification != null)
+            {
+                _notifications.Remove(notification);
+            }
         }
-        
         NotifyStateChanged();
     }
 
@@ -75,7 +82,10 @@ public class NotificationService
     /// </summary>
     public void ClearAll()
     {
-        while (_notifications.TryTake(out _)) { }
+        lock (_lock)
+        {
+            _notifications.Clear();
+        }
         NotifyStateChanged();
     }
 
@@ -89,7 +99,10 @@ public class NotificationService
             AutoDismiss = true
         };
 
-        _notifications.Add(notification);
+        lock (_lock)
+        {
+            _notifications.Add(notification);
+        }
         NotifyStateChanged();
     }
 
