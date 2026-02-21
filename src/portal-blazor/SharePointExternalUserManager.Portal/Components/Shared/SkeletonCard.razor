@@ -1,0 +1,28 @@
+@* Skeleton loading component for card-style content *@
+
+<div class="card border-@BorderColor">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="flex-grow-1">
+                <div class="skeleton skeleton-text skeleton-text-sm mb-2" style="width: 60%;"></div>
+                <div class="skeleton skeleton-text skeleton-text-xl mb-1" style="width: 40%;"></div>
+                <div class="skeleton skeleton-text skeleton-text-xs" style="width: 50%;"></div>
+            </div>
+            <div class="skeleton skeleton-circle" style="width: 2.5rem; height: 2.5rem;"></div>
+        </div>
+        @if (ShowProgress)
+        {
+            <div class="mt-2">
+                <div class="skeleton skeleton-rect" style="height: 5px; width: 100%;"></div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string BorderColor { get; set; } = "secondary";
+
+    [Parameter]
+    public bool ShowProgress { get; set; } = false;
+}

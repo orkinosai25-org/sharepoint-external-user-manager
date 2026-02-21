@@ -70,3 +70,60 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+/* Skeleton Loading Styles */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-text-xs {
+    height: 0.75rem;
+}
+
+.skeleton-text-sm {
+    height: 0.875rem;
+}
+
+.skeleton-text-md {
+    height: 1rem;
+}
+
+.skeleton-text-lg {
+    height: 1.25rem;
+}
+
+.skeleton-text-xl {
+    height: 2rem;
+}
+
+.skeleton-circle {
+    border-radius: 50%;
+}
+
+.skeleton-rect {
+    border-radius: 4px;
+}
+
+.skeleton-action-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: white;
+    min-height: 80px;
+}
