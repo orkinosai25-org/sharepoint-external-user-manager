@@ -97,11 +97,14 @@ public class GraphRetryPolicyServiceTests
                 }
             };
             throw odataError;
+#pragma warning disable CS0162 // Unreachable code detected
+            return Task.FromResult("never-reached");
+#pragma warning restore CS0162 // Unreachable code detected
         };
 
         // Act & Assert
         await Assert.ThrowsAsync<ODataError>(
-            () => _service.ExecuteWithRetryAsync(operation, "TestOperation"));
+            async () => await _service.ExecuteWithRetryAsync(operation, "TestOperation"));
 
         // Should fail immediately without retries for non-transient errors
         Assert.Equal(1, callCount);
@@ -232,11 +235,14 @@ public class GraphRetryPolicyServiceTests
                 }
             };
             throw odataError;
+#pragma warning disable CS0162 // Unreachable code detected
+            return Task.FromResult("never-reached");
+#pragma warning restore CS0162 // Unreachable code detected
         };
 
         // Act & Assert
         await Assert.ThrowsAsync<ODataError>(
-            () => _service.ExecuteWithRetryAsync(operation, "TestOperation"));
+            async () => await _service.ExecuteWithRetryAsync(operation, "TestOperation"));
 
         // Should attempt initial call + max retries (1 + 3 = 4)
         Assert.Equal(4, callCount);
@@ -354,11 +360,14 @@ public class GraphRetryPolicyServiceTests
                 }
             };
             throw odataError;
+#pragma warning disable CS0162 // Unreachable code detected
+            return Task.FromResult("never-reached");
+#pragma warning restore CS0162 // Unreachable code detected
         };
 
         // Act & Assert
         await Assert.ThrowsAsync<ODataError>(
-            () => _service.ExecuteWithRetryAsync(operation, "TestOperation"));
+            async () => await _service.ExecuteWithRetryAsync(operation, "TestOperation"));
 
         // Should fail immediately without retries
         Assert.Equal(1, callCount);

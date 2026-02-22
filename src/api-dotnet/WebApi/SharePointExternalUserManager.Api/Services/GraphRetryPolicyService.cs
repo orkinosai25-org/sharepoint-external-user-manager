@@ -136,7 +136,6 @@ public class GraphRetryPolicyService : IGraphRetryPolicyService
             "timeout",                       // Request timeout
             "activitylimitreached",         // Rate limiting
             "generalexception",             // General transient exception
-            "invalidrequest",               // Sometimes transient due to eventual consistency
             "requesttimeout",               // Request timeout
             "serviceunavailable",           // Service unavailable
             "throttledrequest",             // Throttling
