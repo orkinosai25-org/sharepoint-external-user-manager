@@ -92,7 +92,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
 
         var createRequest = new CreateClientRequest
         {
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Test Client Corporation",
             Description = "Integration test client"
         };
@@ -130,7 +130,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
             userPrincipalName: _userEmail,
             email: _userEmail);
 
-        var clientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}";
+        var clientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}";
         var createRequest = new CreateClientRequest
         {
             ClientReference = clientReference,
@@ -181,7 +181,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
         {
             var createRequest = new CreateClientRequest
             {
-                ClientReference = $"CLIENT-{i}-{Guid.NewGuid().ToString().Substring(0, 8)}",
+                ClientReference = $"CLIENT-{i}-{Guid.NewGuid().ToString()[..8]}",
                 ClientName = $"Test Client {i}",
                 Description = $"Test client {i}"
             };
@@ -214,7 +214,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
 
         var createRequest = new CreateClientRequest
         {
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Test Client",
             Description = "Test"
         };
@@ -250,7 +250,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
 
         var createRequest = new CreateClientRequest
         {
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Provisioning Test Client",
             Description = "Test"
         };
@@ -297,7 +297,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
 
         var createRequest = new CreateClientRequest
         {
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Original Name",
             Description = "Original description"
         };
@@ -348,7 +348,7 @@ public class ClientSiteManagementIntegrationTests : IClassFixture<TestWebApplica
 
         var createRequest = new CreateClientRequest
         {
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "To Be Deleted",
             Description = "Test"
         };

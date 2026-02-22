@@ -85,7 +85,7 @@ public class ExternalUserManagementIntegrationTests : IClassFixture<TestWebAppli
         var client = new ClientEntity
         {
             TenantId = _tenantDbId,
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Test Client",
             Description = "Test client for external users",
             SharePointSiteId = _siteId,
@@ -394,7 +394,7 @@ public class ExternalUserManagementIntegrationTests : IClassFixture<TestWebAppli
         var unprovisionedClient = new ClientEntity
         {
             TenantId = _tenantDbId,
-            ClientReference = $"UNPROV-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"UNPROV-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Unprovisioned Client",
             Description = "Not yet provisioned",
             ProvisioningStatus = "Pending",

@@ -191,7 +191,7 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
 
         var createRequest = new CreateClientRequest
         {
-            ClientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}",
+            ClientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}",
             ClientName = "Test Client",
             Description = "Test"
         };
@@ -322,7 +322,7 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
             userPrincipalName: _userEmail,
             email: _userEmail);
 
-        var clientReference = $"CLIENT-{Guid.NewGuid().ToString().Substring(0, 8)}";
+        var clientReference = $"CLIENT-{Guid.NewGuid().ToString()[..8]}";
 
         var createRequest1 = new CreateClientRequest
         {
