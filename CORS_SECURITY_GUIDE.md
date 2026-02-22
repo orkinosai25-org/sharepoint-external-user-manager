@@ -211,7 +211,47 @@ In Azure Portal → App Service → Configuration → Application Settings:
 
 ### SharePoint Online Sites
 
-To allow all SharePoint Online sites (for SPFx web parts):
+⚠️ **Important:** ASP.NET Core CORS middleware doesn't natively support wildcard domains in `WithOrigins()`.
+
+The following configuration **will NOT work** without additional code changes:
+
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://*.sharepoint.com"  // ❌ This requires custom implementation
+    ]
+  }
+}
+```
+
+**You must choose one of the following approaches:**
+
+#### Option 1: List Specific Tenant URLs (Recommended)
+
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://contoso.sharepoint.com",
+      "https://contoso-my.sharepoint.com",
+      "https://fabricam.sharepoint.com"
+    ]
+  }
+}
+```
+
+**Pros:**
+- Works out of the box with current implementation
+- More secure (explicit allowlist)
+- Easy to audit
+
+**Cons:**
+- Must update configuration for each new tenant
+
+#### Option 2: Implement Custom Wildcard Logic
+
+⚠️ **Note:** Requires modifying `Program.cs` - see implementation below.
 
 ```json
 {
@@ -223,9 +263,9 @@ To allow all SharePoint Online sites (for SPFx web parts):
 }
 ```
 
-**Note:** ASP.NET Core CORS middleware doesn't natively support wildcard domains in `WithOrigins()`. For production, you may need to implement custom CORS policy or list specific SharePoint tenant URLs.
+### Custom Wildcard Implementation (Requires Code Changes)
 
-### Custom Wildcard Implementation (If Needed)
+If you need wildcard support, replace the CORS configuration in `Program.cs` with:
 
 ```csharp
 builder.Services.AddCors(options =>

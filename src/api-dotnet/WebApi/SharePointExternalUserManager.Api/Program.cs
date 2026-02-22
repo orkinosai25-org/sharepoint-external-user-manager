@@ -112,8 +112,10 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // If no origins configured in production, CORS is effectively disabled
-            // This prevents accidental AllowAnyOrigin in production
+            // If no origins configured in production, CORS middleware will process requests
+            // but reject all origins (empty list). This is secure by default behavior.
+            // The middleware will not add CORS headers to responses, effectively blocking
+            // all cross-origin requests.
             policy.WithOrigins() // Empty origins list
                   .AllowAnyMethod()
                   .AllowAnyHeader();
