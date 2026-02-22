@@ -20,7 +20,8 @@ public class SharePointValidationServiceTests
         // For tests that need Graph API interaction, a proper mock would be required.
         var graphClient = null as GraphServiceClient;
         _mockLogger = new Mock<ILogger<SharePointService>>();
-        _service = new SharePointService(graphClient!, _mockLogger.Object);
+        var mockRetryPolicy = new Mock<IGraphRetryPolicyService>();
+        _service = new SharePointService(graphClient!, _mockLogger.Object, mockRetryPolicy.Object);
     }
 
     [Fact]
