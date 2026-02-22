@@ -82,6 +82,45 @@ builder.Services.Configure<AzureOpenAIConfiguration>(options =>
                          options.Endpoint.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
 });
 
+// Configure CORS with specific allowed origins (no AllowAnyOrigin)
+var corsOriginsConfig = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+var corsAllowedOrigins = corsOriginsConfig ?? Array.Empty<string>();
+
+// Add default origins if none configured (for development only)
+if (corsAllowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+{
+    corsAllowedOrigins = new[]
+    {
+        "https://localhost:5001",  // Portal development
+        "http://localhost:5001",
+        "https://localhost:7001",
+        "http://localhost:7001"
+    };
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowedOrigins", policy =>
+    {
+        if (corsAllowedOrigins.Length > 0)
+        {
+            // Configure specific allowed origins only
+            policy.WithOrigins(corsAllowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // If no origins configured in production, CORS is effectively disabled
+            // This prevents accidental AllowAnyOrigin in production
+            policy.WithOrigins() // Empty origins list
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+    });
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -190,6 +229,9 @@ var app = builder.Build();
 
 // Global exception handling middleware (must be early in pipeline)
 app.UseGlobalExceptionHandler();
+
+// CORS middleware (must be before authentication/authorization)
+app.UseCors("AllowedOrigins");
 
 // Swagger configuration with security
 var swaggerEnabled = builder.Configuration.GetValue<bool>("Swagger:Enabled", true);
