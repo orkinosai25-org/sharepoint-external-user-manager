@@ -4,6 +4,25 @@
 
 **The application will not work until you configure Azure AD credentials!**
 
+### Common Errors and Solutions
+
+#### AADSTS7000218: Missing client_secret Error
+
+If you see this error:
+```
+OpenIdConnectProtocolException: Message contains error: 'invalid_client', 
+error_description: 'AADSTS7000218: The request body must contain the following 
+parameter: 'client_assertion' or 'client_secret'.
+```
+
+**This means the Azure AD ClientSecret is not configured.**
+
+**Solutions:**
+- **For Azure App Service**: Follow [../../AZURE_APP_SERVICE_SETUP.md](../../AZURE_APP_SERVICE_SETUP.md) for detailed setup instructions
+- **For local development**: Use User Secrets (see below)
+
+#### AADSTS700016: Application not found Error
+
 If you see an error like:
 ```
 AADSTS700016: Application with identifier 'YOUR_CLIENT_ID' was not found...
@@ -11,14 +30,22 @@ AADSTS700016: Application with identifier 'YOUR_CLIENT_ID' was not found...
 
 This means the placeholder values in `appsettings.json` need to be replaced with actual Azure AD credentials.
 
-**Quick Fix:**
+### Quick Fix for Local Development
+
 1. Register an app in [Azure Portal](https://portal.azure.com) (see [Azure AD Setup](#azure-ad-setup) below)
 2. Configure credentials using User Secrets (recommended):
    ```bash
    dotnet user-secrets set "AzureAd:ClientId" "YOUR_ACTUAL_CLIENT_ID"
    dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_ACTUAL_SECRET"
+   dotnet user-secrets set "AzureAd:TenantId" "YOUR_TENANT_ID"
    ```
 3. See [QUICKSTART.md](QUICKSTART.md) for detailed step-by-step instructions
+
+### Configuration Guides
+
+- **[Azure App Service Setup](../../AZURE_APP_SERVICE_SETUP.md)** - Complete guide for configuring the application in Azure App Service
+- **[Configuration Guide](../../CONFIGURATION_GUIDE.md)** - General configuration information for all environments
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide for local development
 
 **Configuration Check:** Access `/config-check` in your browser to validate your configuration.
 

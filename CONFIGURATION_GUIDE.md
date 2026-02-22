@@ -101,9 +101,18 @@ dotnet user-secrets set "AzureAd:TenantId" "organizations"
 
 For Azure deployments, configure settings in the Azure Portal:
 1. Navigate to your App Service
-2. Go to Settings > Configuration
+2. Go to Settings > Environment variables (or Configuration)
 3. Add Application Settings with the required keys
 4. Use the same naming convention as environment variables (with `__`)
+5. Restart the App Service after saving changes
+
+**📖 For detailed Azure App Service setup instructions, see [AZURE_APP_SERVICE_SETUP.md](./AZURE_APP_SERVICE_SETUP.md)**
+
+This guide includes:
+- Step-by-step Azure AD app registration
+- How to create and configure client secrets
+- Exact configuration settings for Azure App Service
+- Troubleshooting common issues like AADSTS7000218 error
 
 ### 4. Azure Key Vault (Recommended for Production Secrets)
 
@@ -148,6 +157,33 @@ This error typically means required configuration is missing. Check:
 2. **Verify Configuration**: Ensure all required settings are present
 3. **Check for Placeholders**: Configuration values containing "YOUR_", "_HERE", etc. will be rejected
 4. **Validate Connection Strings**: Ensure database connection strings are properly formatted
+
+**Common Causes**:
+- Missing `AzureAd__ClientSecret` in Azure App Service configuration
+- Placeholder values in configuration settings
+- Incorrect setting names (must use double underscores `__`)
+
+**Solution**: See [AZURE_APP_SERVICE_SETUP.md](./AZURE_APP_SERVICE_SETUP.md) for detailed Azure App Service configuration
+
+### AADSTS7000218: Missing client_secret Error
+
+**Error Message**:
+```
+OpenIdConnectProtocolException: Message contains error: 'invalid_client', 
+error_description: 'AADSTS7000218: The request body must contain the following 
+parameter: 'client_assertion' or 'client_secret'.
+```
+
+**Cause**: The Azure AD ClientSecret is not configured in your environment.
+
+**Solution**:
+1. For Azure App Service: Follow [AZURE_APP_SERVICE_SETUP.md](./AZURE_APP_SERVICE_SETUP.md)
+2. For local development: Set the ClientSecret using user secrets:
+   ```bash
+   dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_SECRET_VALUE"
+   ```
+3. Ensure the secret is not expired in Azure AD
+4. Verify the setting name uses the correct format
 
 ### Configuration Not Loading
 
