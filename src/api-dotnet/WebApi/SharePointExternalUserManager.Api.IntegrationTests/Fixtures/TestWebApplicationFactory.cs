@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -31,7 +32,8 @@ public class TestWebApplicationFactory<TProgram> : WebApplicationFactory<TProgra
                 { "ConnectionStrings:DefaultConnection", "Server=(localdb)\\mssqllocaldb;Database=SharePointExternalUserManagerIntegrationTests;Trusted_Connection=True;MultipleActiveResultSets=true" },
                 { "Stripe:SecretKey", "sk_test_fake_key" },
                 { "Stripe:WebhookSecret", "whsec_test_secret" },
-                { "AzureOpenAI:UseDemoMode", "true" }
+                { "AzureOpenAI:UseDemoMode", "true" },
+                { "RateLimiting:Enabled", "false" }
             });
         });
 
@@ -50,6 +52,14 @@ public class TestWebApplicationFactory<TProgram> : WebApplicationFactory<TProgra
             {
                 options.UseInMemoryDatabase($"InMemoryTestDb_{Guid.NewGuid()}");
             });
+
+            // Replace authentication with test authentication
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = "Test";
+                options.DefaultChallengeScheme = "Test";
+            })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("Test", options => { });
 
             // Replace Graph-dependent services with mocks
             services.Replace(ServiceDescriptor.Scoped<ISharePointService, MockSharePointService>());
