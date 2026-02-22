@@ -17,6 +17,9 @@ namespace SharePointExternalUserManager.Api.Controllers;
 [Route("api/[controller]")]
 public class BillingController : ControllerBase
 {
+    // Fallback email for auto-created tenants (should rarely be used)
+    private const string FallbackTenantEmail = "unknown@example.com";
+    
     private readonly ApplicationDbContext _context;
     private readonly IStripeService _stripeService;
     private readonly IAuditLogService _auditLogService;
@@ -70,6 +73,7 @@ public class BillingController : ControllerBase
             // Get tenant ID from claims
             var tenantId = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid")?.Value
                 ?? User.FindFirst("tid")?.Value;
+            var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
 
             if (string.IsNullOrEmpty(tenantId))
             {
@@ -93,6 +97,51 @@ public class BillingController : ControllerBase
                 return BadRequest(new { error = "Success and cancel URLs are required", correlationId });
             }
 
+            // Get or create tenant
+            var tenant = await _context.Tenants
+                .Include(t => t.Subscriptions)
+                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantId);
+
+            if (tenant == null)
+            {
+                return NotFound(new { error = "Tenant not found. Please complete onboarding first.", correlationId });
+            }
+
+            // Check if tenant has a Stripe customer ID, if not create one
+            var activeSubscription = tenant.Subscriptions
+                .Where(s => !string.IsNullOrEmpty(s.StripeCustomerId))
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefault();
+
+            string? customerId = activeSubscription?.StripeCustomerId;
+
+            // If no customer exists, create one
+            if (string.IsNullOrEmpty(customerId) && !string.IsNullOrEmpty(userEmail))
+            {
+                try
+                {
+                    var customer = await _stripeService.CreateCustomerAsync(
+                        tenantId,
+                        userEmail,
+                        tenant.OrganizationName,
+                        new Dictionary<string, string>
+                        {
+                            { "tenant_name", tenant.OrganizationName ?? "" }
+                        });
+
+                    customerId = customer.Id;
+                    
+                    _logger.LogInformation(
+                        "Created Stripe customer {CustomerId} for tenant {TenantId}. CorrelationId: {CorrelationId}",
+                        customerId, tenantId, correlationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create Stripe customer. CorrelationId: {CorrelationId}", correlationId);
+                    // Continue without customer ID - Stripe will create one during checkout
+                }
+            }
+
             // Create checkout session
             var session = await _stripeService.CreateCheckoutSessionAsync(
                 tenantId,
@@ -101,24 +150,18 @@ public class BillingController : ControllerBase
                 request.SuccessUrl,
                 request.CancelUrl);
 
-            // Get tenant ID for audit log
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantId);
-            
-            if (tenant != null)
-            {
-                // Log the action
-                await _auditLogService.LogActionAsync(
-                    tenant.Id,
-                    User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                    User.FindFirst(ClaimTypes.Email)?.Value,
-                    "CreateCheckoutSession",
-                    "Billing",
-                    session.Id,
-                    $"Created checkout session for {request.PlanTier} plan",
-                    HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    correlationId,
-                    "Success");
-            }
+            // Log the action
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                User.FindFirst(ClaimTypes.Email)?.Value,
+                "CreateCheckoutSession",
+                "Billing",
+                session.Id,
+                $"Created checkout session for {request.PlanTier} plan",
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                correlationId,
+                "Success");
 
             return Ok(new CreateCheckoutSessionResponse
             {
@@ -209,6 +252,92 @@ public class BillingController : ControllerBase
         {
             _logger.LogError(ex, "Failed to retrieve subscription status. CorrelationId: {CorrelationId}", correlationId);
             return StatusCode(500, new { error = "Failed to retrieve subscription status", correlationId });
+        }
+    }
+
+    /// <summary>
+    /// Create a customer portal session for subscription management
+    /// </summary>
+    [HttpPost("customer-portal")]
+    public async Task<ActionResult<CustomerPortalResponse>> CreateCustomerPortal([FromBody] CustomerPortalRequest request)
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        
+        try
+        {
+            // Get tenant ID from claims
+            var tenantId = User.FindFirst("http://schemas.microsoft.com/identity/claims/tenantid")?.Value
+                ?? User.FindFirst("tid")?.Value;
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                _logger.LogWarning("Tenant ID not found in token. CorrelationId: {CorrelationId}", correlationId);
+                return Unauthorized(new { error = "Tenant ID not found in token", correlationId });
+            }
+
+            // Validate return URL
+            if (string.IsNullOrEmpty(request.ReturnUrl))
+            {
+                return BadRequest(new { error = "Return URL is required", correlationId });
+            }
+
+            // Get tenant with subscription
+            var tenant = await _context.Tenants
+                .Include(t => t.Subscriptions)
+                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantId);
+
+            if (tenant == null)
+            {
+                return NotFound(new { error = "Tenant not found", correlationId });
+            }
+
+            // Get active subscription with Stripe customer ID
+            var subscription = tenant.Subscriptions
+                .Where(s => !string.IsNullOrEmpty(s.StripeCustomerId))
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefault();
+
+            if (subscription == null || string.IsNullOrEmpty(subscription.StripeCustomerId))
+            {
+                return BadRequest(new 
+                { 
+                    error = "No Stripe customer found. Please subscribe to a plan first.", 
+                    correlationId 
+                });
+            }
+
+            // Create customer portal session
+            var portalSession = await _stripeService.CreateCustomerPortalSessionAsync(
+                subscription.StripeCustomerId,
+                request.ReturnUrl);
+
+            // Log the action
+            await _auditLogService.LogActionAsync(
+                tenant.Id,
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                User.FindFirst(ClaimTypes.Email)?.Value,
+                "CreateCustomerPortal",
+                "Billing",
+                portalSession.Id,
+                "Created customer portal session",
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                correlationId,
+                "Success");
+
+            return Ok(new CustomerPortalResponse
+            {
+                PortalUrl = portalSession.Url
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error creating customer portal. CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(500, new { error = "Failed to create customer portal session", correlationId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create customer portal. CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(500, new { error = "Failed to create customer portal session", correlationId });
         }
     }
 
@@ -308,9 +437,27 @@ public class BillingController : ControllerBase
         var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantId);
         if (tenant == null)
         {
-            _logger.LogWarning("Tenant not found for checkout session. TenantId: {TenantId}, CorrelationId: {CorrelationId}",
+            _logger.LogWarning(
+                "Tenant not found for checkout session. TenantId: {TenantId}. This should not happen - tenant should be created during onboarding. CorrelationId: {CorrelationId}",
                 tenantId, correlationId);
-            return;
+            
+            // Create minimal tenant record to prevent data loss
+            // In production, this should be investigated as tenants should exist before checkout
+            tenant = new Data.Entities.TenantEntity
+            {
+                EntraIdTenantId = tenantId,
+                OrganizationName = $"Tenant-{tenantId}",
+                PrimaryAdminEmail = FallbackTenantEmail,
+                Status = "Active",
+                CreatedDate = DateTime.UtcNow,
+                ModifiedDate = DateTime.UtcNow
+            };
+            _context.Tenants.Add(tenant);
+            await _context.SaveChangesAsync();
+            
+            _logger.LogInformation(
+                "Auto-created tenant record for {TenantId} from checkout session. CorrelationId: {CorrelationId}",
+                tenantId, correlationId);
         }
 
         // Create or update subscription
@@ -336,6 +483,7 @@ public class BillingController : ControllerBase
         {
             subscription.Status = "Active";
             subscription.Tier = planTier.ToString();
+            subscription.StripeCustomerId = session.CustomerId; // Update customer ID if changed
             subscription.ModifiedDate = DateTime.UtcNow;
         }
 

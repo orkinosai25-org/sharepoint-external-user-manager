@@ -10,6 +10,11 @@ namespace SharePointExternalUserManager.Api.Services;
 public interface IStripeService
 {
     /// <summary>
+    /// Create a Stripe customer for a tenant
+    /// </summary>
+    Task<Customer> CreateCustomerAsync(string tenantId, string email, string? name = null, Dictionary<string, string>? metadata = null);
+
+    /// <summary>
     /// Create a checkout session for a plan
     /// </summary>
     Task<Session> CreateCheckoutSessionAsync(
@@ -18,6 +23,16 @@ public interface IStripeService
         bool isAnnual,
         string successUrl,
         string cancelUrl);
+
+    /// <summary>
+    /// Create a customer portal session for subscription management
+    /// </summary>
+    Task<Stripe.BillingPortal.Session> CreateCustomerPortalSessionAsync(string customerId, string returnUrl);
+
+    /// <summary>
+    /// Update subscription to a different plan
+    /// </summary>
+    Task<Subscription> UpdateSubscriptionAsync(string subscriptionId, string newPriceId);
 
     /// <summary>
     /// Verify webhook signature
@@ -87,6 +102,118 @@ public class StripeService : IStripeService
             [configuration["Stripe:Price:Business:Monthly"] ?? "price_business_monthly"] = (SubscriptionTier.Business, false),
             [configuration["Stripe:Price:Business:Annual"] ?? "price_business_annual"] = (SubscriptionTier.Business, true)
         };
+    }
+
+    public async Task<Customer> CreateCustomerAsync(
+        string tenantId, 
+        string email, 
+        string? name = null, 
+        Dictionary<string, string>? metadata = null)
+    {
+        try
+        {
+            var customerMetadata = metadata ?? new Dictionary<string, string>();
+            customerMetadata["tenant_id"] = tenantId;
+
+            var options = new CustomerCreateOptions
+            {
+                Email = email,
+                Name = name,
+                Metadata = customerMetadata,
+                Description = $"Tenant: {tenantId}"
+            };
+
+            var service = new CustomerService();
+            var customer = await service.CreateAsync(options);
+
+            _logger.LogInformation(
+                "Created Stripe customer {CustomerId} for tenant {TenantId}",
+                customer.Id, tenantId);
+
+            return customer;
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Failed to create Stripe customer for tenant {TenantId}", tenantId);
+            throw;
+        }
+    }
+
+    public async Task<Stripe.BillingPortal.Session> CreateCustomerPortalSessionAsync(
+        string customerId, 
+        string returnUrl)
+    {
+        try
+        {
+            var options = new Stripe.BillingPortal.SessionCreateOptions
+            {
+                Customer = customerId,
+                ReturnUrl = returnUrl
+            };
+
+            var service = new Stripe.BillingPortal.SessionService();
+            var session = await service.CreateAsync(options);
+
+            _logger.LogInformation(
+                "Created customer portal session {SessionId} for customer {CustomerId}",
+                session.Id, customerId);
+
+            return session;
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Failed to create customer portal session for customer {CustomerId}", customerId);
+            throw;
+        }
+    }
+
+    public async Task<Subscription> UpdateSubscriptionAsync(string subscriptionId, string newPriceId)
+    {
+        try
+        {
+            // Get current subscription to find the subscription item
+            var currentSub = await GetSubscriptionAsync(subscriptionId);
+            if (currentSub == null)
+            {
+                throw new InvalidOperationException($"Subscription {subscriptionId} not found");
+            }
+
+            // Validate subscription has items
+            if (currentSub.Items == null || currentSub.Items.Data == null || currentSub.Items.Data.Count == 0)
+            {
+                throw new InvalidOperationException($"Subscription {subscriptionId} has no items");
+            }
+
+            // Get the subscription item ID (should be only one for our use case)
+            var itemId = currentSub.Items.Data[0].Id;
+
+            var options = new SubscriptionUpdateOptions
+            {
+                Items = new List<SubscriptionItemOptions>
+                {
+                    new SubscriptionItemOptions
+                    {
+                        Id = itemId,
+                        Price = newPriceId
+                    }
+                },
+                ProrationBehavior = "create_prorations" // Prorate the subscription change
+            };
+
+            var service = new SubscriptionService();
+            var subscription = await service.UpdateAsync(subscriptionId, options);
+
+            _logger.LogInformation(
+                "Updated subscription {SubscriptionId} to price {PriceId}",
+                subscriptionId, newPriceId);
+
+            return subscription;
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Failed to update subscription {SubscriptionId}", subscriptionId);
+            throw;
+        }
     }
 
     public async Task<Session> CreateCheckoutSessionAsync(

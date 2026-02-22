@@ -53,3 +53,19 @@ public class ChangePlanRequest
     public string NewPlanTier { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Request to create a customer portal session
+/// </summary>
+public class CustomerPortalRequest
+{
+    public string ReturnUrl { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response containing customer portal URL
+/// </summary>
+public class CustomerPortalResponse
+{
+    public string PortalUrl { get; set; } = string.Empty;
+}
+

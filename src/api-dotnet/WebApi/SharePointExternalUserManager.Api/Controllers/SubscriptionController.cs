@@ -35,17 +35,20 @@ public class SubscriptionController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IStripeService _stripeService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SubscriptionController> _logger;
 
     public SubscriptionController(
         ApplicationDbContext context,
         IStripeService stripeService,
         IAuditLogService auditLogService,
+        IConfiguration configuration,
         ILogger<SubscriptionController> logger)
     {
         _context = context;
         _stripeService = stripeService;
         _auditLogService = auditLogService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -220,12 +223,40 @@ public class SubscriptionController : ControllerBase
             // If user has a Stripe subscription, update it via Stripe
             if (!string.IsNullOrEmpty(currentSubscription.StripeSubscriptionId))
             {
-                // Note: This requires StripeService to have an UpdateSubscriptionAsync method
-                // For now, return a message directing them to create a new checkout session
-                return BadRequest(ApiResponse<object>.ErrorResponse(
-                    "USE_CHECKOUT",
-                    "Please use the checkout process to change your plan. Cancel your current subscription first.",
-                    correlationId));
+                try
+                {
+                    // Get the new price ID
+                    var priceId = await GetPriceIdForTierAsync(newTier, currentSubscription.StripeSubscriptionId);
+                    
+                    if (string.IsNullOrEmpty(priceId))
+                    {
+                        return BadRequest(ApiResponse<object>.ErrorResponse(
+                            "PRICE_NOT_FOUND",
+                            $"Unable to determine price for {newTier} plan. Please contact support.",
+                            correlationId));
+                    }
+
+                    // Update subscription in Stripe
+                    var updatedStripeSubscription = await _stripeService.UpdateSubscriptionAsync(
+                        currentSubscription.StripeSubscriptionId,
+                        priceId);
+
+                    _logger.LogInformation(
+                        "Updated Stripe subscription {SubscriptionId} to {NewTier}. CorrelationId: {CorrelationId}",
+                        currentSubscription.StripeSubscriptionId, newTier, correlationId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Failed to update Stripe subscription {SubscriptionId}. CorrelationId: {CorrelationId}",
+                        currentSubscription.StripeSubscriptionId, correlationId);
+                    
+                    return StatusCode(500, ApiResponse<object>.ErrorResponse(
+                        "STRIPE_ERROR",
+                        $"Failed to update subscription with payment provider. Please contact support with correlation ID: {correlationId}",
+                        correlationId));
+                }
             }
 
             // Update subscription tier directly (for trial/free plans)
@@ -384,6 +415,46 @@ public class SubscriptionController : ControllerBase
                 "INTERNAL_ERROR",
                 "Failed to cancel subscription. Please try again later.",
                 correlationId));
+        }
+    }
+
+    /// <summary>
+    /// Helper method to get price ID for a tier from current subscription
+    /// Uses the same billing period (monthly/annual) as current subscription
+    /// </summary>
+    private async Task<string?> GetPriceIdForTierAsync(ApiSubscriptionTier tier, string currentSubscriptionId)
+    {
+        try
+        {
+            // Get current subscription from Stripe to determine billing period
+            var currentSub = await _stripeService.GetSubscriptionAsync(currentSubscriptionId);
+            
+            if (currentSub == null || currentSub.Items?.Data == null || currentSub.Items.Data.Count == 0)
+            {
+                _logger.LogWarning("Unable to retrieve current subscription {SubscriptionId}", currentSubscriptionId);
+                return null;
+            }
+
+            // Get the current price to determine billing period
+            var currentPrice = currentSub.Items.Data[0].Price;
+            var isAnnual = currentPrice?.Recurring?.Interval == "year";
+
+            // Get the price ID from configuration
+            var configKey = $"Stripe:Price:{tier}:{(isAnnual ? "Annual" : "Monthly")}";
+            var priceId = _configuration[configKey];
+
+            if (string.IsNullOrEmpty(priceId))
+            {
+                _logger.LogWarning("Price ID not found for {Tier} {Period}", tier, isAnnual ? "Annual" : "Monthly");
+                return null;
+            }
+
+            return priceId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting price ID for tier {Tier}", tier);
+            return null;
         }
     }
 }
