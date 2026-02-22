@@ -178,6 +178,12 @@ public class StripeService : IStripeService
                 throw new InvalidOperationException($"Subscription {subscriptionId} not found");
             }
 
+            // Validate subscription has items
+            if (currentSub.Items == null || currentSub.Items.Data == null || currentSub.Items.Data.Count == 0)
+            {
+                throw new InvalidOperationException($"Subscription {subscriptionId} has no items");
+            }
+
             // Get the subscription item ID (should be only one for our use case)
             var itemId = currentSub.Items.Data[0].Id;
 

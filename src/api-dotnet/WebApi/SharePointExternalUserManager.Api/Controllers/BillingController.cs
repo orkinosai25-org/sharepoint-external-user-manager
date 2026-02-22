@@ -17,6 +17,9 @@ namespace SharePointExternalUserManager.Api.Controllers;
 [Route("api/[controller]")]
 public class BillingController : ControllerBase
 {
+    // Fallback email for auto-created tenants (should rarely be used)
+    private const string FallbackTenantEmail = "unknown@example.com";
+    
     private readonly ApplicationDbContext _context;
     private readonly IStripeService _stripeService;
     private readonly IAuditLogService _auditLogService;
@@ -444,7 +447,7 @@ public class BillingController : ControllerBase
             {
                 EntraIdTenantId = tenantId,
                 OrganizationName = $"Tenant-{tenantId}",
-                PrimaryAdminEmail = "unknown@example.com",
+                PrimaryAdminEmail = FallbackTenantEmail,
                 Status = "Active",
                 CreatedDate = DateTime.UtcNow,
                 ModifiedDate = DateTime.UtcNow

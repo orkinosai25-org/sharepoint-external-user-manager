@@ -226,7 +226,7 @@ public class SubscriptionController : ControllerBase
                 try
                 {
                     // Get the new price ID
-                    var priceId = GetPriceIdForTier(newTier, currentSubscription.StripeSubscriptionId);
+                    var priceId = await GetPriceIdForTierAsync(newTier, currentSubscription.StripeSubscriptionId);
                     
                     if (string.IsNullOrEmpty(priceId))
                     {
@@ -422,14 +422,14 @@ public class SubscriptionController : ControllerBase
     /// Helper method to get price ID for a tier from current subscription
     /// Uses the same billing period (monthly/annual) as current subscription
     /// </summary>
-    private string? GetPriceIdForTier(ApiSubscriptionTier tier, string currentSubscriptionId)
+    private async Task<string?> GetPriceIdForTierAsync(ApiSubscriptionTier tier, string currentSubscriptionId)
     {
         try
         {
             // Get current subscription from Stripe to determine billing period
-            var currentSub = _stripeService.GetSubscriptionAsync(currentSubscriptionId).Result;
+            var currentSub = await _stripeService.GetSubscriptionAsync(currentSubscriptionId);
             
-            if (currentSub == null || currentSub.Items.Data.Count == 0)
+            if (currentSub == null || currentSub.Items?.Data == null || currentSub.Items.Data.Count == 0)
             {
                 _logger.LogWarning("Unable to retrieve current subscription {SubscriptionId}", currentSubscriptionId);
                 return null;
@@ -437,7 +437,7 @@ public class SubscriptionController : ControllerBase
 
             // Get the current price to determine billing period
             var currentPrice = currentSub.Items.Data[0].Price;
-            var isAnnual = currentPrice.Recurring?.Interval == "year";
+            var isAnnual = currentPrice?.Recurring?.Interval == "year";
 
             // Get the price ID from configuration
             var configKey = $"Stripe:Price:{tier}:{(isAnnual ? "Annual" : "Monthly")}";
