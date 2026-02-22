@@ -76,13 +76,16 @@ public class SharePointService : ISharePointService
 {
     private readonly GraphServiceClient _graphClient;
     private readonly ILogger<SharePointService> _logger;
+    private readonly IGraphRetryPolicyService _retryPolicy;
 
     public SharePointService(
         GraphServiceClient graphClient,
-        ILogger<SharePointService> logger)
+        ILogger<SharePointService> logger,
+        IGraphRetryPolicyService retryPolicy)
     {
         _graphClient = graphClient;
         _logger = logger;
+        _retryPolicy = retryPolicy;
     }
 
     public async Task<(bool Success, string? SiteId, string? SiteUrl, string? ErrorMessage)> CreateClientSiteAsync(
@@ -112,7 +115,9 @@ public class SharePointService : ISharePointService
             // Note: Direct site creation via Graph API requires SharePoint admin permissions
             // In a real implementation, this would use the Sites.ReadWrite.All permission
             // For now, we'll create a site using the root site's sites collection
-            var rootSite = await _graphClient.Sites["root"].GetAsync();
+            var rootSite = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites["root"].GetAsync(),
+                "GetRootSite");
             
             if (rootSite?.SiteCollection?.Hostname == null)
             {
@@ -213,8 +218,10 @@ public class SharePointService : ISharePointService
         {
             _logger.LogInformation("Retrieving external users for site {SiteId}", siteId);
 
-            // Get all permissions for the site
-            var permissions = await _graphClient.Sites[siteId].Permissions.GetAsync();
+            // Get all permissions for the site with retry logic
+            var permissions = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Permissions.GetAsync(),
+                $"GetSitePermissions-{siteId}");
 
             if (permissions?.Value == null)
             {
@@ -322,10 +329,10 @@ public class SharePointService : ISharePointService
                 invitation.AdditionalData["@microsoft.graph.sendInvitation"] = true;
             }
 
-            // Create the permission (invite the user)
-            var createdPermission = await _graphClient.Sites[siteId]
-                .Permissions
-                .PostAsync(invitation);
+            // Create the permission (invite the user) with retry logic
+            var createdPermission = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Permissions.PostAsync(invitation),
+                $"InviteUser-{email}-{siteId}");
 
             if (createdPermission == null)
             {
@@ -372,8 +379,10 @@ public class SharePointService : ISharePointService
                 "Removing external user {Email} from site {SiteId}",
                 email, siteId);
 
-            // Get all permissions to find the one for this user
-            var permissions = await _graphClient.Sites[siteId].Permissions.GetAsync();
+            // Get all permissions to find the one for this user with retry logic
+            var permissions = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Permissions.GetAsync(),
+                $"GetPermissionsForRemoval-{siteId}");
 
             if (permissions?.Value == null)
             {
@@ -405,10 +414,10 @@ public class SharePointService : ISharePointService
                 return (false, $"External user {email} not found in site permissions");
             }
 
-            // Delete the permission
-            await _graphClient.Sites[siteId]
-                .Permissions[permissionId]
-                .DeleteAsync();
+            // Delete the permission with retry logic
+            await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Permissions[permissionId].DeleteAsync(),
+                $"RemoveUser-{email}-{siteId}");
 
             _logger.LogInformation(
                 "Successfully removed external user {Email} from site {SiteId}",
@@ -471,8 +480,10 @@ public class SharePointService : ISharePointService
         {
             _logger.LogInformation("Retrieving libraries for site {SiteId}", siteId);
 
-            // Get all drives (document libraries) for the site
-            var drives = await _graphClient.Sites[siteId].Drives.GetAsync();
+            // Get all drives (document libraries) for the site with retry logic
+            var drives = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Drives.GetAsync(),
+                $"GetLibraries-{siteId}");
 
             if (drives?.Value == null)
             {
@@ -525,7 +536,9 @@ public class SharePointService : ISharePointService
                 }
             };
 
-            var createdList = await _graphClient.Sites[siteId].Lists.PostAsync(newList);
+            var createdList = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Lists.PostAsync(newList),
+                $"CreateLibrary-{name}-{siteId}");
 
             if (createdList == null)
             {
@@ -560,8 +573,10 @@ public class SharePointService : ISharePointService
         {
             _logger.LogInformation("Retrieving lists for site {SiteId}", siteId);
 
-            // Get all lists for the site
-            var lists = await _graphClient.Sites[siteId].Lists.GetAsync();
+            // Get all lists for the site with retry logic
+            var lists = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Lists.GetAsync(),
+                $"GetLists-{siteId}");
 
             if (lists?.Value == null)
             {
@@ -620,7 +635,9 @@ public class SharePointService : ISharePointService
                 }
             };
 
-            var createdList = await _graphClient.Sites[siteId].Lists.PostAsync(newList);
+            var createdList = await _retryPolicy.ExecuteWithRetryAsync(
+                async () => await _graphClient.Sites[siteId].Lists.PostAsync(newList),
+                $"CreateList-{name}-{siteId}");
 
             if (createdList == null)
             {
@@ -781,8 +798,10 @@ public class SharePointService : ISharePointService
                 
                 _logger.LogInformation("Attempting to get site with identifier: {SiteIdentifier}", siteIdentifier);
 
-                // Try to get the site using the identifier
-                var site = await _graphClient.Sites[siteIdentifier].GetAsync();
+                // Try to get the site using the identifier with retry logic
+                var site = await _retryPolicy.ExecuteWithRetryAsync(
+                    async () => await _graphClient.Sites[siteIdentifier].GetAsync(),
+                    $"ValidateSite-{siteIdentifier}");
 
                 if (site == null || string.IsNullOrEmpty(site.Id))
                 {
@@ -800,7 +819,9 @@ public class SharePointService : ISharePointService
                 // Try to access site permissions to verify we have adequate access
                 try
                 {
-                    var permissions = await _graphClient.Sites[site.Id].Permissions.GetAsync();
+                    var permissions = await _retryPolicy.ExecuteWithRetryAsync(
+                        async () => await _graphClient.Sites[site.Id].Permissions.GetAsync(),
+                        $"ValidateSitePermissions-{site.Id}");
                     // If we can read permissions, we have adequate access
                 }
                 catch (Microsoft.Graph.Models.ODataErrors.ODataError permError)

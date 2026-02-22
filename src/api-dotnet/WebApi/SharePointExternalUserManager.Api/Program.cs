@@ -49,6 +49,7 @@ else
 }
 
 // Register services
+builder.Services.AddScoped<IGraphRetryPolicyService, GraphRetryPolicyService>();
 builder.Services.AddScoped<ISharePointService, SharePointService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
