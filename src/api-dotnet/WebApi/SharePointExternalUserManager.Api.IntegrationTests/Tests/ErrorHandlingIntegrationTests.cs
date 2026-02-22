@@ -55,7 +55,7 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
             TenantId = _tenantDbId,
             Tier = "Professional",
             Status = "Active",
-            TrialEndDate = DateTime.UtcNow.AddDays(30),
+            TrialExpiry = DateTime.UtcNow.AddDays(30),
             CreatedDate = DateTime.UtcNow,
             ModifiedDate = DateTime.UtcNow
         };
@@ -65,10 +65,10 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
         var tenantUser = new TenantUserEntity
         {
             TenantId = _tenantDbId,
-            EntraIdUserId = _userId,
-            Email = _userEmail,
+            AzureAdObjectId = _userId,
+            UserPrincipalName = _userEmail,
             DisplayName = "Test Admin",
-            Role = "TenantOwner",
+            Role = TenantRole.TenantOwner,
             IsActive = true,
             CreatedDate = DateTime.UtcNow,
             ModifiedDate = DateTime.UtcNow
@@ -171,10 +171,10 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
         var viewerUser = new TenantUserEntity
         {
             TenantId = _tenantDbId,
-            EntraIdUserId = viewerUserId,
-            Email = viewerEmail,
+            AzureAdObjectId = viewerUserId,
+            UserPrincipalName = viewerEmail,
             DisplayName = "Test Viewer",
-            Role = "Viewer",
+            Role = TenantRole.Viewer,
             IsActive = true,
             CreatedDate = DateTime.UtcNow,
             ModifiedDate = DateTime.UtcNow
@@ -219,10 +219,10 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
         var inactiveUser = new TenantUserEntity
         {
             TenantId = _tenantDbId,
-            EntraIdUserId = inactiveUserId,
-            Email = inactiveEmail,
+            AzureAdObjectId = inactiveUserId,
+            UserPrincipalName = inactiveEmail,
             DisplayName = "Inactive User",
-            Role = "TenantAdmin",
+            Role = TenantRole.TenantAdmin,
             IsActive = false, // Inactive
             CreatedDate = DateTime.UtcNow,
             ModifiedDate = DateTime.UtcNow
@@ -275,7 +275,7 @@ public class ErrorHandlingIntegrationTests : IClassFixture<TestWebApplicationFac
         // Arrange - Set trial to expired
         var subscription = _dbContext.Subscriptions.First(s => s.TenantId == _tenantDbId);
         subscription.Status = "Trial";
-        subscription.TrialEndDate = DateTime.UtcNow.AddDays(-1); // Expired
+        subscription.TrialExpiry = DateTime.UtcNow.AddDays(-1); // Expired
         _dbContext.SaveChanges();
 
         var authClient = TestAuthenticationHelper.CreateAuthenticatedClient(

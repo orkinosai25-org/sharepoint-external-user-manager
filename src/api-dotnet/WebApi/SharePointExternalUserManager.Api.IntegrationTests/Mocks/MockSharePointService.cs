@@ -80,7 +80,6 @@ public class MockSharePointService : ISharePointService
             Id = Guid.NewGuid().ToString(),
             Email = email,
             DisplayName = displayName ?? email,
-            UserPrincipalName = email,
             InvitedBy = invitedBy,
             InvitedDate = DateTime.UtcNow,
             Status = "Active",
@@ -134,7 +133,7 @@ public class MockSharePointService : ISharePointService
         {
             Id = Guid.NewGuid().ToString(),
             Name = name,
-            Description = description,
+            Description = description ?? string.Empty,
             WebUrl = $"{_siteUrls.GetValueOrDefault(siteId, "https://test.sharepoint.com")}/{name}",
             CreatedDateTime = DateTime.UtcNow
         };
@@ -165,10 +164,13 @@ public class MockSharePointService : ISharePointService
         {
             Id = Guid.NewGuid().ToString(),
             Name = name,
-            Description = description,
-            Template = template ?? "genericList",
+            DisplayName = name,
+            Description = description ?? string.Empty,
+            ListTemplate = template ?? "genericList",
             WebUrl = $"{_siteUrls.GetValueOrDefault(siteId, "https://test.sharepoint.com")}/Lists/{name}",
-            CreatedDateTime = DateTime.UtcNow
+            CreatedDateTime = DateTime.UtcNow,
+            LastModifiedDateTime = DateTime.UtcNow,
+            ItemCount = 0
         };
 
         _lists[siteId].Add(list);
@@ -201,10 +203,7 @@ public class MockSharePointService : ISharePointService
         {
             IsValid = true,
             SiteId = $"mock-site-{Guid.NewGuid()}",
-            SiteUrl = siteUrl,
-            SiteTitle = "Mock Site",
-            ExternalSharingEnabled = true,
-            SharingCapability = "ExternalUserAndGuestSharing"
+            SiteUrl = siteUrl
         });
     }
 }

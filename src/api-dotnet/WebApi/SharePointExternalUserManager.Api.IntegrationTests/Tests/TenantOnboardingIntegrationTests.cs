@@ -98,9 +98,7 @@ public class TenantOnboardingIntegrationTests : IClassFixture<TestWebApplication
         var registrationRequest = new TenantRegistrationRequest
         {
             OrganizationName = "Test Organization",
-            PrimaryAdminEmail = userEmail,
-            PhoneNumber = "+1234567890",
-            Country = "US"
+            PrimaryAdminEmail = userEmail
         };
 
         // Act
@@ -125,13 +123,13 @@ public class TenantOnboardingIntegrationTests : IClassFixture<TestWebApplication
         Assert.NotNull(subscription);
         Assert.Equal("Professional", subscription.Tier);
         Assert.Equal("Trial", subscription.Status);
-        Assert.True(subscription.TrialEndDate > DateTime.UtcNow);
+        Assert.True(subscription.TrialExpiry > DateTime.UtcNow);
 
         // Verify admin user was created with TenantOwner role
-        var tenantUser = _dbContext.TenantUsers.FirstOrDefault(u => u.TenantId == tenant.Id && u.EntraIdUserId == userId);
+        var tenantUser = _dbContext.TenantUsers.FirstOrDefault(u => u.TenantId == tenant.Id && u.AzureAdObjectId == userId);
         Assert.NotNull(tenantUser);
-        Assert.Equal(userEmail, tenantUser.Email);
-        Assert.Equal("TenantOwner", tenantUser.Role);
+        Assert.Equal(userEmail, tenantUser.UserPrincipalName);
+        Assert.Equal(TenantRole.TenantOwner, tenantUser.Role);
         Assert.True(tenantUser.IsActive);
     }
 
@@ -266,7 +264,7 @@ public class TenantOnboardingIntegrationTests : IClassFixture<TestWebApplication
         
         var tenantUser = _dbContext.TenantUsers.FirstOrDefault(u => u.TenantId == tenant.Id);
         Assert.NotNull(tenantUser);
-        Assert.Equal("TenantOwner", tenantUser.Role);
+        Assert.Equal(TenantRole.TenantOwner, tenantUser.Role);
     }
 
     public void Dispose()

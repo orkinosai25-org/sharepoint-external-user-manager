@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SharePointExternalUserManager.Api.Data;
+using SharePointExternalUserManager.Api.IntegrationTests.Mocks;
 using SharePointExternalUserManager.Api.Services;
 
 namespace SharePointExternalUserManager.Api.IntegrationTests.Fixtures;
