@@ -46,7 +46,7 @@ public class ClientSiteCreationWorkflowTests : IClassFixture<TestWebApplicationF
     {
         // Arrange
         var tenant = await SetupTestTenant();
-        var clientReference = "CLIENT-" + Guid.NewGuid().ToString().Substring(0, 8);
+        var clientReference = "CLIENT-" + Guid.NewGuid().ToString("N").Substring(0, 8);
         var siteId = "site-" + Guid.NewGuid();
         var siteUrl = $"https://contoso.sharepoint.com/sites/{clientReference}";
 
@@ -84,17 +84,20 @@ public class ClientSiteCreationWorkflowTests : IClassFixture<TestWebApplicationF
             var sharePointService = scope.ServiceProvider.GetRequiredService<ISharePointService>();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             
-            var result = await sharePointService.CreateClientSiteAsync(client, "admin@testorg.com");
+            // Reload the client entity in this context
+            var clientToUpdate = await db.Clients.FindAsync(client.Id);
+            Assert.NotNull(clientToUpdate);
+            
+            var result = await sharePointService.CreateClientSiteAsync(clientToUpdate, "admin@testorg.com");
             
             // Update client with provisioning result
             if (result.Success)
             {
-                client.SharePointSiteId = result.SiteId;
-                client.SharePointSiteUrl = result.SiteUrl;
-                client.ProvisioningStatus = "Completed";
-                client.ProvisionedDate = DateTime.UtcNow;
+                clientToUpdate.SharePointSiteId = result.SiteId;
+                clientToUpdate.SharePointSiteUrl = result.SiteUrl;
+                clientToUpdate.ProvisioningStatus = "Completed";
+                clientToUpdate.ProvisionedDate = DateTime.UtcNow;
                 
-                db.Clients.Update(client);
                 await db.SaveChangesAsync();
             }
 
@@ -157,13 +160,16 @@ public class ClientSiteCreationWorkflowTests : IClassFixture<TestWebApplicationF
             var sharePointService = scope.ServiceProvider.GetRequiredService<ISharePointService>();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             
-            var result = await sharePointService.CreateClientSiteAsync(client, "admin@testorg.com");
+            // Reload the client entity in this context
+            var clientToUpdate = await db.Clients.FindAsync(client.Id);
+            Assert.NotNull(clientToUpdate);
+            
+            var result = await sharePointService.CreateClientSiteAsync(clientToUpdate, "admin@testorg.com");
             
             // Update client with error
-            client.ProvisioningStatus = "Failed";
-            client.ProvisioningError = result.ErrorMessage;
+            clientToUpdate.ProvisioningStatus = "Failed";
+            clientToUpdate.ProvisioningError = result.ErrorMessage;
             
-            db.Clients.Update(client);
             await db.SaveChangesAsync();
 
             Assert.False(result.Success);
@@ -189,37 +195,29 @@ public class ClientSiteCreationWorkflowTests : IClassFixture<TestWebApplicationF
         // Arrange - tenant with existing clients
         var tenant = await SetupTestTenant();
 
-        // Create first client (should succeed)
-        using (var scope = _factory.Services.CreateScope())
+        // Act & Assert - Create client and verify we can query it
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        var client1 = new ClientEntity
         {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            
-            var client1 = new ClientEntity
-            {
-                TenantId = tenant.Id,
-                ClientReference = "CLIENT-001",
-                ClientName = "First Client",
-                ProvisioningStatus = "Completed",
-                IsActive = true,
-                CreatedDate = DateTime.UtcNow,
-                CreatedBy = "admin@testorg.com"
-            };
-            
-            db.Clients.Add(client1);
-            await db.SaveChangesAsync();
-        }
-
-        // Assert - verify we can query active clients
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            
-            var activeClientCount = await db.Clients
-                .CountAsync(c => c.TenantId == tenant.Id && c.IsActive);
-            
-            // Check that we have created clients
-            Assert.Equal(1, activeClientCount);
-        }
+            TenantId = tenant.Id,
+            ClientReference = "CLIENT-001",
+            ClientName = "First Client",
+            ProvisioningStatus = "Completed",
+            IsActive = true,
+            CreatedDate = DateTime.UtcNow,
+            CreatedBy = "admin@testorg.com"
+        };
+        
+        db.Clients.Add(client1);
+        await db.SaveChangesAsync();
+        
+        var activeClientCount = await db.Clients
+            .CountAsync(c => c.TenantId == tenant.Id && c.IsActive);
+        
+        // Check that we have created clients
+        Assert.Equal(1, activeClientCount);
     }
 
     [Fact]
@@ -272,7 +270,7 @@ public class ClientSiteCreationWorkflowTests : IClassFixture<TestWebApplicationF
                 client.ProvisioningStatus = "Completed";
                 client.ProvisionedDate = DateTime.UtcNow;
                 
-                db.Clients.Update(client);
+                // Entity is already tracked, no need to call Update
                 await db.SaveChangesAsync();
             }
             

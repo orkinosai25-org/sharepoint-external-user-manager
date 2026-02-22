@@ -28,7 +28,7 @@ public class TenantOnboardingWorkflowTests : IClassFixture<TestWebApplicationFac
     public async Task TenantOnboarding_CompleteFlow_Success()
     {
         // Step 1: Get consent URL
-        var consentResponse = await _client.GetAsync("/Consent?redirectUri=https://app.example.com/callback");
+        var consentResponse = await _client.GetAsync("/Consent/url?redirectUri=https://app.example.com/callback");
         
         Assert.Equal(HttpStatusCode.OK, consentResponse.StatusCode);
         var consentData = await consentResponse.Content.ReadFromJsonAsync<ApiResponse<object>>();
