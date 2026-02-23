@@ -114,7 +114,34 @@ This guide includes:
 - Exact configuration settings for Azure App Service
 - Troubleshooting common issues like AADSTS7000218 error
 
-### 4. Azure Key Vault (Recommended for Production Secrets)
+### 4. Repository Secrets for CI/CD (Required for Automated Deployments)
+
+For automated deployments via GitHub Actions, configure repository secrets:
+
+1. Go to your GitHub repository
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Add the following secrets:
+
+| Secret Name | Value | Purpose |
+|-------------|-------|---------|
+| `AZURE_AD_CLIENT_ID` | Your Azure AD Application Client ID | Azure AD authentication |
+| `AZURE_AD_CLIENT_SECRET` | Your Azure AD Application Client Secret | Azure AD authentication |
+| `AZURE_AD_TENANT_ID` | Your Azure AD Tenant ID | Azure AD authentication |
+| `PUBLISH_PROFILE` | ClientSpace App Service publish profile XML | Deploy to ClientSpace |
+| `PORTAL_PUBLISH_PROFILE` | Dev Portal App Service publish profile XML | Deploy to dev Portal |
+| `API_PUBLISH_PROFILE` | Dev API App Service publish profile XML | Deploy to dev API |
+| `PORTAL_PUBLISH_PROFILE_PROD` | Prod Portal App Service publish profile XML | Deploy to prod Portal |
+| `API_PUBLISH_PROFILE_PROD` | Prod API App Service publish profile XML | Deploy to prod API |
+
+**How it works**:
+- During the CI/CD build process, the workflows read these repository secrets
+- They create an `appsettings.Production.json` file with the Azure AD configuration
+- This file is included in the deployment package
+- The deployed application reads configuration from this file
+
+**📖 For detailed instructions on obtaining and configuring these secrets, see [WORKFLOW_SECRET_SETUP.md](./WORKFLOW_SECRET_SETUP.md)**
+
+### 5. Azure Key Vault (Recommended for Production Secrets)
 
 For production deployments, store secrets in Azure Key Vault:
 1. Create an Azure Key Vault

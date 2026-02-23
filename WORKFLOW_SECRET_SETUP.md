@@ -24,6 +24,9 @@ The SharePoint External User Manager uses **publish profiles** for deploying .NE
 |-------------|---------|----------|
 | `API_PUBLISH_PROFILE` | Deploy API to development | Yes |
 | `PORTAL_PUBLISH_PROFILE` | Deploy Portal to development | Yes |
+| `AZURE_AD_CLIENT_ID` | Azure AD Application Client ID | Yes |
+| `AZURE_AD_CLIENT_SECRET` | Azure AD Application Client Secret | Yes |
+| `AZURE_AD_TENANT_ID` | Azure AD Tenant ID | Yes |
 
 ### For Production Deployments (deploy-prod.yml)
 
@@ -31,12 +34,18 @@ The SharePoint External User Manager uses **publish profiles** for deploying .NE
 |-------------|---------|----------|
 | `API_PUBLISH_PROFILE_PROD` | Deploy API to production | Yes |
 | `PORTAL_PUBLISH_PROFILE_PROD` | Deploy Portal to production | Yes |
+| `AZURE_AD_CLIENT_ID` | Azure AD Application Client ID | Yes |
+| `AZURE_AD_CLIENT_SECRET` | Azure AD Application Client Secret | Yes |
+| `AZURE_AD_TENANT_ID` | Azure AD Tenant ID | Yes |
 
 ### For ClientSpace Deployment (main_clientspace.yml)
 
 | Secret Name | Purpose | Required |
 |-------------|---------|----------|
 | `PUBLISH_PROFILE` | Deploy Portal to ClientSpace App Service | Yes |
+| `AZURE_AD_CLIENT_ID` | Azure AD Application Client ID | Yes |
+| `AZURE_AD_CLIENT_SECRET` | Azure AD Application Client Secret | Yes |
+| `AZURE_AD_TENANT_ID` | Azure AD Tenant ID | Yes |
 
 ### For SPFx Deployment (deploy-spfx.yml)
 
@@ -87,6 +96,58 @@ The SharePoint External User Manager uses **publish profiles** for deploying .NE
    - For ClientSpace: `PUBLISH_PROFILE`
 6. Paste the entire XML content in the **Value** field
 7. Click **"Add secret"**
+
+## How to Obtain Azure AD Configuration Secrets
+
+### Required for Application Configuration
+
+The deployment workflows inject Azure AD configuration into the application at build time. You need to create the following repository secrets:
+
+#### AZURE_AD_CLIENT_ID
+**Purpose**: Azure AD Application (client) ID for authentication  
+**How to obtain**:
+1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory
+2. Navigate to **App registrations**
+3. Select your application (or create a new one)
+4. Copy the **Application (client) ID** from the Overview page
+5. **Example**: `61def48e-a9bc-43ef-932b-10eabef14c2a`
+
+#### AZURE_AD_CLIENT_SECRET
+**Purpose**: Azure AD Application Client Secret for authentication  
+**How to obtain**:
+1. In your App Registration → **Certificates & secrets**
+2. Click **"New client secret"**
+3. Add a description (e.g., "Production deployment")
+4. Select an expiration period (recommended: 6 months or 1 year)
+5. Click **"Add"**
+6. Copy the secret **Value** immediately (not the Secret ID)
+7. ⚠️ **Important**: You cannot view the secret value again after leaving this page!
+8. **Example**: `abc123~DEF456.ghi789JKL012-MNO345`
+
+#### AZURE_AD_TENANT_ID
+**Purpose**: Azure AD Directory (tenant) ID  
+**How to obtain**:
+1. Azure Portal → Azure Active Directory → Overview
+2. Copy the **Directory (tenant) ID**
+3. **Example**: `b884f3d2-f3d0-4e67-8470-bc7b0372ebb6`
+
+### Adding Azure AD Secrets to GitHub
+
+1. Go to your GitHub repository
+2. Click **Settings** → **Secrets and variables** → **Actions**
+3. Add each secret:
+   - Click **"New repository secret"**
+   - Name: `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, or `AZURE_AD_TENANT_ID`
+   - Value: Paste the value from Azure Portal
+   - Click **"Add secret"**
+
+### Verification
+
+After adding the secrets, the next deployment will:
+1. Read the secrets from the repository
+2. Create an `appsettings.Production.json` file with these values
+3. Deploy the application with the proper configuration
+4. Application will start successfully with Azure AD authentication enabled
 
 ## Publish Profile XML Format
 
@@ -174,9 +235,9 @@ The publish profile is an XML document that looks like this:
 
 | Workflow File | Required Secrets | Purpose |
 |--------------|------------------|---------|
-| `main_clientspace.yml` | `PUBLISH_PROFILE` | Deploy Blazor Portal to ClientSpace App Service |
-| `deploy-dev.yml` | `API_PUBLISH_PROFILE`, `PORTAL_PUBLISH_PROFILE` | Deploy API and Portal to dev environment |
-| `deploy-prod.yml` | `API_PUBLISH_PROFILE_PROD`, `PORTAL_PUBLISH_PROFILE_PROD` | Deploy API and Portal to production |
+| `main_clientspace.yml` | `PUBLISH_PROFILE`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` | Deploy Blazor Portal to ClientSpace App Service with Azure AD configuration |
+| `deploy-dev.yml` | `API_PUBLISH_PROFILE`, `PORTAL_PUBLISH_PROFILE`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` | Deploy API and Portal to dev environment with Azure AD configuration |
+| `deploy-prod.yml` | `API_PUBLISH_PROFILE_PROD`, `PORTAL_PUBLISH_PROFILE_PROD`, `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` | Deploy API and Portal to production with Azure AD configuration |
 | `deploy-spfx.yml` | `SPO_URL`, `SPO_CLIENT_ID`, `SPO_CLIENT_SECRET`, `SPO_TENANT_ID` (optional) | Deploy SPFx to SharePoint |
 | `build-api.yml` | None | Build and test API only |
 | `build-blazor.yml` | None | Build and test Blazor Portal only |
