@@ -36,7 +36,7 @@ The SharePoint External User Manager uses **publish profiles** for deploying .NE
 
 | Secret Name | Purpose | Required |
 |-------------|---------|----------|
-| `PUBLISH_PROFILE` | Deploy Portal to ClientSpace App Service | Yes |
+| `AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE` | Deploy Portal to ClientSpace App Service | Yes |
 
 ### For SPFx Deployment (deploy-spfx.yml)
 
@@ -84,7 +84,7 @@ The SharePoint External User Manager uses **publish profiles** for deploying .NE
    - For dev Portal: `PORTAL_PUBLISH_PROFILE`
    - For prod API: `API_PUBLISH_PROFILE_PROD`
    - For prod Portal: `PORTAL_PUBLISH_PROFILE_PROD`
-   - For ClientSpace: `PUBLISH_PROFILE`
+   - For ClientSpace: `AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE`
 6. Paste the entire XML content in the **Value** field
 7. Click **"Add secret"**
 
@@ -174,7 +174,7 @@ The publish profile is an XML document that looks like this:
 
 | Workflow File | Required Secrets | Purpose |
 |--------------|------------------|---------|
-| `main_clientspace.yml` | `PUBLISH_PROFILE` | Deploy Blazor Portal to ClientSpace App Service |
+| `main_clientspace.yml` | `AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE` | Deploy Blazor Portal to ClientSpace App Service |
 | `deploy-dev.yml` | `API_PUBLISH_PROFILE`, `PORTAL_PUBLISH_PROFILE` | Deploy API and Portal to dev environment |
 | `deploy-prod.yml` | `API_PUBLISH_PROFILE_PROD`, `PORTAL_PUBLISH_PROFILE_PROD` | Deploy API and Portal to production |
 | `deploy-spfx.yml` | `SPO_URL`, `SPO_CLIENT_ID`, `SPO_CLIENT_SECRET`, `SPO_TENANT_ID` (optional) | Deploy SPFx to SharePoint |

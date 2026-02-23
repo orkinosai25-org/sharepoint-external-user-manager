@@ -57,16 +57,19 @@ jobs:
 
       - name: Validate publish profile
         env:
-          PUBLISH_PROFILE: ${{ secrets.PUBLISH_PROFILE }}
+          CLIENTSPACE_PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE }}
         run: |
-          if ([string]::IsNullOrEmpty($env:PUBLISH_PROFILE)) {
-            Write-Host "❌ PUBLISH_PROFILE secret is not configured"
+          if ([string]::IsNullOrEmpty($env:CLIENTSPACE_PUBLISH_PROFILE)) {
+            Write-Host "❌ AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE secret is not configured"
             Write-Host "ℹ️ To enable deployment:"
             Write-Host "  1. Go to Azure Portal → ClientSpace App Service"
             Write-Host "  2. Click 'Get publish profile' in Overview"
             Write-Host "  3. Copy the entire XML content"
             Write-Host "  4. Go to repository Settings > Secrets and variables > Actions"
-            Write-Host "  5. Add secret named 'PUBLISH_PROFILE' with the XML content"
+            Write-Host "  5. Add secret named 'AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE' with the XML content"
+            Write-Host ""
+            Write-Host "ℹ️ Alternative: Azure automatically creates this secret when you configure"
+            Write-Host "   GitHub Actions deployment from the Azure Portal Deployment Center."
             exit 1
           }
           Write-Host "✅ Publish profile validated"
@@ -78,7 +81,7 @@ jobs:
           app-name: 'ClientSpace'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_CLIENTSPACE }}
           
       - name: Deployment Summary
         run: |
