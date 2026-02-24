@@ -116,3 +116,6 @@ src/client-spfx/sharepoint/
 # Blazor Portal
 src/portal-blazor/bin/
 src/portal-blazor/obj/
+
+# Production configuration files (generated during build, should not be committed)
+appsettings.Production.json

@@ -47,6 +47,57 @@ jobs:
         dotnet build --configuration Release --no-restore
         dotnet publish --configuration Release --output ../../../../api-publish --no-build
         
+    - name: Validate Azure AD Secrets
+      env:
+        AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+        AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+        AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+      run: |
+        errors=""
+        
+        if [ -z "$AZURE_AD_CLIENT_ID" ]; then
+          errors="$errors AZURE_AD_CLIENT_ID"
+        fi
+        if [ -z "$AZURE_AD_CLIENT_SECRET" ]; then
+          errors="$errors AZURE_AD_CLIENT_SECRET"
+        fi
+        if [ -z "$AZURE_AD_TENANT_ID" ]; then
+          errors="$errors AZURE_AD_TENANT_ID"
+        fi
+        
+        if [ -n "$errors" ]; then
+          echo "❌ Required Azure AD secrets are not configured:$errors"
+          echo ""
+          echo "ℹ️ To fix this:"
+          echo "  1. Go to repository Settings > Secrets and variables > Actions"
+          echo "  2. Add the following secrets:"
+          echo "     - AZURE_AD_CLIENT_ID: Your Azure AD Application Client ID"
+          echo "     - AZURE_AD_CLIENT_SECRET: Your Azure AD Application Client Secret"
+          echo "     - AZURE_AD_TENANT_ID: Your Azure AD Tenant ID"
+          echo "  3. See WORKFLOW_SECRET_SETUP.md for detailed instructions"
+          exit 1
+        fi
+        
+        echo "✅ All Azure AD secrets validated"
+    
+    - name: Create Production Configuration for Portal
+      env:
+        AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+        AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+        AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+      run: |
+        # Create appsettings.Production.json with secrets from repository
+        cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
+        {
+          "AzureAd": {
+            "ClientId": "$AZURE_AD_CLIENT_ID",
+            "ClientSecret": "$AZURE_AD_CLIENT_SECRET",
+            "TenantId": "$AZURE_AD_TENANT_ID"
+          }
+        }
+        EOF
+        echo "✅ Production configuration created with secrets from repository"
+    
     - name: Build Blazor Portal
       run: |
         cd src/portal-blazor/SharePointExternalUserManager.Portal

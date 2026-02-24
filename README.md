@@ -96,6 +96,24 @@ This solution follows a split architecture pattern:
 - **Microsoft 365 Tenant**: For testing SPFx web parts
 - **Stripe Account**: For billing integration
 
+### CI/CD Configuration (Required for Automated Deployments)
+
+Before automated deployments will work, you must configure repository secrets for Azure AD authentication:
+
+1. **Required Secrets**:
+   - `AZURE_AD_CLIENT_ID` - Your Azure AD Application Client ID
+   - `AZURE_AD_CLIENT_SECRET` - Your Azure AD Application Client Secret
+   - `AZURE_AD_TENANT_ID` - Your Azure AD Tenant ID
+
+2. **Setup Instructions**: See [AZURE_AD_SECRETS_SETUP.md](./AZURE_AD_SECRETS_SETUP.md) for step-by-step instructions
+
+3. **What This Enables**:
+   - ✅ Automated deployments via GitHub Actions
+   - ✅ Production-ready configuration injected during build
+   - ✅ Secure secret management (not committed to repository)
+
+**Note**: Without these secrets, deployment workflows will fail with a validation error. The build will succeed, but deployment is blocked until secrets are configured.
+
 ### Quick Start - SPFx Client
 
 ```bash
