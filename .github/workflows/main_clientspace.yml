@@ -68,6 +68,8 @@ jobs:
           AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
         run: |
           # Create appsettings.Production.json with secrets from repository if available
+          # SECURITY NOTE: This file is created at build time and should NEVER be committed to source control
+          # It's listed in .gitignore to prevent accidental commits
           if (-not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_ID) -and -not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_SECRET) -and -not [string]::IsNullOrEmpty($env:AZURE_AD_TENANT_ID)) {
             # Build JSON configuration using ConvertTo-Json for proper formatting
             $config = @{
@@ -88,8 +90,8 @@ jobs:
             }
             $config | ConvertTo-Json -Depth 10 | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
             Write-Host "✅ Production configuration created with secrets from repository"
-            Write-Host "Content of appsettings.Production.json:"
-            Get-Content ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json
+            Write-Host "📁 File location: appsettings.Production.json"
+            Write-Host "⚠️  Note: This file contains secrets and will NOT be committed to source control"
           } else {
             Write-Host "ℹ️ Azure AD secrets not configured - skipping appsettings.Production.json generation"
             Write-Host "Application will use configuration from Azure App Service settings or other sources"
