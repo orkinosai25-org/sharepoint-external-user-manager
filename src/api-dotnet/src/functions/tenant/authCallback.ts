@@ -10,7 +10,6 @@ import { handleCorsPreFlight, applyCorsHeaders } from '../../middleware/cors';
 import { oauthService } from '../../services/oauth';
 import { databaseService } from '../../services/database';
 import { auditLogger } from '../../services/auditLogger';
-import { AdminConsentRequest } from '../../models/tenant-auth';
 import { UnauthorizedError, BadRequestError } from '../../models/common';
 
 async function authCallback(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
