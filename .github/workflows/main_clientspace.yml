@@ -28,7 +28,7 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Validate Azure AD Secrets
+      - name: Check Azure AD Secrets
         env:
           AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
           AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
@@ -47,22 +47,19 @@ jobs:
           }
           
           if ($errors.Count -gt 0) {
-            Write-Host "❌ Required Azure AD secrets are not configured:"
+            Write-Host "⚠️ Azure AD secrets are not configured:"
             foreach ($secret in $errors) {
               Write-Host "   - $secret"
             }
             Write-Host ""
-            Write-Host "ℹ️ To fix this:"
-            Write-Host "  1. Go to repository Settings > Secrets and variables > Actions"
-            Write-Host "  2. Add the following secrets:"
-            Write-Host "     - AZURE_AD_CLIENT_ID: Your Azure AD Application Client ID"
-            Write-Host "     - AZURE_AD_CLIENT_SECRET: Your Azure AD Application Client Secret"
-            Write-Host "     - AZURE_AD_TENANT_ID: Your Azure AD Tenant ID"
-            Write-Host "  3. See WORKFLOW_SECRET_SETUP.md for detailed instructions"
-            exit 1
+            Write-Host "ℹ️ Note: Azure AD configuration can be managed through Azure App Service settings."
+            Write-Host "If you want to inject these secrets during build, configure them in repository secrets."
+            Write-Host "See WORKFLOW_SECRET_SETUP.md for detailed instructions."
+            Write-Host ""
+            Write-Host "✅ Continuing deployment without Azure AD secrets injection..."
+          } else {
+            Write-Host "✅ All Azure AD secrets are configured and will be injected during build"
           }
-          
-          Write-Host "✅ All Azure AD secrets validated"
 
       - name: Create Production Configuration
         env:
@@ -70,8 +67,11 @@ jobs:
           AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
           AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
         run: |
-          # Create appsettings.Production.json with secrets from repository
-          $productionConfig = @"
+          # Create appsettings.Production.json with secrets from repository if available
+          if (-not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_ID) -and 
+              -not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_SECRET) -and 
+              -not [string]::IsNullOrEmpty($env:AZURE_AD_TENANT_ID)) {
+            $productionConfig = @"
           {
             "AzureAd": {
               "ClientId": "$env:AZURE_AD_CLIENT_ID",
@@ -80,8 +80,12 @@ jobs:
             }
           }
           "@
-          $productionConfig | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
-          Write-Host "✅ Production configuration created with secrets from repository"
+            $productionConfig | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
+            Write-Host "✅ Production configuration created with secrets from repository"
+          } else {
+            Write-Host "ℹ️ Azure AD secrets not configured - skipping appsettings.Production.json generation"
+            Write-Host "Application will use configuration from Azure App Service settings or other sources"
+          }
 
       - name: Build with dotnet
         run: dotnet build --configuration Release
