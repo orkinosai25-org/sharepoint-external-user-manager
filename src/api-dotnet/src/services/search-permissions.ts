@@ -20,7 +20,6 @@ export function getSearchPermissions(
   accessibleClientIds: number[]
 ): SearchPermissions {
   const globalSearchResult = checkGlobalSearchAccess(context);
-  const planTier = getTenantPlan(context);
 
   return {
     canSearchCurrentClient: true, // All users can search within current client
