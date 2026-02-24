@@ -44,11 +44,15 @@ if (!validationResult.IsValid)
     logger.LogError("  1. Go to Azure Portal → Your App Service");
     logger.LogError("  2. Navigate to Settings → Environment variables (or Configuration)");
     logger.LogError("  3. Add the following Application Settings:");
+    logger.LogError("     • ASPNETCORE_ENVIRONMENT = Production (to use appsettings.Production.json)");
     logger.LogError("     • AzureAd__ClientId = Your Azure AD Application Client ID");
     logger.LogError("     • AzureAd__ClientSecret = Your Azure AD Application Client Secret");
     logger.LogError("     • AzureAd__TenantId = Your Azure AD Tenant ID");
     logger.LogError("     • ApiSettings__BaseUrl = Your backend API URL");
     logger.LogError("  4. Restart the App Service");
+    logger.LogError("");
+    logger.LogError("  NOTE: If using GitHub Actions secrets, ensure ASPNETCORE_ENVIRONMENT=Production");
+    logger.LogError("        is set in Azure App Service to use appsettings.Production.json");
     logger.LogError("");
     logger.LogError("For local development:");
     logger.LogError("  1. Use user secrets (recommended):");
@@ -61,7 +65,9 @@ if (!validationResult.IsValid)
     logger.LogError("     export AzureAd__ClientSecret=\"YOUR_SECRET\"");
     logger.LogError("     export AzureAd__TenantId=\"YOUR_TENANT_ID\"");
     logger.LogError("");
-    logger.LogError("For more information, see CONFIGURATION_GUIDE.md");
+    logger.LogError("For more information:");
+    logger.LogError("  • AZURE_APP_SERVICE_CONFIGURATION.md - Azure App Service setup");
+    logger.LogError("  • CONFIGURATION_GUIDE.md - General configuration guide");
     logger.LogError("═══════════════════════════════════════════════════════════════");
     
     throw new InvalidOperationException(
