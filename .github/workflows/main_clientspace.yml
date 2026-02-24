@@ -70,16 +70,27 @@ jobs:
           # Create appsettings.Production.json with secrets from repository if available
           if (-not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_ID) -and -not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_SECRET) -and -not [string]::IsNullOrEmpty($env:AZURE_AD_TENANT_ID)) {
             $productionConfig = @"
-          {
-            "AzureAd": {
-              "ClientId": "$env:AZURE_AD_CLIENT_ID",
-              "ClientSecret": "$env:AZURE_AD_CLIENT_SECRET",
-              "TenantId": "$env:AZURE_AD_TENANT_ID"
-            }
-          }
-          "@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AzureAd": {
+    "Instance": "https://login.microsoftonline.com/",
+    "TenantId": "$env:AZURE_AD_TENANT_ID",
+    "ClientId": "$env:AZURE_AD_CLIENT_ID",
+    "ClientSecret": "$env:AZURE_AD_CLIENT_SECRET",
+    "CallbackPath": "/signin-oidc",
+    "SignedOutCallbackPath": "/signout-callback-oidc"
+  }
+}
+"@
             $productionConfig | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
             Write-Host "✅ Production configuration created with secrets from repository"
+            Write-Host "Content of appsettings.Production.json:"
+            Get-Content ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json
           } else {
             Write-Host "ℹ️ Azure AD secrets not configured - skipping appsettings.Production.json generation"
             Write-Host "Application will use configuration from Azure App Service settings or other sources"
@@ -92,6 +103,18 @@ jobs:
       - name: Publish with dotnet
         run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
         working-directory: ./src/portal-blazor/SharePointExternalUserManager.Portal
+
+      - name: Verify appsettings files in publish output
+        run: |
+          Write-Host "Checking for appsettings files in publish output:"
+          Get-ChildItem -Path "${{env.DOTNET_ROOT}}/myapp" -Filter "appsettings*.json" -File | ForEach-Object {
+            Write-Host "  ✓ Found: $($_.Name)"
+          }
+          if (Test-Path "${{env.DOTNET_ROOT}}/myapp/appsettings.Production.json") {
+            Write-Host "✅ appsettings.Production.json is included in publish output"
+          } else {
+            Write-Host "⚠️ appsettings.Production.json is NOT in publish output"
+          }
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -147,6 +170,13 @@ jobs:
           Write-Host "**Slot**: Production" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "**Deployment Date**: $utcDate UTC" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "**Commit**: ${{ github.sha }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "### ⚙️ Required Azure App Service Configuration" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "To use the Azure AD configuration from appsettings.Production.json:" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "1. Go to Azure Portal → ClientSpace App Service" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "2. Navigate to Settings → Environment variables" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "3. Add or verify: **ASPNETCORE_ENVIRONMENT** = **Production**" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Host "4. Restart the App Service" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "### Next Steps" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "- Verify the application is running correctly" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
