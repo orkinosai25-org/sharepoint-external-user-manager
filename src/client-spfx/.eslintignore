@@ -1,0 +1,3 @@
+# Ignore example and refactored demo files
+**/*.example.ts
+**/*.refactored.example.ts
