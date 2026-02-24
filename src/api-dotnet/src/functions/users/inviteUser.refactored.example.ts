@@ -5,7 +5,7 @@
  * This demonstrates the new pattern for CS-SAAS-REF-01
  */
 
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { databaseService } from '../../services/database';
 import { authenticateRequest } from '../../middleware/auth';
 import { enforceSubscription } from '../../middleware/subscription';
