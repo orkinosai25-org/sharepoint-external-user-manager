@@ -69,25 +69,24 @@ jobs:
         run: |
           # Create appsettings.Production.json with secrets from repository if available
           if (-not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_ID) -and -not [string]::IsNullOrEmpty($env:AZURE_AD_CLIENT_SECRET) -and -not [string]::IsNullOrEmpty($env:AZURE_AD_TENANT_ID)) {
-            $productionConfig = @"
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AzureAd": {
-    "Instance": "https://login.microsoftonline.com/",
-    "TenantId": "$env:AZURE_AD_TENANT_ID",
-    "ClientId": "$env:AZURE_AD_CLIENT_ID",
-    "ClientSecret": "$env:AZURE_AD_CLIENT_SECRET",
-    "CallbackPath": "/signin-oidc",
-    "SignedOutCallbackPath": "/signout-callback-oidc"
-  }
-}
-"@
-            $productionConfig | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
+            # Build JSON configuration using ConvertTo-Json for proper formatting
+            $config = @{
+              Logging = @{
+                LogLevel = @{
+                  Default = "Information"
+                  "Microsoft.AspNetCore" = "Warning"
+                }
+              }
+              AzureAd = @{
+                Instance = "https://login.microsoftonline.com/"
+                TenantId = $env:AZURE_AD_TENANT_ID
+                ClientId = $env:AZURE_AD_CLIENT_ID
+                ClientSecret = $env:AZURE_AD_CLIENT_SECRET
+                CallbackPath = "/signin-oidc"
+                SignedOutCallbackPath = "/signout-callback-oidc"
+              }
+            }
+            $config | ConvertTo-Json -Depth 10 | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
             Write-Host "✅ Production configuration created with secrets from repository"
             Write-Host "Content of appsettings.Production.json:"
             Get-Content ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json
