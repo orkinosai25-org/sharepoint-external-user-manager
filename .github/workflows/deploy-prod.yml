@@ -48,6 +48,7 @@ jobs:
         dotnet publish --configuration Release --output ../../../../api-publish --no-build
         
     - name: Validate Azure AD Secrets
+      id: validate-secrets
       env:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
@@ -66,7 +67,7 @@ jobs:
         fi
         
         if [ -n "$errors" ]; then
-          echo "❌ Required Azure AD secrets are not configured:$errors"
+          echo "⚠️ Required Azure AD secrets are not configured:$errors"
           echo ""
           echo "ℹ️ To fix this:"
           echo "  1. Go to repository Settings > Secrets and variables > Actions"
@@ -75,12 +76,16 @@ jobs:
           echo "     - AZURE_AD_CLIENT_SECRET: Your Azure AD Application Client Secret"
           echo "     - AZURE_AD_TENANT_ID: Your Azure AD Tenant ID"
           echo "  3. See WORKFLOW_SECRET_SETUP.md for detailed instructions"
-          exit 1
+          echo ""
+          echo "⚠️ Skipping Portal build due to missing secrets - API and SPFx will still be built"
+          echo "has-secrets=false" >> $GITHUB_OUTPUT
+        else
+          echo "✅ All Azure AD secrets validated"
+          echo "has-secrets=true" >> $GITHUB_OUTPUT
         fi
-        
-        echo "✅ All Azure AD secrets validated"
     
     - name: Create Production Configuration for Portal
+      if: steps.validate-secrets.outputs.has-secrets == 'true'
       env:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
@@ -99,6 +104,7 @@ jobs:
         echo "✅ Production configuration created with secrets from repository"
     
     - name: Build Blazor Portal
+      if: steps.validate-secrets.outputs.has-secrets == 'true'
       run: |
         cd src/portal-blazor/SharePointExternalUserManager.Portal
         dotnet restore
@@ -129,6 +135,7 @@ jobs:
         retention-days: 1
         
     - name: Upload Portal artifact
+      if: steps.validate-secrets.outputs.has-secrets == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: portal-package
