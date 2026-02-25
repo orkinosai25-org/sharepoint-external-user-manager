@@ -11,6 +11,7 @@ import { oauthService } from '../../services/oauth';
 import { databaseService } from '../../services/database';
 import { auditLogger } from '../../services/auditLogger';
 import { UnauthorizedError, BadRequestError } from '../../models/common';
+import { config } from '../../utils/config';
 
 async function authCallback(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const correlationId = attachCorrelationId(req);
