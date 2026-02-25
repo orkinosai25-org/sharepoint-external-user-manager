@@ -3,8 +3,9 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
+    "types": ["node"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "../",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -21,12 +22,14 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "../services/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.spec.ts",
+    "**/*.example.ts",
     "shared",
     "src/**/*.cs"
   ]

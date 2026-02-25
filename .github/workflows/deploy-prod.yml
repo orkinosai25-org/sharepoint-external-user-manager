@@ -29,6 +29,8 @@ jobs:
   build:
     name: Build All Components
     runs-on: ubuntu-latest
+    outputs:
+      portal-built: ${{ steps.validate-secrets.outputs.has-secrets }}
     
     steps:
     - name: Checkout code
@@ -214,12 +216,13 @@ jobs:
         name: api-package
         path: ./api-package
         
-    - name: Validate deployment prerequisites
+    - name: Check deployment prerequisites
+      id: check-prereqs
       env:
         API_PUBLISH_PROFILE_PROD: ${{ secrets.API_PUBLISH_PROFILE_PROD }}
       run: |
         if [ -z "$API_PUBLISH_PROFILE_PROD" ]; then
-          echo "❌ API deployment skipped - API_PUBLISH_PROFILE_PROD secret not configured"
+          echo "⚠️ API deployment skipped - API_PUBLISH_PROFILE_PROD secret not configured"
           echo ""
           echo "ℹ️ To enable API deployment to production:"
           echo "  1. Go to Azure Portal → Your Production API App Service"
@@ -227,11 +230,14 @@ jobs:
           echo "  3. Copy the entire XML content"
           echo "  4. Go to repository Settings > Secrets and variables > Actions"
           echo "  5. Add secret named 'API_PUBLISH_PROFILE_PROD' with the XML content"
-          exit 1
+          echo "can-deploy=false" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Deployment prerequisites validated"
+          echo "can-deploy=true" >> $GITHUB_OUTPUT
         fi
-        echo "✅ Deployment prerequisites validated"
         
     - name: Deploy to Azure App Service
+      if: steps.check-prereqs.outputs.can-deploy == 'true'
       uses: azure/webapps-deploy@v3
       with:
         app-name: 'spexternal-api-prod'  # Can be overridden by publish profile
@@ -243,6 +249,8 @@ jobs:
     name: Deploy Blazor Portal to Production
     runs-on: ubuntu-latest
     needs: build
+    # Only run if portal was built (Azure AD secrets were present)
+    if: needs.build.outputs.portal-built == 'true'
     environment: production  # Requires approval for production
     
     steps:
@@ -252,12 +260,13 @@ jobs:
         name: portal-package
         path: ./portal-package
         
-    - name: Validate deployment prerequisites
+    - name: Check deployment prerequisites
+      id: check-prereqs
       env:
         PORTAL_PUBLISH_PROFILE_PROD: ${{ secrets.PORTAL_PUBLISH_PROFILE_PROD }}
       run: |
         if [ -z "$PORTAL_PUBLISH_PROFILE_PROD" ]; then
-          echo "❌ Portal deployment skipped - PORTAL_PUBLISH_PROFILE_PROD secret not configured"
+          echo "⚠️ Portal deployment skipped - PORTAL_PUBLISH_PROFILE_PROD secret not configured"
           echo ""
           echo "ℹ️ To enable Portal deployment to production:"
           echo "  1. Go to Azure Portal → Your Production Portal App Service"
@@ -265,11 +274,14 @@ jobs:
           echo "  3. Copy the entire XML content"
           echo "  4. Go to repository Settings > Secrets and variables > Actions"
           echo "  5. Add secret named 'PORTAL_PUBLISH_PROFILE_PROD' with the XML content"
-          exit 1
+          echo "can-deploy=false" >> $GITHUB_OUTPUT
+        else
+          echo "✅ Deployment prerequisites validated"
+          echo "can-deploy=true" >> $GITHUB_OUTPUT
         fi
-        echo "✅ Deployment prerequisites validated"
         
     - name: Deploy to Azure App Service
+      if: steps.check-prereqs.outputs.can-deploy == 'true'
       uses: azure/webapps-deploy@v3
       with:
         app-name: 'spexternal-portal-prod'  # Can be overridden by publish profile

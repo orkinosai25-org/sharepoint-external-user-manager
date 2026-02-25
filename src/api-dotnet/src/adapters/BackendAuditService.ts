@@ -6,28 +6,30 @@
  */
 
 import { IAuditService } from '../../../services/interfaces';
-import { auditLogger } from '../services/auditLogger';
 
 export class BackendAuditService implements IAuditService {
   /**
    * Log an informational message
    */
   logInfo(operation: string, message: string, data?: any): void {
-    auditLogger.log('info', operation, message, data);
+    // Simple console logging for info messages
+    console.log(`[INFO] ${operation}: ${message}`, data);
   }
 
   /**
    * Log a warning message
    */
   logWarning(operation: string, message: string, data?: any): void {
-    auditLogger.log('warn', operation, message, data);
+    // Simple console logging for warning messages
+    console.warn(`[WARN] ${operation}: ${message}`, data);
   }
 
   /**
    * Log an error
    */
   logError(operation: string, message: string, error: any): void {
-    auditLogger.log('error', operation, message, error);
+    // Simple console logging for error messages
+    console.error(`[ERROR] ${operation}: ${message}`, error);
   }
 
   /**
