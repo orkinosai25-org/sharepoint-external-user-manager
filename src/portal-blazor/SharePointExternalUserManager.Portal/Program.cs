@@ -21,14 +21,72 @@ var configValidator = new ConfigurationValidator(
 
 var validationResult = configValidator.Validate();
 
-// Log configuration warnings but allow application to start
-// This allows developers to run the app locally and configure settings as needed
-if (!validationResult.IsValid || validationResult.HasWarnings)
+// Create logger for configuration errors
+var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
+
+// Check for critical errors - fail fast if Azure AD is not configured
+if (!validationResult.IsValid)
 {
-    var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger("Startup");
+    logger.LogError("═══════════════════════════════════════════════════════════════");
+    logger.LogError("CONFIGURATION ERROR: Required settings are missing");
+    logger.LogError("═══════════════════════════════════════════════════════════════");
+    logger.LogError("");
     
+    foreach (var error in validationResult.Errors)
+    {
+        logger.LogError("  • {Key}: {Message}", error.Key, error.Message);
+    }
+    
+    logger.LogError("");
+    logger.LogError("APPLICATION CANNOT START without these required settings.");
+    logger.LogError("");
+    logger.LogError("HOW TO FIX:");
+    logger.LogError("");
+    logger.LogError("For Azure App Service deployments:");
+    logger.LogError("  1. Go to Azure Portal → Your App Service");
+    logger.LogError("  2. Navigate to Settings → Environment variables (or Configuration)");
+    logger.LogError("  3. Add the following Application Settings:");
+    logger.LogError("     • AzureAd__ClientId = Your Azure AD Application Client ID");
+    logger.LogError("     • AzureAd__ClientSecret = Your Azure AD Application Client Secret");
+    logger.LogError("     • AzureAd__TenantId = Your Azure AD Tenant ID");
+    logger.LogError("  4. Click Save and Restart the App Service");
+    logger.LogError("");
+    logger.LogError("To get the ClientSecret from Azure AD:");
+    logger.LogError("  1. Go to Azure Portal → Azure Active Directory");
+    logger.LogError("  2. Navigate to App registrations → Find your application");
+    logger.LogError("  3. Go to Certificates & secrets");
+    logger.LogError("  4. Create a new client secret (or use existing if saved)");
+    logger.LogError("  5. Copy the secret value immediately");
+    logger.LogError("  6. Add it to the App Service configuration");
+    logger.LogError("");
+    logger.LogError("For local development:");
+    logger.LogError("  Option 1: Create appsettings.Local.json (in .gitignore)");
+    logger.LogError("    Copy appsettings.example.json and update with your credentials");
+    logger.LogError("");
+    logger.LogError("  Option 2: Use User Secrets");
+    logger.LogError("    dotnet user-secrets set \"AzureAd:ClientId\" \"YOUR_CLIENT_ID\"");
+    logger.LogError("    dotnet user-secrets set \"AzureAd:ClientSecret\" \"YOUR_SECRET\"");
+    logger.LogError("    dotnet user-secrets set \"AzureAd:TenantId\" \"YOUR_TENANT_ID\"");
+    logger.LogError("");
+    logger.LogError("  Option 3: Use Environment Variables");
+    logger.LogError("    export AzureAd__ClientId=\"YOUR_CLIENT_ID\"");
+    logger.LogError("    export AzureAd__ClientSecret=\"YOUR_SECRET\"");
+    logger.LogError("    export AzureAd__TenantId=\"YOUR_TENANT_ID\"");
+    logger.LogError("");
+    logger.LogError("See AZURE_APP_SERVICE_SETUP.md for detailed instructions");
+    logger.LogError("═══════════════════════════════════════════════════════════════");
+    
+    throw new InvalidOperationException(
+        "Application cannot start due to missing required configuration. " +
+        "Azure AD ClientSecret and other required settings must be configured. " +
+        "See the error messages above for detailed instructions on how to configure these settings.");
+}
+
+// Log warnings for non-critical settings
+if (validationResult.HasWarnings)
+{
     logger.LogWarning("═══════════════════════════════════════════════════════════════");
-    logger.LogWarning("CONFIGURATION WARNING: Some settings are not fully configured");
+    logger.LogWarning("CONFIGURATION WARNING: Some optional settings are not configured");
     logger.LogWarning("═══════════════════════════════════════════════════════════════");
     logger.LogWarning("");
     logger.LogWarning("The application will start, but some features may not work:");
@@ -40,31 +98,7 @@ if (!validationResult.IsValid || validationResult.HasWarnings)
     }
     
     logger.LogWarning("");
-    logger.LogWarning("HOW TO CONFIGURE SETTINGS:");
-    logger.LogWarning("");
-    logger.LogWarning("Option 1: appsettings.Local.json (Recommended for local development)");
-    logger.LogWarning("  1. Copy appsettings.example.json to appsettings.Local.json");
-    logger.LogWarning("  2. Update the values with your actual Azure AD credentials:");
-    logger.LogWarning("     - ClientId: Your Azure AD Application Client ID");
-    logger.LogWarning("     - ClientSecret: Your Azure AD Application Client Secret");
-    logger.LogWarning("     - TenantId: Your Azure AD Tenant ID");
-    logger.LogWarning("     - ApiSettings.BaseUrl: Your backend API URL");
-    logger.LogWarning("  3. The file is in .gitignore and won't be committed");
-    logger.LogWarning("");
-    logger.LogWarning("Option 2: User Secrets (Secure alternative)");
-    logger.LogWarning("  dotnet user-secrets set \"AzureAd:ClientId\" \"YOUR_CLIENT_ID\"");
-    logger.LogWarning("  dotnet user-secrets set \"AzureAd:ClientSecret\" \"YOUR_SECRET\"");
-    logger.LogWarning("  dotnet user-secrets set \"AzureAd:TenantId\" \"YOUR_TENANT_ID\"");
-    logger.LogWarning("");
-    logger.LogWarning("Option 3: Environment Variables");
-    logger.LogWarning("  export AzureAd__ClientId=\"YOUR_CLIENT_ID\"");
-    logger.LogWarning("  export AzureAd__ClientSecret=\"YOUR_SECRET\"");
-    logger.LogWarning("  export AzureAd__TenantId=\"YOUR_TENANT_ID\"");
-    logger.LogWarning("");
-    logger.LogWarning("For Azure App Service deployments:");
-    logger.LogWarning("  Use Azure App Service Configuration (Environment Variables)");
-    logger.LogWarning("  OR ensure appsettings.Production.json is created during deployment");
-    logger.LogWarning("");
+    logger.LogWarning("These settings are optional and can be configured later.");
     logger.LogWarning("═══════════════════════════════════════════════════════════════");
 }
 
