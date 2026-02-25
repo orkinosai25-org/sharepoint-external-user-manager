@@ -171,7 +171,9 @@ dotnet run
 # Configuration check: https://localhost:7001/config-check
 ```
 
-**If you see "Application with identifier 'YOUR_CLIENT_ID' was not found"**, this means you need to configure Azure AD credentials. The application will not start until this is done.
+**If you see "Application with identifier 'YOUR_CLIENT_ID' was not found"** or **"AADSTS7000218: The request body must contain the following parameter: 'client_assertion' or 'client_secret'"**, this means you need to configure Azure AD credentials. The application will not start until this is done.
+
+📚 **See [TROUBLESHOOTING_AADSTS7000218.md](./TROUBLESHOOTING_AADSTS7000218.md) for a quick fix guide.**
 
 ## 📦 Build Commands
 
@@ -274,6 +276,12 @@ cd src/api-dotnet && npm test
 - **[Branch Protection](./docs/BRANCH_PROTECTION.md)**: GitHub branch protection configuration
 - **[Security Notes](./docs/SECURITY_NOTES.md)**: Security best practices and requirements
 - **[Workflows README](./.github/workflows/README.md)**: CI/CD pipeline documentation
+
+### Troubleshooting
+- **[AADSTS7000218 Error Fix](./TROUBLESHOOTING_AADSTS7000218.md)**: Fix authentication errors with missing ClientSecret
+- **[Azure App Service Setup](./AZURE_APP_SERVICE_SETUP.md)**: Complete Azure AD and App Service configuration
+- **[Configuration Guide](./CONFIGURATION_GUIDE.md)**: General configuration troubleshooting
+- **[MVP Support Runbook](./docs/MVP_SUPPORT_RUNBOOK.md)**: Comprehensive troubleshooting and support procedures
 
 ### User Guides
 - **[User Guide](./docs/USER_GUIDE.md)**: Portal feature guide and best practices
