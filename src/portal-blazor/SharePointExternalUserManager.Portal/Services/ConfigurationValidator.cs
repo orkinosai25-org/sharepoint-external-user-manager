@@ -42,7 +42,7 @@ public class ConfigurationValidator
         
         if (azureAd == null)
         {
-            result.AddWarning("AzureAd", "AzureAd configuration section is missing. Authentication cannot work without this configuration.");
+            result.AddWarning("AzureAd", "AzureAd configuration section is missing. All Azure AD properties (ClientId, ClientSecret, TenantId) must be configured via environment variables, user secrets, or appsettings.Local.json for authentication to work.");
             return;
         }
 
