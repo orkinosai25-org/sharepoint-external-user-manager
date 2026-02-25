@@ -119,3 +119,4 @@ src/portal-blazor/obj/
 
 # Production configuration files (generated during build, should not be committed)
 appsettings.Production.json
+appsettings.Local.json

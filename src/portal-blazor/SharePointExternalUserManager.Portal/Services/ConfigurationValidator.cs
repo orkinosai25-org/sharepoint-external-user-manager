@@ -42,39 +42,39 @@ public class ConfigurationValidator
         
         if (azureAd == null)
         {
-            result.AddError("AzureAd", "AzureAd configuration section is missing");
+            result.AddWarning("AzureAd", "AzureAd configuration section is missing. Authentication will not work until configured.");
             return;
         }
 
-        // Check for placeholder values
+        // Check for placeholder values - use warnings instead of errors to allow app to start
         if (IsPlaceholder(azureAd.ClientId))
         {
-            result.AddError("AzureAd:ClientId", 
+            result.AddWarning("AzureAd:ClientId", 
                 "Azure AD Client ID is not configured. Please set a valid Client ID from your Azure AD app registration.");
-            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientId contains placeholder value '{ClientId}'. " +
+            _logger.LogWarning("CONFIGURATION WARNING: Azure AD ClientId contains placeholder value '{ClientId}'. " +
                 "Sign-in will fail until this is configured with a valid Client ID from Azure Portal.", 
                 azureAd.ClientId);
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientId))
         {
-            result.AddError("AzureAd:ClientId", "Azure AD Client ID is required but not set");
+            result.AddWarning("AzureAd:ClientId", "Azure AD Client ID is required but not set. Sign-in will not work.");
         }
 
         if (IsPlaceholder(azureAd.ClientSecret))
         {
-            result.AddError("AzureAd:ClientSecret", 
+            result.AddWarning("AzureAd:ClientSecret", 
                 "Azure AD Client Secret is not configured. Please set a valid Client Secret from your Azure AD app registration.");
-            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret contains placeholder value. " +
+            _logger.LogWarning("CONFIGURATION WARNING: Azure AD ClientSecret contains placeholder value. " +
                 "Authentication will fail until this is configured.");
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientSecret))
         {
-            result.AddError("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set");
+            result.AddWarning("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set. Authentication will not work.");
         }
 
         if (string.IsNullOrWhiteSpace(azureAd.TenantId))
         {
-            result.AddError("AzureAd:TenantId", "Azure AD Tenant ID is required but not set");
+            result.AddWarning("AzureAd:TenantId", "Azure AD Tenant ID is required but not set. Authentication will not work.");
         }
     }
 
