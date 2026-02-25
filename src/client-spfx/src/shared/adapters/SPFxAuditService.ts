@@ -6,7 +6,7 @@
  */
 
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { IAuditService } from '../../../../services/interfaces';
+import { IAuditService } from '../../interfaces';
 
 export class SPFxAuditService implements IAuditService {
   constructor(private context: WebPartContext) {}
@@ -52,6 +52,7 @@ export class SPFxAuditService implements IAuditService {
    * Generate a unique session ID for tracking related operations
    */
   generateSessionId(): string {
-    return `spfx-${this.context.pageContext.correlationId || Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // Use a combination of timestamp and random value for unique session IDs
+    return `spfx-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   }
 }

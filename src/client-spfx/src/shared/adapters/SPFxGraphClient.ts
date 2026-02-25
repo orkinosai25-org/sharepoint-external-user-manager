@@ -7,7 +7,7 @@
 
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { MSGraphClientV3 } from '@microsoft/sp-http';
-import { IGraphClient } from '../../../../services/interfaces';
+import { IGraphClient } from '../../interfaces';
 
 export class SPFxGraphClient implements IGraphClient {
   private graphClient: MSGraphClientV3 | null = null;
