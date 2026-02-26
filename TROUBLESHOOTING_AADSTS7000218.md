@@ -71,9 +71,13 @@ You need to get the client secret from your Azure AD app registration:
 
 ## What Changed in This Fix
 
-Previously, the application would start even without the `ClientSecret`, but then fail at runtime when you tried to sign in. This caused the confusing AADSTS7000218 error.
+Previously, the application would start even without the `ClientSecret`, but when configured, it wasn't always being properly passed to Azure AD during authentication. This caused the AADSTS7000218 error.
 
-**Now**, the application will **not start** if the `ClientSecret` is missing. Instead, you'll see a clear error message with instructions on how to configure it. This is a "fail fast" approach that makes configuration errors obvious and easier to fix.
+**Now**, the application explicitly reads and sets the `ClientSecret` from configuration, ensuring it's properly passed to Azure AD during the authentication flow. The application also logs clear messages about the ClientSecret configuration status:
+- If configured: Logs "Azure AD ClientSecret configured from application settings"  
+- If missing: Logs a warning with instructions on how to configure it
+
+This fix ensures that when the ClientSecret IS configured (via environment variables, user secrets, or other sources), the authentication will work correctly.
 
 ## Verify Your Configuration
 
@@ -109,6 +113,6 @@ If you still see errors after following these steps:
 
 ---
 
-**Last Updated**: 2026-02-25  
+**Last Updated**: 2026-02-26  
 **Issue**: AADSTS7000218 - Missing client_secret parameter  
-**Status**: ✅ Fixed with fail-fast validation
+**Status**: ✅ Fixed with explicit ClientSecret configuration
