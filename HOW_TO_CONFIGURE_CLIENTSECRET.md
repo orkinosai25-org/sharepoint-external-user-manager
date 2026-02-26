@@ -35,7 +35,16 @@ AADSTS7000218: The request body must contain the following parameter: 'client_as
 
 ## Step 2: Add ClientSecret to appsettings.json
 
-### Option A: Edit appsettings.json directly (Simple)
+### ⚠️ SECURITY WARNING
+Before adding secrets to any file, understand the security implications:
+- **appsettings.json**: Usually in source control - secrets added here may be exposed if committed to git
+- **appsettings.Local.json**: In .gitignore - safer option, won't be committed
+- **If this is a personal/private repo**: Option A is acceptable
+- **If this is a shared/public repo**: Use Option B or other secure methods
+
+### Option A: Edit appsettings.json directly (Quick but less secure)
+
+**⚠️ WARNING**: Only use this for personal development. DO NOT commit secrets to source control!
 
 1. Open `src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.json`
 2. Find the `AzureAd` section
@@ -55,11 +64,10 @@ AADSTS7000218: The request body must contain the following parameter: 'client_as
 ```
 
 4. Save the file
-5. Restart your application
+5. **IMPORTANT**: If you commit changes to git, revert this file or use `git update-index --assume-unchanged` to prevent committing the secret
+6. Restart your application
 
-**Note**: This file is in source control. If you plan to commit changes, consider using Option B below to keep secrets out of your repo.
-
-### Option B: Use appsettings.Local.json (More Secure)
+### Option B: Use appsettings.Local.json (Recommended - More Secure)
 
 1. Create a new file: `src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Local.json`
 2. Add the following content:
