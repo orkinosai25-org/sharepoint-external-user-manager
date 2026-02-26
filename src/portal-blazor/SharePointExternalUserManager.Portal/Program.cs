@@ -101,6 +101,15 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(options =>
     {
         builder.Configuration.Bind("AzureAd", options);
+
+        // Explicitly set ClientSecret from configuration to ensure it's properly passed to Azure AD
+        // This fixes AADSTS7000218 error where client_secret is required but not included in token request
+        var clientSecret = builder.Configuration["AzureAd:ClientSecret"];
+        if (!string.IsNullOrWhiteSpace(clientSecret))
+        {
+            options.ClientSecret = clientSecret;
+        }
+
         // Use authorization code flow only (more secure and doesn't require implicit grant)
         // This prevents the AADSTS700054 error about 'id_token' not being enabled
         options.ResponseType = "code";
