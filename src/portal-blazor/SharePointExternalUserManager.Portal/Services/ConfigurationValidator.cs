@@ -60,17 +60,17 @@ public class ConfigurationValidator
             result.AddWarning("AzureAd:ClientId", "Azure AD Client ID is required for authentication. Please set via environment variables, user secrets, or appsettings.Local.json.");
         }
 
-        // Check ClientSecret - treat as ERROR if missing or placeholder
+        // Check ClientSecret - treat as WARNING if missing or placeholder
         if (IsPlaceholder(azureAd.ClientSecret))
         {
-            result.AddError("AzureAd:ClientSecret", 
-                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. The application cannot start without a valid value. Please set it via environment variables, user secrets, or appsettings.Local.json.");
-            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret contains placeholder value. " +
-                "Authentication will not work. Application requires a valid Client Secret configured via secure methods.");
+            result.AddWarning("AzureAd:ClientSecret", 
+                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. Authentication will not work until configured. Please set it via environment variables, user secrets, or appsettings.Local.json.");
+            _logger.LogWarning("CONFIGURATION WARNING: Azure AD ClientSecret contains placeholder value. " +
+                "Authentication will not work. Please configure a valid Client Secret via secure methods.");
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientSecret))
         {
-            result.AddError("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set. The application cannot start without this value. Please set via environment variables, user secrets, or appsettings.Local.json.");
+            result.AddWarning("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set. Authentication will not work until configured. Please set via environment variables, user secrets, or appsettings.Local.json.");
         }
 
         // Check TenantId - treat as warning if missing
