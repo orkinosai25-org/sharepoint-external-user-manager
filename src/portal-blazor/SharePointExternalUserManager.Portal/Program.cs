@@ -108,6 +108,12 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
         if (!string.IsNullOrWhiteSpace(clientSecret))
         {
             options.ClientSecret = clientSecret;
+            logger.LogInformation("Azure AD ClientSecret configured from application settings");
+        }
+        else
+        {
+            logger.LogWarning("Azure AD ClientSecret is not configured. Authentication will fail with AADSTS7000218 error. " +
+                "Configure via environment variables (AzureAd__ClientSecret), user secrets, or appsettings.Local.json");
         }
 
         // Use authorization code flow only (more secure and doesn't require implicit grant)
