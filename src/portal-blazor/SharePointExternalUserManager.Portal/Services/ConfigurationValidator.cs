@@ -64,9 +64,9 @@ public class ConfigurationValidator
         if (IsPlaceholder(azureAd.ClientSecret))
         {
             result.AddError("AzureAd:ClientSecret", 
-                "Azure AD Client Secret contains a placeholder value. The application cannot start without this value. Please set it via environment variables, user secrets, or appsettings.Local.json.");
+                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. The application cannot start without a valid value. Please set it via environment variables, user secrets, or appsettings.Local.json.");
             _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret contains placeholder value. " +
-                "Authentication will not work. Application cannot start without a valid Client Secret configured via secure methods.");
+                "Authentication will not work. Application requires a valid Client Secret configured via secure methods.");
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientSecret))
         {
