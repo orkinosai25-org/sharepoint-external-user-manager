@@ -60,17 +60,20 @@ public class ConfigurationValidator
             result.AddWarning("AzureAd:ClientId", "Azure AD Client ID is required for authentication. Please set via environment variables, user secrets, or appsettings.Local.json.");
         }
 
-        // Check ClientSecret - treat as WARNING if missing or placeholder
+        // Check ClientSecret - treat as ERROR if missing or placeholder (required for authentication)
         if (IsPlaceholder(azureAd.ClientSecret))
         {
-            result.AddWarning("AzureAd:ClientSecret", 
-                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. Authentication will not work until configured. Please set it via environment variables, user secrets, or appsettings.Local.json.");
-            _logger.LogWarning("CONFIGURATION WARNING: Azure AD ClientSecret contains placeholder value. " +
+            result.AddError("AzureAd:ClientSecret", 
+                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. " +
+                "Set it via environment variables (AzureAd__ClientSecret), user secrets, or appsettings.Local.json.");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret contains placeholder value. " +
                 "Authentication will not work. Please configure a valid Client Secret via secure methods.");
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientSecret))
         {
-            result.AddWarning("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set. Authentication will not work until configured. Please set via environment variables, user secrets, or appsettings.Local.json.");
+            result.AddError("AzureAd:ClientSecret", 
+                "Azure AD Client Secret is required but not set. " +
+                "Set it via environment variables (AzureAd__ClientSecret), user secrets, or appsettings.Local.json.");
         }
 
         // Check TenantId - treat as warning if missing
