@@ -95,31 +95,21 @@ if (validationResult.HasWarnings)
     logger.LogWarning("═══════════════════════════════════════════════════════════════");
 }
 
-// Add authentication with Microsoft Entra ID
-// Always use configuration from appsettings.json for MVP
+// Add authentication with Microsoft Entra ID.
+// Use the configuration-section overload so that Microsoft.Identity.Web reads ALL AzureAd
+// settings (including ClientSecret) directly from the configuration system and properly
+// wires them into the MSAL confidential-client pipeline.  This is the recommended pattern
+// and fixes AADSTS7000218 ("client_secret or client_assertion required") that occurred when
+// the action-based overload with manual Bind did not propagate ClientSecret into MSAL.
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(options =>
-    {
-        builder.Configuration.Bind("AzureAd", options);
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
 
-        // Explicitly set ClientSecret from configuration to ensure it's properly passed to Azure AD
-        // This fixes AADSTS7000218 error where client_secret is required but not included in token request
-        var clientSecret = builder.Configuration["AzureAd:ClientSecret"];
-        if (!string.IsNullOrWhiteSpace(clientSecret))
-        {
-            options.ClientSecret = clientSecret;
-            logger.LogInformation("Azure AD ClientSecret configured from application settings");
-        }
-        else
-        {
-            logger.LogWarning("Azure AD ClientSecret is not configured. Authentication will fail with AADSTS7000218 error. " +
-                "Configure via environment variables (AzureAd__ClientSecret), user secrets, or appsettings.Local.json");
-        }
-
-        // Use authorization code flow only (more secure and doesn't require implicit grant)
-        // This prevents the AADSTS700054 error about 'id_token' not being enabled
-        options.ResponseType = "code";
-    });
+// Use authorization code flow only (more secure, avoids AADSTS700054 about id_token).
+// PostConfigure runs after the library's own configuration so this value always wins.
+builder.Services.PostConfigure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>
+{
+    options.ResponseType = "code";
+});
 
 // Add authorization
 builder.Services.AddAuthorization();
