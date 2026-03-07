@@ -60,17 +60,30 @@ public class ConfigurationValidator
             result.AddWarning("AzureAd:ClientId", "Azure AD Client ID is required for authentication. Please set via environment variables, user secrets, or appsettings.Local.json.");
         }
 
-        // Check ClientSecret - treat as WARNING if missing or placeholder
+        // Check ClientSecret - treat as ERROR if missing or placeholder.
+        // Without a valid ClientSecret, MSAL cannot register its OnAuthorizationCodeReceived handler,
+        // causing the standard OIDC handler to attempt token exchange without client_secret, which
+        // results in AADSTS7000218 ("client_assertion or client_secret required") at sign-in time.
+        // Failing fast here provides a clear, actionable message rather than a cryptic runtime error.
         if (IsPlaceholder(azureAd.ClientSecret))
         {
-            result.AddWarning("AzureAd:ClientSecret", 
-                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. Authentication will not work until configured. Please set it via environment variables, user secrets, or appsettings.Local.json.");
-            _logger.LogWarning("CONFIGURATION WARNING: Azure AD ClientSecret contains placeholder value. " +
-                "Authentication will not work. Please configure a valid Client Secret via secure methods.");
+            result.AddError("AzureAd:ClientSecret",
+                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. " +
+                "Set it via: Azure App Service environment variable 'AzureAd__ClientSecret', " +
+                "user secrets ('dotnet user-secrets set \"AzureAd:ClientSecret\" \"<value>\"'), " +
+                "or appsettings.Local.json (never commit this file).");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret contains a placeholder value. " +
+                "Authentication cannot work until a real Client Secret is configured.");
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientSecret))
         {
-            result.AddWarning("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set. Authentication will not work until configured. Please set via environment variables, user secrets, or appsettings.Local.json.");
+            result.AddError("AzureAd:ClientSecret",
+                "Azure AD Client Secret is required but not set. " +
+                "Set it via: Azure App Service environment variable 'AzureAd__ClientSecret', " +
+                "user secrets ('dotnet user-secrets set \"AzureAd:ClientSecret\" \"<value>\"'), " +
+                "or appsettings.Local.json (never commit this file).");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret is missing. " +
+                "Authentication cannot work until a Client Secret is configured.");
         }
 
         // Check TenantId - treat as warning if missing
