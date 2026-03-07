@@ -85,6 +85,23 @@ public class ConfigurationValidator
             _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret is missing. " +
                 "Authentication cannot work until a Client Secret is configured.");
         }
+        else if (IsGuid(azureAd.ClientSecret))
+        {
+            // AADSTS7000215: The secret looks like a GUID, which is the format of the client
+            // secret *ID* (shown in the Certificates & secrets list), not the secret *value*.
+            // The secret value is a longer, non-GUID random string that is only visible
+            // immediately after creation.
+            result.AddError("AzureAd:ClientSecret",
+                "Azure AD Client Secret appears to be a secret ID (GUID format) rather than the secret value. " +
+                "In Azure Portal under 'Certificates & secrets', copy the 'Value' column (not the 'Secret ID' column). " +
+                "This causes AADSTS7000215 at sign-in. " +
+                "Set the correct secret value via: Azure App Service environment variable 'AzureAd__ClientSecret', " +
+                "user secrets ('dotnet user-secrets set \"AzureAd:ClientSecret\" \"<value>\"'), " +
+                "or appsettings.Local.json (never commit this file).");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret looks like a GUID (secret ID), not a secret value. " +
+                "Copy the 'Value' column from Azure Portal Certificates & secrets, not the 'Secret ID'. " +
+                "This causes AADSTS7000215 ('Invalid client secret provided') at sign-in.");
+        }
 
         // Check TenantId - treat as warning if missing
         if (string.IsNullOrWhiteSpace(azureAd.TenantId))
@@ -113,6 +130,14 @@ public class ConfigurationValidator
             result.AddWarning("StripeSettings:PublishableKey", 
                 "Stripe Publishable Key is not configured. Billing functionality will not work.");
         }
+    }
+
+    /// <summary>
+    /// Checks if a value is a GUID, which indicates the client secret ID was used instead of the secret value
+    /// </summary>
+    private static bool IsGuid(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && Guid.TryParse(value, out _);
     }
 
     /// <summary>
