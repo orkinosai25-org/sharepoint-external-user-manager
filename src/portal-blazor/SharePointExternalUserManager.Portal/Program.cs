@@ -68,6 +68,8 @@ if (!validationResult.IsValid)
     logger.LogError("    export AzureAd__ClientSecret=\"YOUR_SECRET\"");
     logger.LogError("");
     logger.LogError("See TROUBLESHOOTING_AADSTS7000218.md for detailed instructions");
+    logger.LogError("NOTE: If you see AADSTS7000215 ('Invalid client secret'), ensure you copy");
+    logger.LogError("      the secret VALUE from Azure Portal, not the secret ID (GUID).");
     logger.LogError("═══════════════════════════════════════════════════════════════");
     
     throw new InvalidOperationException(
@@ -106,9 +108,40 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
 
 // Use authorization code flow only (more secure, avoids AADSTS700054 about id_token).
 // PostConfigure runs after the library's own configuration so this value always wins.
+const string AuthErrorPath = "/auth-error";
+const string AuthErrorConfigPath = "/auth-error?reason=config";
+
 builder.Services.PostConfigure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>
 {
     options.ResponseType = "code";
+
+    // Chain an OnRemoteFailure handler after any handler already registered by Microsoft.Identity.Web.
+    // This catches Azure AD authentication errors (e.g. AADSTS7000215 invalid client secret,
+    // AADSTS7000218 missing client secret) and redirects to a friendly error page instead of
+    // exposing a raw exception stack trace to the user.
+    var previousOnRemoteFailure = options.Events.OnRemoteFailure;
+    options.Events.OnRemoteFailure = async context =>
+    {
+        if (previousOnRemoteFailure != null)
+        {
+            await previousOnRemoteFailure(context);
+            if (context.Result?.Handled == true) return;
+        }
+
+        var errorDescription = context.Failure?.Message ?? string.Empty;
+        if (errorDescription.Contains("AADSTS7000215", StringComparison.OrdinalIgnoreCase) ||
+            errorDescription.Contains("AADSTS7000218", StringComparison.OrdinalIgnoreCase) ||
+            errorDescription.Contains("invalid_client", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Redirect(AuthErrorConfigPath);
+        }
+        else
+        {
+            context.Response.Redirect(AuthErrorPath);
+        }
+
+        context.HandleResponse();
+    };
 });
 
 // Add authorization
