@@ -1,0 +1,73 @@
+@page "/auth-error"
+@using Microsoft.AspNetCore.Components
+
+<PageTitle>Sign-In Error - ClientSpace</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <span class="bi bi-exclamation-triangle-fill me-2"></span>
+                        Sign-In Failed
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (Reason == "config")
+                    {
+                        <h5 class="card-title text-danger">Authentication Configuration Error</h5>
+                        <p class="card-text">
+                            Sign-in could not complete because the application is not fully configured.
+                            The Azure AD <strong>Client Secret</strong> is missing or invalid.
+                        </p>
+
+                        <div class="alert alert-warning mt-3">
+                            <h6 class="alert-heading">
+                                <span class="bi bi-gear-fill me-1"></span> For Administrators
+                            </h6>
+                            <p class="mb-2">
+                                Ensure the <code>AzureAd:ClientSecret</code> setting is configured in
+                                your deployment environment:
+                            </p>
+                            <ul class="mb-0">
+                                <li>
+                                    <strong>Azure App Service:</strong> Add an Application Setting named
+                                    <code>AzureAd__ClientSecret</code> with your client secret value.
+                                </li>
+                                <li>
+                                    <strong>Local development:</strong> Use
+                                    <code>dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_SECRET"</code>
+                                    or create an <code>appsettings.Local.json</code> file.
+                                </li>
+                            </ul>
+                        </div>
+                    }
+                    else
+                    {
+                        <h5 class="card-title text-danger">Authentication Error</h5>
+                        <p class="card-text">
+                            An error occurred during sign-in. Please try again. If the problem persists,
+                            contact your administrator.
+                        </p>
+                    }
+
+                    <div class="mt-4 d-flex gap-2">
+                        <a href="/" class="btn btn-outline-secondary">
+                            <span class="bi bi-house-fill me-1"></span> Return Home
+                        </a>
+                        <a href="MicrosoftIdentity/Account/SignIn" class="btn btn-primary">
+                            <span class="bi bi-box-arrow-in-right me-1"></span> Try Sign In Again
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "reason")]
+    public string? Reason { get; set; }
+}

@@ -109,6 +109,37 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
 builder.Services.PostConfigure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>
 {
     options.ResponseType = "code";
+
+    // Handle remote authentication failures gracefully (e.g. AADSTS7000218 when
+    // ClientSecret is not configured) so users see a helpful error page instead of
+    // the raw ASP.NET Core developer-exception page.
+    var previousOnRemoteFailure = options.Events?.OnRemoteFailure;
+    options.Events ??= new OpenIdConnectEvents();
+    options.Events.OnRemoteFailure = async context =>
+    {
+        if (previousOnRemoteFailure != null)
+        {
+            await previousOnRemoteFailure(context);
+            if (context.Result?.Handled == true)
+                return;
+        }
+
+        var errorDescription = context.Failure?.Message ?? string.Empty;
+
+        // AADSTS7000218: client_secret or client_assertion missing
+        if (errorDescription.Contains("AADSTS7000218", StringComparison.OrdinalIgnoreCase) ||
+            errorDescription.Contains("client_secret", StringComparison.OrdinalIgnoreCase) ||
+            errorDescription.Contains("invalid_client", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.Redirect("/auth-error?reason=config");
+        }
+        else
+        {
+            context.Response.Redirect("/auth-error");
+        }
+
+        context.HandleResponse();
+    };
 });
 
 // Add authorization
