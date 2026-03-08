@@ -144,7 +144,7 @@ Update `appsettings.json` or use environment variables:
     "ClientSecret": "YOUR_CLIENT_SECRET"
   },
   "ApiSettings": {
-    "BaseUrl": "https://localhost:7071/api",
+    "BaseUrl": "https://localhost:5049/api",
     "Timeout": 30
   },
   "StripeSettings": {
@@ -164,7 +164,7 @@ Update `appsettings.json` or use environment variables:
 - .NET 8 SDK or later
 - Azure subscription (for Azure AD app registration)
 - Stripe account (for billing integration)
-- Backend API running on `localhost:7071`
+- Backend API running on `localhost:5049`
 
 ### Running Locally
 

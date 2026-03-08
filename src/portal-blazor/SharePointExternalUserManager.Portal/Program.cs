@@ -162,10 +162,18 @@ builder.Services.AddRazorPages();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-// Always use the developer exception page so that the full exception details (including
-// AADSTS7000215 / AADSTS7000218 OpenIdConnect errors) are printed in the browser,
-// regardless of the deployment environment.
-app.UseDeveloperExceptionPage();
+// Use the developer exception page in Development only so that the full exception details
+// (including AADSTS7000215 / AADSTS7000218 OpenIdConnect errors) are printed in the
+// browser during local development.  In other environments a generic error page is used
+// to avoid leaking implementation details to end-users.
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler("/Error");
+}
 
 // Keep HSTS enabled to enforce HTTPS connections.
 app.UseHsts();

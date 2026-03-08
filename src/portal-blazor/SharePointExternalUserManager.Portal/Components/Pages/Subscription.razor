@@ -3,6 +3,7 @@
 @inject Services.ApiClient ApiClient
 @inject NavigationManager Navigation
 @inject ILogger<Subscription> Logger
+@inject IWebHostEnvironment Env
 
 <PageTitle>Subscription Management - ClientSpace</PageTitle>
 
@@ -43,13 +44,13 @@
                 <i class="bi bi-arrow-clockwise"></i> Retry
             </button>
         </div>
-        @if (!string.IsNullOrEmpty(errorDetails))
+        @if (Env.IsDevelopment() && !string.IsNullOrEmpty(errorDetails))
         {
             <div class="alert alert-secondary mt-2">
                 <strong>Full error details (for diagnostics):</strong>
-                @* Error details are shown to aid debugging on test/staging deployments.
-                   Review security policy before deploying to production environments
-                   where stack traces may expose sensitive implementation details. *@
+                @* Error details are only shown in the Development environment to aid
+                   debugging. Stack traces are suppressed in non-Development environments
+                   to avoid exposing sensitive implementation details. *@
                 <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-all; font-size: 0.8rem;">@errorDetails</pre>
             </div>
         }
@@ -316,7 +317,20 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load subscription");
-            errorMessage = $"Failed to load subscription: {ex.Message}";
+
+            // Provide a user-friendly message for connectivity failures (e.g. API not running,
+            // firewall blocking the port) so that end-users see an actionable message instead of
+            // a raw socket error string.
+            if (ex is HttpRequestException httpEx &&
+                httpEx.InnerException is System.Net.Sockets.SocketException)
+            {
+                errorMessage = "Unable to reach the API server. Please check your network connection or contact support if the problem persists.";
+            }
+            else
+            {
+                errorMessage = $"Failed to load subscription: {ex.Message}";
+            }
+
             errorDetails = ex.ToString();
         }
         finally
