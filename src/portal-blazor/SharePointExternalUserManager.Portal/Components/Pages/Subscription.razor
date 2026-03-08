@@ -43,6 +43,16 @@
                 <i class="bi bi-arrow-clockwise"></i> Retry
             </button>
         </div>
+        @if (!string.IsNullOrEmpty(errorDetails))
+        {
+            <div class="alert alert-secondary mt-2">
+                <strong>Full error details (for diagnostics):</strong>
+                @* Error details are shown to aid debugging on test/staging deployments.
+                   Review security policy before deploying to production environments
+                   where stack traces may expose sensitive implementation details. *@
+                <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-all; font-size: 0.8rem;">@errorDetails</pre>
+            </div>
+        }
     }
     else if (subscription != null)
     {
@@ -271,6 +281,7 @@
     private bool showCancelModal = false;
     private bool isCancelling = false;
     private string? errorMessage;
+    private string? errorDetails;
     private string? cancelError;
     private int? trialDaysRemaining;
     
@@ -285,6 +296,7 @@
     {
         isLoading = true;
         errorMessage = null;
+        errorDetails = null;
         
         try
         {
@@ -304,7 +316,8 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load subscription");
-            errorMessage = "Failed to load subscription. Please try again.";
+            errorMessage = $"Failed to load subscription: {ex.Message}";
+            errorDetails = ex.ToString();
         }
         finally
         {

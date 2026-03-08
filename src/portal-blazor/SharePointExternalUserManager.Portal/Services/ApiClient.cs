@@ -468,6 +468,30 @@ public class ApiClient
     }
 
     /// <summary>
+    /// Read an unsuccessful HTTP response and throw an HttpRequestException that includes the
+    /// response status code, reason phrase, and body so callers get actionable error details.
+    /// </summary>
+    private static async Task ThrowWithResponseBodyAsync(HttpResponseMessage response)
+    {
+        var body = string.Empty;
+        try { body = await response.Content.ReadAsStringAsync(); }
+        catch (Exception readEx)
+        {
+            // Reading the body is best-effort; if it fails the original status code is still
+            // included in the thrown exception so the caller still gets actionable information.
+            _ = readEx; // suppress unused-variable warning
+        }
+
+        var message = $"Response status code does not indicate success: {(int)response.StatusCode} ({response.ReasonPhrase})";
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            message += $"\nResponse body: {body}";
+        }
+
+        throw new HttpRequestException(message, null, response.StatusCode);
+    }
+
+    /// <summary>
     /// Get current subscription for authenticated user (new endpoint)
     /// </summary>
     public async Task<SubscriptionStatusResponse?> GetMySubscriptionAsync()
@@ -475,7 +499,10 @@ public class ApiClient
         try
         {
             var response = await _httpClient.GetAsync("/api/subscription/me");
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                await ThrowWithResponseBodyAsync(response);
+            }
 
             var json = await response.Content.ReadAsStringAsync();
             var apiResponse = JsonSerializer.Deserialize<ApiResponse<SubscriptionStatusResponse>>(json, new JsonSerializerOptions
