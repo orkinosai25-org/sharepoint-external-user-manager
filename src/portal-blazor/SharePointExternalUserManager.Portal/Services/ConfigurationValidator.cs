@@ -60,17 +60,47 @@ public class ConfigurationValidator
             result.AddWarning("AzureAd:ClientId", "Azure AD Client ID is required for authentication. Please set via environment variables, user secrets, or appsettings.Local.json.");
         }
 
-        // Check ClientSecret - treat as WARNING if missing or placeholder
+        // Check ClientSecret - treat as ERROR if missing or placeholder.
+        // Without a valid ClientSecret, MSAL cannot register its OnAuthorizationCodeReceived handler,
+        // causing the standard OIDC handler to attempt token exchange without client_secret, which
+        // results in AADSTS7000218 ("client_assertion or client_secret required") at sign-in time.
+        // Failing fast here provides a clear, actionable message rather than a cryptic runtime error.
         if (IsPlaceholder(azureAd.ClientSecret))
         {
-            result.AddWarning("AzureAd:ClientSecret", 
-                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. Authentication will not work until configured. Please set it via environment variables, user secrets, or appsettings.Local.json.");
-            _logger.LogWarning("CONFIGURATION WARNING: Azure AD ClientSecret contains placeholder value. " +
-                "Authentication will not work. Please configure a valid Client Secret via secure methods.");
+            result.AddError("AzureAd:ClientSecret",
+                "Azure AD Client Secret contains a placeholder value and must be replaced with a valid secret. " +
+                "Set it via: Azure App Service environment variable 'AzureAd__ClientSecret', " +
+                "user secrets ('dotnet user-secrets set \"AzureAd:ClientSecret\" \"<value>\"'), " +
+                "or appsettings.Local.json (never commit this file).");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret contains a placeholder value. " +
+                "Authentication cannot work until a real Client Secret is configured.");
         }
         else if (string.IsNullOrWhiteSpace(azureAd.ClientSecret))
         {
-            result.AddWarning("AzureAd:ClientSecret", "Azure AD Client Secret is required but not set. Authentication will not work until configured. Please set via environment variables, user secrets, or appsettings.Local.json.");
+            result.AddError("AzureAd:ClientSecret",
+                "Azure AD Client Secret is required but not set. " +
+                "Set it via: Azure App Service environment variable 'AzureAd__ClientSecret', " +
+                "user secrets ('dotnet user-secrets set \"AzureAd:ClientSecret\" \"<value>\"'), " +
+                "or appsettings.Local.json (never commit this file).");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret is missing. " +
+                "Authentication cannot work until a Client Secret is configured.");
+        }
+        else if (IsGuid(azureAd.ClientSecret))
+        {
+            // AADSTS7000215: The secret looks like a GUID, which is the format of the client
+            // secret *ID* (shown in the Certificates & secrets list), not the secret *value*.
+            // The secret value is a longer, non-GUID random string that is only visible
+            // immediately after creation.
+            result.AddError("AzureAd:ClientSecret",
+                "Azure AD Client Secret appears to be a secret ID (GUID format) rather than the secret value. " +
+                "In Azure Portal under 'Certificates & secrets', copy the 'Value' column (not the 'Secret ID' column). " +
+                "This causes AADSTS7000215 at sign-in. " +
+                "Set the correct secret value via: Azure App Service environment variable 'AzureAd__ClientSecret', " +
+                "user secrets ('dotnet user-secrets set \"AzureAd:ClientSecret\" \"<value>\"'), " +
+                "or appsettings.Local.json (never commit this file).");
+            _logger.LogError("CONFIGURATION ERROR: Azure AD ClientSecret looks like a GUID (secret ID), not a secret value. " +
+                "Copy the 'Value' column from Azure Portal Certificates & secrets, not the 'Secret ID'. " +
+                "This causes AADSTS7000215 ('Invalid client secret provided') at sign-in.");
         }
 
         // Check TenantId - treat as warning if missing
@@ -100,6 +130,14 @@ public class ConfigurationValidator
             result.AddWarning("StripeSettings:PublishableKey", 
                 "Stripe Publishable Key is not configured. Billing functionality will not work.");
         }
+    }
+
+    /// <summary>
+    /// Checks if a value is a GUID, which indicates the client secret ID was used instead of the secret value
+    /// </summary>
+    private static bool IsGuid(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && Guid.TryParse(value, out _);
     }
 
     /// <summary>

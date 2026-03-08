@@ -1,7 +1,6 @@
 @page "/auth-error"
-@using Microsoft.AspNetCore.Components
 
-<PageTitle>Sign-In Error - ClientSpace</PageTitle>
+<PageTitle>Authentication Error</PageTitle>
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -9,57 +8,74 @@
             <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
                     <h4 class="mb-0">
-                        <span class="bi bi-exclamation-triangle-fill me-2"></span>
-                        Sign-In Failed
+                        <i class="bi bi-shield-exclamation me-2"></i>Authentication Error
                     </h4>
                 </div>
                 <div class="card-body">
-                    @if (Reason == "config")
+                    @if (IsConfigError)
                     {
-                        <h5 class="card-title text-danger">Authentication Configuration Error</h5>
+                        <h5 class="card-title text-danger">Azure AD Client Secret Configuration Error</h5>
                         <p class="card-text">
-                            Sign-in could not complete because the application is not fully configured.
-                            The Azure AD <strong>Client Secret</strong> is missing or invalid.
+                            Sign-in failed because the Azure AD Client Secret is either missing or invalid.
+                            This is a configuration issue that must be resolved by an administrator.
                         </p>
 
-                        <div class="alert alert-warning mt-3">
-                            <h6 class="alert-heading">
-                                <span class="bi bi-gear-fill me-1"></span> For Administrators
-                            </h6>
-                            <p class="mb-2">
-                                Ensure the <code>AzureAd:ClientSecret</code> setting is configured in
-                                your deployment environment:
-                            </p>
-                            <ul class="mb-0">
+                        <div class="alert alert-warning">
+                            <strong>Common causes:</strong>
+                            <ul class="mb-0 mt-2">
                                 <li>
-                                    <strong>Azure App Service:</strong> Add an Application Setting named
-                                    <code>AzureAd__ClientSecret</code> with your client secret value.
+                                    <strong>AADSTS7000215</strong> — The <em>Client Secret ID</em> (a GUID) was provided
+                                    instead of the <em>Client Secret Value</em>. In Azure Portal under
+                                    <strong>Certificates &amp; secrets</strong>, copy the <strong>Value</strong> column,
+                                    not the <strong>Secret ID</strong> column.
                                 </li>
                                 <li>
-                                    <strong>Local development:</strong> Use
-                                    <code>dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_SECRET"</code>
-                                    or create an <code>appsettings.Local.json</code> file.
+                                    <strong>AADSTS7000218</strong> — The Client Secret is not configured at all.
                                 </li>
+                                <li>The Client Secret has expired and needs to be renewed in Azure AD.</li>
                             </ul>
+                        </div>
+
+                        <h6 class="mt-3">How to fix (Azure App Service)</h6>
+                        <ol>
+                            <li>Go to <strong>Azure Portal</strong> → Your App Service</li>
+                            <li>Navigate to <strong>Settings → Environment variables</strong></li>
+                            <li>
+                                Add or update the application setting:<br />
+                                <code>AzureAd__ClientSecret</code> = <em>your secret value</em>
+                            </li>
+                            <li>Click <strong>Save</strong> and restart the App Service</li>
+                        </ol>
+
+                        <h6>How to get the correct Client Secret Value</h6>
+                        <ol>
+                            <li>Go to <strong>Azure Portal</strong> → Azure Active Directory → App registrations</li>
+                            <li>Select your registered application</li>
+                            <li>Navigate to <strong>Certificates &amp; secrets</strong></li>
+                            <li>
+                                Create a new client secret (or use an existing one that has not expired)<br />
+                                ⚠️ Copy the <strong>Value</strong> immediately — it is only shown once
+                            </li>
+                            <li>Paste the <strong>Value</strong> (not the Secret ID) into the App Service setting</li>
+                        </ol>
+
+                        <div class="alert alert-info mt-3">
+                            <strong>For local development:</strong>
+                            <pre class="mb-0 mt-1">dotnet user-secrets set "AzureAd:ClientSecret" "your-secret-value"</pre>
                         </div>
                     }
                     else
                     {
-                        <h5 class="card-title text-danger">Authentication Error</h5>
+                        <h5 class="card-title text-danger">Sign-in Failed</h5>
                         <p class="card-text">
-                            An error occurred during sign-in. Please try again. If the problem persists,
-                            contact your administrator.
+                            An error occurred while processing your sign-in request. This may be a temporary issue.
                         </p>
+                        <p>Please try signing in again. If the problem persists, contact your administrator.</p>
                     }
-
-                    <div class="mt-4 d-flex gap-2">
-                        <a href="/" class="btn btn-outline-secondary">
-                            <span class="bi bi-house-fill me-1"></span> Return Home
-                        </a>
-                        <a href="MicrosoftIdentity/Account/SignIn" class="btn btn-primary">
-                            <span class="bi bi-box-arrow-in-right me-1"></span> Try Sign In Again
-                        </a>
-                    </div>
+                </div>
+                <div class="card-footer d-flex gap-2">
+                    <a href="/" class="btn btn-outline-secondary">Return Home</a>
+                    <a href="/MicrosoftIdentity/Account/SignIn" class="btn btn-primary">Try Sign In Again</a>
                 </div>
             </div>
         </div>
@@ -67,7 +83,8 @@
 </div>
 
 @code {
-    [Parameter]
     [SupplyParameterFromQuery(Name = "reason")]
-    public string? Reason { get; set; }
+    private string? Reason { get; set; }
+
+    private bool IsConfigError => string.Equals(Reason, "config", StringComparison.OrdinalIgnoreCase);
 }
