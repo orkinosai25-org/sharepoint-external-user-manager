@@ -72,19 +72,10 @@ if (!validationResult.IsValid)
     logger.LogError("      the secret VALUE from Azure Portal, not the secret ID (GUID).");
     logger.LogError("═══════════════════════════════════════════════════════════════");
 
-    // In production, prevent the app from starting with broken auth configuration so that
-    // a misconfigured deployment is caught immediately rather than silently serving users
-    // who cannot sign in.
-    // In development, allow the app to start so that the full OIDC exception is surfaced
-    // through the ASP.NET Core developer exception page in the browser.
-    if (!builder.Environment.IsDevelopment())
-    {
-        throw new InvalidOperationException(
-            "Application cannot start due to missing required configuration. " +
-            "See logs above for details and instructions on how to fix the configuration.");
-    }
-
-    logger.LogWarning("Development environment detected: starting despite configuration errors. " +
+    // Always allow the app to start so that the full OIDC exception is surfaced in the
+    // browser (via the developer exception page). Sign-in will fail at runtime with the
+    // detailed Azure AD error — fix the configuration error shown above to resolve it.
+    logger.LogWarning("Application starting despite configuration errors. " +
         "Sign-in will fail at runtime and the full exception will be shown in the browser.");
 }
 
@@ -119,53 +110,12 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
 
 // Use authorization code flow only (more secure, avoids AADSTS700054 about id_token).
 // PostConfigure runs after the library's own configuration so this value always wins.
-const string AuthErrorPath = "/auth-error";
-const string AuthErrorConfigPath = "/auth-error?reason=config";
-
-// Capture environment flag for use inside the PostConfigure delegate.
-var isDevelopment = builder.Environment.IsDevelopment();
-
+// OnRemoteFailure is intentionally not overridden here: Azure AD authentication errors
+// (AADSTS7000215, AADSTS7000218, etc.) propagate unhandled so the ASP.NET Core developer
+// exception page shows the full stack trace and error details in the browser.
 builder.Services.PostConfigure<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme, options =>
 {
     options.ResponseType = "code";
-
-    // Chain an OnRemoteFailure handler after any handler already registered by Microsoft.Identity.Web.
-    // In production: catches Azure AD authentication errors (e.g. AADSTS7000215 invalid client secret,
-    // AADSTS7000218 missing client secret) and redirects to a friendly error page instead of
-    // exposing a raw exception stack trace to the user.
-    // In development: lets the exception propagate unhandled so the ASP.NET Core developer
-    // exception page shows the full stack trace and error details in the browser.
-    var previousOnRemoteFailure = options.Events.OnRemoteFailure;
-    options.Events.OnRemoteFailure = async context =>
-    {
-        if (previousOnRemoteFailure != null)
-        {
-            await previousOnRemoteFailure(context);
-            if (context.Result?.Handled == true) return;
-        }
-
-        // In development, do not suppress the exception — let it bubble up to the
-        // ASP.NET Core developer exception page so the full details are visible in
-        // the browser.
-        if (isDevelopment)
-        {
-            return;
-        }
-
-        var errorDescription = context.Failure?.Message ?? string.Empty;
-        if (errorDescription.Contains("AADSTS7000215", StringComparison.OrdinalIgnoreCase) ||
-            errorDescription.Contains("AADSTS7000218", StringComparison.OrdinalIgnoreCase) ||
-            errorDescription.Contains("invalid_client", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Response.Redirect(AuthErrorConfigPath);
-        }
-        else
-        {
-            context.Response.Redirect(AuthErrorPath);
-        }
-
-        context.HandleResponse();
-    };
 });
 
 // Add authorization
@@ -212,12 +162,13 @@ builder.Services.AddRazorPages();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
+// Always use the developer exception page so that the full exception details (including
+// AADSTS7000215 / AADSTS7000218 OpenIdConnect errors) are printed in the browser,
+// regardless of the deployment environment.
+app.UseDeveloperExceptionPage();
+
+// Keep HSTS enabled to enforce HTTPS connections.
+app.UseHsts();
 
 app.UseHttpsRedirection();
 
