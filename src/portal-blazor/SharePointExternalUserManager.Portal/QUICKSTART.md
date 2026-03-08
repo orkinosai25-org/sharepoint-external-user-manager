@@ -13,7 +13,7 @@ Get the SharePoint External User Manager portal running locally in 5 minutes.
 - ✅ .NET 8 SDK installed
 - ✅ Azure subscription (for Azure AD)
 - ✅ Stripe account (for testing checkout)
-- ✅ Backend API running on `localhost:7071`
+- ✅ Backend API running on `localhost:5049`
 
 ## Step 1: Azure AD App Registration
 
@@ -50,7 +50,7 @@ dotnet user-secrets set "AzureAd:ClientSecret" "YOUR_CLIENT_SECRET_FROM_STEP_1"
 dotnet user-secrets set "StripeSettings:PublishableKey" "pk_test_YOUR_KEY"
 
 # Set API URL (if API is running on different port)
-dotnet user-secrets set "ApiSettings:BaseUrl" "http://localhost:7071/api"
+dotnet user-secrets set "ApiSettings:BaseUrl" "http://localhost:5049/api"
 ```
 
 ### Option B: appsettings.Development.json
@@ -64,7 +64,7 @@ dotnet user-secrets set "ApiSettings:BaseUrl" "http://localhost:7071/api"
     "ClientSecret": "YOUR_CLIENT_SECRET"
   },
   "ApiSettings": {
-    "BaseUrl": "http://localhost:7071/api"
+    "BaseUrl": "http://localhost:5049/api"
   },
   "StripeSettings": {
     "PublishableKey": "pk_test_YOUR_KEY"
@@ -81,7 +81,7 @@ cd src/api-dotnet/WebApi/SharePointExternalUserManager.Api
 dotnet run
 ```
 
-Verify it's running on `http://localhost:7071`
+Verify it's running on `http://localhost:5049`
 
 ## Step 4: Run the Portal
 
@@ -131,7 +131,7 @@ Home → Pricing → Sign In (Microsoft) → Onboarding → Choose Plan → Stri
 **Problem**: Portal can't reach the API
 
 **Solution**:
-1. Verify backend API is running: `curl http://localhost:7071/api/health`
+1. Verify backend API is running: `curl http://localhost:5049/api/health`
 2. Check `ApiSettings:BaseUrl` in user secrets or appsettings
 3. Check browser console for CORS errors
 

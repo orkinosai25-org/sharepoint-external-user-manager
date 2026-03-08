@@ -28,7 +28,7 @@ Edit `appsettings.Local.json` and update the following values:
     "ClientSecret": "YOUR_CLIENT_SECRET"
   },
   "ApiSettings": {
-    "BaseUrl": "http://localhost:7071/api",
+    "BaseUrl": "http://localhost:5049/api",
     "Timeout": 30
   }
 }
