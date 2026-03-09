@@ -118,6 +118,34 @@ public class ConfigurationValidator
         {
             result.AddWarning("ApiSettings:BaseUrl", 
                 "Backend API URL is not configured. API functionality may be limited.");
+            return;
+        }
+
+        if (IsPlaceholder(apiSettings.BaseUrl))
+        {
+            result.AddWarning("ApiSettings:BaseUrl",
+                "Backend API URL contains a placeholder value. Please configure the actual API URL " +
+                "via the 'ApiSettings__BaseUrl' environment variable in Azure App Service.");
+            return;
+        }
+
+        if (Uri.TryCreate(apiSettings.BaseUrl, UriKind.Absolute, out var parsedUrl) &&
+            parsedUrl.IsLoopback)
+        {
+            var env = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "Production";
+            if (!env.Equals("Development", StringComparison.OrdinalIgnoreCase))
+            {
+                result.AddWarning("ApiSettings:BaseUrl",
+                    $"Backend API URL is set to '{apiSettings.BaseUrl}' which points to localhost, " +
+                    $"but the application environment is '{env}'. API calls will fail in a deployed " +
+                    "environment. Set the correct URL via the 'ApiSettings__BaseUrl' environment " +
+                    "variable in Azure App Service.");
+                _logger.LogWarning(
+                    "CONFIGURATION WARNING: ApiSettings:BaseUrl is set to a localhost address ({BaseUrl}) " +
+                    "in the '{Environment}' environment. API calls will fail. Configure " +
+                    "'ApiSettings__BaseUrl' in Azure App Service environment variables.",
+                    apiSettings.BaseUrl, env);
+            }
         }
     }
 

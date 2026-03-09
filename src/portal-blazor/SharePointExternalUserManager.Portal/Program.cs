@@ -130,17 +130,22 @@ builder.Services.Configure<AzureOpenAISettings>(builder.Configuration.GetSection
 builder.Services.AddHttpClient<ApiClient>(client =>
 {
     var apiSettings = builder.Configuration.GetSection("ApiSettings").Get<ApiSettings>();
-    if (apiSettings != null && !string.IsNullOrEmpty(apiSettings.BaseUrl) && 
-        Uri.TryCreate(apiSettings.BaseUrl, UriKind.Absolute, out var baseUri))
+    var baseUrl = apiSettings?.BaseUrl;
+    var timeout = TimeSpan.FromSeconds(apiSettings?.Timeout > 0 ? apiSettings!.Timeout : 30);
+
+    // Only set BaseAddress when we have a valid, non-loopback URL, or when running in
+    // Development (where localhost is intentional).  Leaving BaseAddress unset when the
+    // URL points to a loopback address in a non-Development environment prevents the
+    // confusing socket-access error and lets pages surface a cleaner "not configured"
+    // message instead.
+    if (apiSettings != null && !string.IsNullOrEmpty(baseUrl) &&
+        Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri) &&
+        (builder.Environment.IsDevelopment() || !baseUri.IsLoopback))
     {
         client.BaseAddress = baseUri;
-        client.Timeout = TimeSpan.FromSeconds(apiSettings.Timeout > 0 ? apiSettings.Timeout : 30);
     }
-    else
-    {
-        // Set a default timeout even if BaseUrl is not configured
-        client.Timeout = TimeSpan.FromSeconds(30);
-    }
+
+    client.Timeout = timeout;
 });
 
 // Add HttpClient for ChatService
