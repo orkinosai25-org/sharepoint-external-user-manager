@@ -516,16 +516,26 @@
         try
         {
             var permissions = await ApiClient.ValidatePermissionsAsync();
+            // Only show the warning when the API explicitly reports missing permissions.
+            // If the call fails for any other reason (API unreachable, auth error, tenant not
+            // registered yet) we suppress the warning because the dashboard / client-spaces
+            // error banners already give the user actionable information.
             if (permissions != null && !permissions.HasRequiredPermissions)
             {
                 showPermissionsWarning = true;
             }
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Tenant not yet registered – onboarding redirect is handled by LoadDashboard,
+            // so there is nothing additional to do here.
+            Logger.LogWarning("Tenant not found when validating permissions – skipping permissions banner");
+        }
         catch (Exception ex)
         {
-            // If validation fails (e.g., tenant not yet connected), show warning
-            Logger.LogWarning(ex, "Failed to validate permissions");
-            showPermissionsWarning = true;
+            // Do not show the permissions banner for transient API/auth errors; the
+            // dashboard error message already informs the user.
+            Logger.LogWarning(ex, "Failed to validate permissions – permissions banner suppressed");
         }
     }
 
@@ -536,6 +546,18 @@
         try
         {
             summary = await ApiClient.GetDashboardSummaryAsync();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Tenant is not registered in the database yet – guide the user through onboarding.
+            Logger.LogWarning("Tenant not found when loading dashboard – redirecting to onboarding");
+            Navigation.NavigateTo("/onboarding", forceLoad: false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                                           || ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            Logger.LogError(ex, "Authorization error loading dashboard");
+            dashboardError = "Authentication error. Please sign out and sign in again.";
         }
         catch (Exception ex)
         {
@@ -556,6 +578,17 @@
         {
             clients = await ApiClient.GetClientsAsync();
             filteredClients = clients;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Tenant not registered – LoadDashboard already redirects to onboarding.
+            Logger.LogWarning("Tenant not found when loading clients – onboarding redirect handled by LoadDashboard");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                                           || ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            Logger.LogError(ex, "Authorization error loading clients");
+            clientsError = "Authentication error. Please sign out and sign in again.";
         }
         catch (Exception ex)
         {
