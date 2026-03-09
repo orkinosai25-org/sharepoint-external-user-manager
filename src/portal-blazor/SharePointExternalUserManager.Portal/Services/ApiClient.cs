@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Identity.Web;
 using SharePointExternalUserManager.Portal.Models;
 
 namespace SharePointExternalUserManager.Portal.Services;
@@ -12,17 +12,50 @@ namespace SharePointExternalUserManager.Portal.Services;
 public class ApiClient
 {
     private readonly HttpClient _httpClient;
-    private readonly AuthenticationStateProvider _authStateProvider;
+    private readonly ITokenAcquisition _tokenAcquisition;
+    private readonly string[] _apiScopes;
     private readonly ILogger<ApiClient> _logger;
 
     public ApiClient(
         HttpClient httpClient,
-        AuthenticationStateProvider authStateProvider,
+        ITokenAcquisition tokenAcquisition,
+        IConfiguration configuration,
         ILogger<ApiClient> logger)
     {
         _httpClient = httpClient;
-        _authStateProvider = authStateProvider;
+        _tokenAcquisition = tokenAcquisition;
+        _apiScopes = configuration.GetSection("ApiSettings:ApiScopes").Get<string[]>()
+            ?? Array.Empty<string>();
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Create an <see cref="HttpRequestMessage"/> with a per-request Bearer token header.
+    /// Setting the Authorization header directly on the message (rather than on the shared
+    /// <see cref="HttpClient.DefaultRequestHeaders"/>) is thread-safe and avoids race
+    /// conditions when multiple requests are in-flight concurrently.
+    /// When no API scopes are configured (e.g. local dev without Azure AD), the request is
+    /// sent without an Authorization header so that environments with auth disabled still work.
+    /// </summary>
+    private async Task<HttpRequestMessage> CreateRequestAsync(
+        HttpMethod method, string url, HttpContent? content = null)
+    {
+        var request = new HttpRequestMessage(method, url) { Content = content };
+
+        if (_apiScopes.Length > 0)
+        {
+            try
+            {
+                var token = await _tokenAcquisition.GetAccessTokenForUserAsync(_apiScopes);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to acquire access token for API calls – request will proceed without a Bearer token");
+            }
+        }
+
+        return request;
     }
 
     /// <summary>
@@ -32,7 +65,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("/dashboard/summary");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, "/dashboard/summary"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -58,7 +92,8 @@ public class ApiClient
         try
         {
             var url = $"/billing/plans?includeEnterprise={includeEnterprise}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, url));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -83,8 +118,8 @@ public class ApiClient
         {
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync("/billing/checkout-session", content);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Post, "/billing/checkout-session", content));
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -107,7 +142,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("/billing/subscription/status");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, "/billing/subscription/status"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -130,7 +166,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("/clients");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, "/clients"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -157,8 +194,8 @@ public class ApiClient
         {
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync("/clients", content);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Post, "/clients", content));
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -183,7 +220,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/clients/{id}");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, $"/clients/{id}"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -211,8 +249,8 @@ public class ApiClient
             var request = new { redirectUri };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync("/auth/connect", content);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Post, "/auth/connect", content));
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -237,7 +275,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("/auth/permissions");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, "/auth/permissions"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -262,7 +301,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/clients/{clientId}/external-users");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, $"/clients/{clientId}/external-users"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -289,8 +329,8 @@ public class ApiClient
         {
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync($"/clients/{clientId}/external-users", content);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Post, $"/clients/{clientId}/external-users", content));
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -315,7 +355,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"/clients/{clientId}/external-users/{Uri.EscapeDataString(email)}");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Delete, $"/clients/{clientId}/external-users/{Uri.EscapeDataString(email)}"));
             response.EnsureSuccessStatusCode();
 
             return true;
@@ -334,7 +375,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/clients/{clientId}/libraries");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, $"/clients/{clientId}/libraries"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -359,7 +401,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/clients/{clientId}/lists");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, $"/clients/{clientId}/lists"));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -403,7 +446,8 @@ public class ApiClient
             }
 
             var url = $"/v1/client-spaces/{clientId}/search?q={Uri.EscapeDataString(query)}&page={page}&pageSize={pageSize}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, url));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -445,13 +489,14 @@ public class ApiClient
             }
 
             var url = $"/v1/search?q={Uri.EscapeDataString(query)}&scope={scope}&page={page}&pageSize={pageSize}";
-            
+
             if (!string.IsNullOrWhiteSpace(type))
             {
                 url += $"&type={type}";
             }
 
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, url));
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -498,7 +543,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/subscription/me");
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Get, "/api/subscription/me"));
             if (!response.IsSuccessStatusCode)
             {
                 await ThrowWithResponseBodyAsync(response);
@@ -526,7 +572,8 @@ public class ApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsync("/api/subscription/cancel", null);
+            var response = await _httpClient.SendAsync(
+                await CreateRequestAsync(HttpMethod.Post, "/api/subscription/cancel"));
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
