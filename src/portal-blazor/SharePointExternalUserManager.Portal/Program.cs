@@ -134,13 +134,15 @@ builder.Services.AddHttpClient<ApiClient>(client =>
     var timeout = TimeSpan.FromSeconds(apiSettings?.Timeout > 0 ? apiSettings!.Timeout : 30);
 
     // Only set BaseAddress when we have a valid, non-loopback URL, or when running in
-    // Development (where localhost is intentional).  Leaving BaseAddress unset when the
-    // URL points to a loopback address in a non-Development environment prevents the
-    // confusing socket-access error and lets pages surface a cleaner "not configured"
-    // message instead.
+    // Development on a local machine (where localhost is intentional).  Leaving BaseAddress
+    // unset when the URL points to a loopback address in a hosted/production environment
+    // prevents the confusing socket-access error and lets pages surface a cleaner "not
+    // configured" message instead.
+    // EnvironmentHelper.IsAzureAppService detects Azure App Service even when
+    // ASPNETCORE_ENVIRONMENT is set to "Development" on the App Service.
     if (apiSettings != null && !string.IsNullOrEmpty(baseUrl) &&
         Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri) &&
-        (builder.Environment.IsDevelopment() || !baseUri.IsLoopback))
+        (!baseUri.IsLoopback || (builder.Environment.IsDevelopment() && !EnvironmentHelper.IsAzureAppService)))
     {
         client.BaseAddress = baseUri;
     }

@@ -44,13 +44,14 @@
                 <i class="bi bi-arrow-clockwise"></i> Retry
             </button>
         </div>
-        @if (Env.IsDevelopment() && !string.IsNullOrEmpty(errorDetails))
+        @if (Env.IsDevelopment() && !isAzureAppService && !string.IsNullOrEmpty(errorDetails))
         {
             <div class="alert alert-secondary mt-2">
                 <strong>Full error details (for diagnostics):</strong>
-                @* Error details are only shown in the Development environment to aid
-                   debugging. Stack traces are suppressed in non-Development environments
-                   to avoid exposing sensitive implementation details. *@
+                @* Error details are only shown in the Development environment on a local machine to
+                   aid debugging. Stack traces are suppressed on hosted/production deployments (even
+                   when ASPNETCORE_ENVIRONMENT=Development) to avoid exposing sensitive implementation
+                   details. *@
                 <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-all; font-size: 0.8rem;">@errorDetails</pre>
             </div>
         }
@@ -285,6 +286,10 @@
     private string? errorDetails;
     private string? cancelError;
     private int? trialDaysRemaining;
+    // True when the app is running on Azure App Service.
+    // Used to suppress diagnostic error details on hosted deployments even when
+    // ASPNETCORE_ENVIRONMENT happens to be "Development".
+    private static readonly bool isAzureAppService = EnvironmentHelper.IsAzureAppService;
     
     private Models.SubscriptionStatusResponse? subscription;
 
