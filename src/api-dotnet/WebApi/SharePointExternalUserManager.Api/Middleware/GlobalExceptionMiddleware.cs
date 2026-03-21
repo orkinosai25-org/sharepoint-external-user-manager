@@ -61,11 +61,8 @@ public class GlobalExceptionMiddleware
             CorrelationId = correlationId
         };
 
-        // Include stack trace in development
-        if (_environment.IsDevelopment())
-        {
-            errorResponse.Details = exception.ToString();
-        }
+        // Always include full exception details
+        errorResponse.Details = exception.ToString();
 
         // Set response headers
         context.Response.ContentType = "application/json";

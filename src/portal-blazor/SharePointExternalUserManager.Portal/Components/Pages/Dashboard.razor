@@ -540,7 +540,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load dashboard summary");
-            dashboardError = "Failed to load dashboard. Please try refreshing the page.";
+            dashboardError = $"Failed to load dashboard. Please try refreshing the page. Error: {ex.Message}{Environment.NewLine}{ex}";
         }
         finally
         {
@@ -560,7 +560,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load clients");
-            clientsError = "Failed to load client spaces. Please try refreshing the page.";
+            clientsError = $"Failed to load client spaces. Please try refreshing the page. Error: {ex.Message}{Environment.NewLine}{ex}";
         }
         finally
         {

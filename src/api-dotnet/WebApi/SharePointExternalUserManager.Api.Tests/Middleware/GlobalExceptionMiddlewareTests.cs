@@ -341,7 +341,7 @@ public class GlobalExceptionMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_InProduction_ExcludesStackTrace()
+    public async Task InvokeAsync_InProduction_IncludesStackTrace()
     {
         // Arrange
         _mockEnvironment.Setup(e => e.EnvironmentName).Returns(Environments.Production);
@@ -362,7 +362,8 @@ public class GlobalExceptionMiddlewareTests
         });
 
         Assert.NotNull(errorResponse);
-        Assert.Null(errorResponse.Details);
+        Assert.NotNull(errorResponse.Details);
+        Assert.Contains("Test exception", errorResponse.Details);
     }
 
     [Fact]
