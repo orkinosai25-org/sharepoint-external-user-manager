@@ -133,14 +133,20 @@ builder.Services.AddHttpClient<ApiClient>(client =>
     var baseUrl = apiSettings?.BaseUrl;
     var timeout = TimeSpan.FromSeconds(apiSettings?.Timeout > 0 ? apiSettings!.Timeout : 30);
 
-    // Only set BaseAddress when we have a valid, non-loopback URL, or when running in
-    // Development on a local machine (where localhost is intentional).  Leaving BaseAddress
-    // unset when the URL points to a loopback address in a hosted/production environment
-    // prevents the confusing socket-access error and lets pages surface a cleaner "not
-    // configured" message instead.
+    // Only set BaseAddress when we have a valid, non-loopback, non-placeholder URL, or when
+    // running in Development on a local machine (where localhost is intentional).  Leaving
+    // BaseAddress unset when the URL points to a loopback address or is still a placeholder
+    // prevents confusing socket errors and lets pages surface a cleaner "not configured"
+    // message instead.
     // EnvironmentHelper.IsAzureAppService detects Azure App Service even when
     // ASPNETCORE_ENVIRONMENT is set to "Development" on the App Service.
+    var placeholderIndicators = new[] { "YOUR_", "_HERE", "REPLACE_", "PLACEHOLDER", "EXAMPLE_", "TODO" };
+    bool IsPlaceholderUrl(string? url) =>
+        !string.IsNullOrEmpty(url) &&
+        placeholderIndicators.Any(p => url.Contains(p, StringComparison.OrdinalIgnoreCase));
+
     if (apiSettings != null && !string.IsNullOrEmpty(baseUrl) &&
+        !IsPlaceholderUrl(baseUrl) &&
         Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri) &&
         (!baseUri.IsLoopback || (builder.Environment.IsDevelopment() && !EnvironmentHelper.IsAzureAppService)))
     {
