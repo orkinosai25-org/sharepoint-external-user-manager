@@ -26,12 +26,27 @@ public class ApiClient
     }
 
     /// <summary>
+    /// Verifies that the HttpClient has a BaseAddress configured and throws
+    /// <see cref="ApiNotConfiguredException"/> when it does not.  Call this at the start of
+    /// every public method that makes an HTTP request so that callers receive a descriptive
+    /// error instead of the cryptic "An invalid request URI was provided" message.
+    /// </summary>
+    private void EnsureBaseAddressConfigured()
+    {
+        if (_httpClient.BaseAddress == null)
+        {
+            throw new ApiNotConfiguredException();
+        }
+    }
+
+    /// <summary>
     /// Get dashboard summary with aggregated statistics
     /// </summary>
     public async Task<DashboardSummaryResponse?> GetDashboardSummaryAsync()
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/dashboard/summary");
             response.EnsureSuccessStatusCode();
 
@@ -57,6 +72,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var url = $"/billing/plans?includeEnterprise={includeEnterprise}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
@@ -81,6 +97,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
@@ -107,6 +124,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/billing/subscription/status");
             response.EnsureSuccessStatusCode();
 
@@ -130,6 +148,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/clients");
             response.EnsureSuccessStatusCode();
 
@@ -155,6 +174,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
@@ -183,6 +203,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync($"/clients/{id}");
             response.EnsureSuccessStatusCode();
 
@@ -208,6 +229,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var request = new { redirectUri };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -237,6 +259,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/auth/permissions");
             response.EnsureSuccessStatusCode();
 
@@ -262,6 +285,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync($"/clients/{clientId}/external-users");
             response.EnsureSuccessStatusCode();
 
@@ -287,6 +311,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
@@ -315,6 +340,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.DeleteAsync($"/clients/{clientId}/external-users/{Uri.EscapeDataString(email)}");
             response.EnsureSuccessStatusCode();
 
@@ -334,6 +360,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync($"/clients/{clientId}/libraries");
             response.EnsureSuccessStatusCode();
 
@@ -359,6 +386,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync($"/clients/{clientId}/lists");
             response.EnsureSuccessStatusCode();
 
@@ -389,6 +417,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             // Validate and correct parameters
             if (page < 1)
             {
@@ -431,6 +460,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             // Validate and correct parameters
             if (page < 1)
             {
@@ -498,6 +528,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/api/subscription/me");
             if (!response.IsSuccessStatusCode)
             {
@@ -526,6 +557,7 @@ public class ApiClient
     {
         try
         {
+            EnsureBaseAddressConfigured();
             var response = await _httpClient.PostAsync("/api/subscription/cancel", null);
             response.EnsureSuccessStatusCode();
         }

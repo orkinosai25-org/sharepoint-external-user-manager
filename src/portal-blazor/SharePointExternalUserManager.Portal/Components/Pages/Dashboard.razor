@@ -538,6 +538,11 @@
         {
             summary = await ApiClient.GetDashboardSummaryAsync();
         }
+        catch (Services.ApiNotConfiguredException ex)
+        {
+            Logger.LogError(ex, "API URL not configured for dashboard summary");
+            dashboardError = $"The API server URL is not configured. Please set the 'ApiSettings__BaseUrl' application setting in Azure App Service and restart, or contact your administrator.{Environment.NewLine}{ex}";
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load dashboard summary");
@@ -557,6 +562,11 @@
         {
             clients = await ApiClient.GetClientsAsync();
             filteredClients = clients;
+        }
+        catch (Services.ApiNotConfiguredException ex)
+        {
+            Logger.LogError(ex, "API URL not configured for clients");
+            clientsError = $"The API server URL is not configured. Please set the 'ApiSettings__BaseUrl' application setting in Azure App Service and restart, or contact your administrator.{Environment.NewLine}{ex}";
         }
         catch (Exception ex)
         {

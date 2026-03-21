@@ -326,15 +326,20 @@
             // Provide a user-friendly message for connectivity failures (e.g. API not running,
             // firewall blocking the port) so that end-users see an actionable message instead of
             // a raw socket error string.
-            if (ex is HttpRequestException httpEx &&
+            if (ex is Services.ApiNotConfiguredException)
+            {
+                // HttpClient.BaseAddress is not set because the API URL was not configured
+                // (e.g. appsettings.Development.json localhost URL was suppressed in production).
+                errorMessage = "The API server URL is not configured for this environment. Please set the 'ApiSettings__BaseUrl' application setting in Azure App Service and restart, or contact your administrator.";
+            }
+            else if (ex is HttpRequestException httpEx &&
                 httpEx.InnerException is System.Net.Sockets.SocketException)
             {
                 errorMessage = "Unable to reach the API server. Please check your network connection or contact support if the problem persists.";
             }
             else if (ex is InvalidOperationException && ex.Message.Contains("BaseAddress"))
             {
-                // HttpClient.BaseAddress is not set because the API URL was not configured
-                // (e.g. appsettings.Development.json localhost URL was suppressed in production).
+                // Fallback for any residual BaseAddress errors not caught by ApiNotConfiguredException
                 errorMessage = "The API server URL is not configured for this environment. Please set the 'ApiSettings__BaseUrl' application setting in Azure App Service and restart, or contact your administrator.";
             }
             else

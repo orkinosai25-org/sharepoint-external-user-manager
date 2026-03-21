@@ -177,6 +177,11 @@
                 errorMessage = "Failed to generate authorization URL";
             }
         }
+        catch (Services.ApiNotConfiguredException ex)
+        {
+            Logger.LogError(ex, "API URL not configured for consent flow");
+            errorMessage = "The API server URL is not configured. Please contact your administrator to set the 'ApiSettings__BaseUrl' application setting in Azure App Service.";
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to initiate consent");
