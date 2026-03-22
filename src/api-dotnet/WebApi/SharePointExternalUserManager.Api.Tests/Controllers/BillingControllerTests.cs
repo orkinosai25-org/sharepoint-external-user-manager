@@ -40,6 +40,7 @@ public class BillingControllerTests : IDisposable
             _context,
             _mockStripeService.Object,
             _mockAuditLogService.Object,
+            new FakeTenantProvisioningService(_context),
             new NullLogger<BillingController>());
 
         // Setup HTTP context with authenticated user
@@ -108,9 +109,9 @@ public class BillingControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateCheckoutSession_WithoutTenant_ReturnsForbidden()
+    public async Task CreateCheckoutSession_WithoutPreExistingTenant_AutoProvisionsTenantAndCreatesSession()
     {
-        // Arrange
+        // Arrange – no tenant is seeded; the controller should auto-provision one.
         var request = new CreateCheckoutSessionRequest
         {
             PlanTier = SubscriptionTier.Starter,
@@ -119,12 +120,28 @@ public class BillingControllerTests : IDisposable
             CancelUrl = "https://example.com/cancel"
         };
 
+        var mockSession = new Session
+        {
+            Id = "sess_autoprov123",
+            Url = "https://checkout.stripe.com/session/sess_autoprov123"
+        };
+
+        _mockStripeService
+            .Setup(s => s.CreateCheckoutSessionAsync(
+                It.IsAny<string>(),
+                It.IsAny<SubscriptionTier>(),
+                It.IsAny<bool>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+            .ReturnsAsync(mockSession);
+
         // Act
         var result = await _controller.CreateCheckoutSession(request);
 
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.NotNull(notFoundResult.Value);
+        // Assert – tenant is auto-provisioned, checkout session is created.
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<CreateCheckoutSessionResponse>(okResult.Value);
+        Assert.Equal(mockSession.Id, response.SessionId);
     }
 
     [Fact]

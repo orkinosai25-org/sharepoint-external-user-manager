@@ -23,17 +23,20 @@ public class BillingController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IStripeService _stripeService;
     private readonly IAuditLogService _auditLogService;
+    private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ILogger<BillingController> _logger;
 
     public BillingController(
         ApplicationDbContext context,
         IStripeService stripeService,
         IAuditLogService auditLogService,
+        ITenantProvisioningService tenantProvisioningService,
         ILogger<BillingController> logger)
     {
         _context = context;
         _stripeService = stripeService;
         _auditLogService = auditLogService;
+        _tenantProvisioningService = tenantProvisioningService;
         _logger = logger;
     }
 
@@ -97,15 +100,12 @@ public class BillingController : ControllerBase
                 return BadRequest(new { error = "Success and cancel URLs are required", correlationId });
             }
 
-            // Get or create tenant
-            var tenant = await _context.Tenants
-                .Include(t => t.Subscriptions)
-                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantId);
-
-            if (tenant == null)
-            {
-                return NotFound(new { error = "Tenant not found. Please complete onboarding first.", correlationId });
-            }
+            // Get or create tenant (auto-provision on first checkout so new users
+            // are not blocked by a TENANT_NOT_FOUND error)
+            var userId = User.FindFirst("oid")?.Value;
+            var userName = User.FindFirst("name")?.Value;
+            var tenant = await _tenantProvisioningService.GetOrCreateTenantAsync(
+                tenantId, userId, userEmail, userName);
 
             // Check if tenant has a Stripe customer ID, if not create one
             var activeSubscription = tenant.Subscriptions

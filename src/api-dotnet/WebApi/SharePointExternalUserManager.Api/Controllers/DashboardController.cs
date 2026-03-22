@@ -18,15 +18,18 @@ public class DashboardController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ISharePointService _sharePointService;
+    private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
         ApplicationDbContext context,
         ISharePointService sharePointService,
+        ITenantProvisioningService tenantProvisioningService,
         ILogger<DashboardController> logger)
     {
         _context = context;
         _sharePointService = sharePointService;
+        _tenantProvisioningService = tenantProvisioningService;
         _logger = logger;
     }
 
@@ -51,19 +54,13 @@ public class DashboardController : ControllerBase
         {
             var startTime = DateTime.UtcNow;
 
-            // Get the internal tenant ID from the database
-            var tenant = await _context.Tenants
-                .Include(t => t.Subscriptions)
-                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+            var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+            var userName = User.FindFirst("name")?.Value;
 
-            if (tenant == null)
-            {
-                _logger.LogWarning(
-                    "Tenant not found for Entra ID: {TenantId}. CorrelationId: {CorrelationId}",
-                    tenantIdClaim,
-                    correlationId);
-                return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found in database"));
-            }
+            // Auto-provision the tenant on first access so new users never see a
+            // TENANT_NOT_FOUND error when visiting the dashboard for the first time.
+            var tenant = await _tenantProvisioningService.GetOrCreateTenantAsync(
+                tenantIdClaim, userId, userEmail, userName);
 
             // Get active subscription
             var subscription = tenant.Subscriptions

@@ -34,6 +34,7 @@ public class DashboardControllerTests : IDisposable
         _controller = new DashboardController(
             _context,
             _sharePointService,
+            new FakeTenantProvisioningService(_context),
             new NullLogger<DashboardController>());
     }
 
@@ -195,7 +196,7 @@ public class DashboardControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task GetSummary_WithNonExistentTenant_ReturnsNotFound()
+    public async Task GetSummary_WithNonExistentTenant_AutoProvisionsTenantAndReturnsOk()
     {
         // Arrange
         SetupControllerContext("non-existent-tenant", "user-id", "user@example.com");
@@ -203,11 +204,12 @@ public class DashboardControllerTests : IDisposable
         // Act
         var result = await _controller.GetSummary();
 
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-        var response = Assert.IsType<ApiResponse<object>>(notFoundResult.Value);
-        Assert.False(response.Success);
-        Assert.Equal("TENANT_NOT_FOUND", response.Error?.Code);
+        // Assert – the tenant is auto-provisioned so the endpoint returns 200 OK
+        // with an empty-state summary instead of 404 Not Found.
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ApiResponse<DashboardSummaryResponse>>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.NotNull(response.Data);
     }
 
     [Fact]
@@ -391,4 +393,62 @@ public class MockSharePointService : ISharePointService
 
     public Task<SiteValidationResult> ValidateSiteAsync(string siteUrl)
         => throw new NotImplementedException();
+}
+
+/// <summary>
+/// A lightweight <see cref="ITenantProvisioningService"/> for unit tests that operates
+/// directly on the in-memory <see cref="ApplicationDbContext"/> without requiring a real
+/// <see cref="ITenantUserService"/> implementation.
+/// </summary>
+internal class FakeTenantProvisioningService : ITenantProvisioningService
+{
+    private readonly ApplicationDbContext _context;
+
+    public FakeTenantProvisioningService(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<TenantEntity> GetOrCreateTenantAsync(
+        string entraIdTenantId,
+        string? userId,
+        string? userEmail,
+        string? userName)
+    {
+        var tenant = await _context.Tenants
+            .Include(t => t.Subscriptions)
+            .FirstOrDefaultAsync(t => t.EntraIdTenantId == entraIdTenantId);
+
+        if (tenant != null)
+        {
+            return tenant;
+        }
+
+        tenant = new TenantEntity
+        {
+            EntraIdTenantId = entraIdTenantId,
+            OrganizationName = "Test Organization",
+            PrimaryAdminEmail = userEmail ?? "test@example.com",
+            Status = "Active"
+        };
+
+        _context.Tenants.Add(tenant);
+        await _context.SaveChangesAsync();
+
+        _context.Subscriptions.Add(new SubscriptionEntity
+        {
+            TenantId = tenant.Id,
+            Tier = "Free",
+            Status = "Trial",
+            StartDate = DateTime.UtcNow,
+            TrialExpiry = DateTime.UtcNow.AddDays(30)
+        });
+        await _context.SaveChangesAsync();
+
+        tenant = await _context.Tenants
+            .Include(t => t.Subscriptions)
+            .FirstAsync(t => t.Id == tenant.Id);
+
+        return tenant;
+    }
 }
