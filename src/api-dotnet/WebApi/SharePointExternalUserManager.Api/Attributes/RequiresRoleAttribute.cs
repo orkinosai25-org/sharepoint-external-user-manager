@@ -3,13 +3,17 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using SharePointExternalUserManager.Api.Data;
 using SharePointExternalUserManager.Api.Models;
+using SharePointExternalUserManager.Api.Services;
 using SharePointExternalUserManager.Functions.Models;
 
 namespace SharePointExternalUserManager.Api.Attributes;
 
 /// <summary>
-/// Attribute to enforce role-based access control at tenant level
-/// Validates that the authenticated user has the required role within the tenant
+/// Attribute to enforce role-based access control at tenant level.
+/// Validates that the authenticated user has the required role within the tenant.
+/// When the tenant does not yet exist it is auto-provisioned via
+/// <see cref="ITenantProvisioningService"/> so that first-time users are not
+/// blocked by TENANT_NOT_FOUND errors.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
 public class RequiresRoleAttribute : Attribute, IAsyncActionFilter
@@ -29,6 +33,7 @@ public class RequiresRoleAttribute : Attribute, IAsyncActionFilter
     {
         // Get services from DI
         var dbContext = context.HttpContext.RequestServices.GetService<ApplicationDbContext>();
+        var provisioningService = context.HttpContext.RequestServices.GetService<ITenantProvisioningService>();
         var logger = context.HttpContext.RequestServices.GetService<ILogger<RequiresRoleAttribute>>();
 
         if (dbContext == null)
@@ -62,16 +67,32 @@ public class RequiresRoleAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
-        // Get tenant from database
-        var tenant = await dbContext.Tenants
-            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
-
-        if (tenant == null)
+        // Auto-provision tenant on first access so new users are never blocked by
+        // TENANT_NOT_FOUND. Falls back to a simple DB lookup when the service is
+        // unavailable (should not happen in normal operation).
+        Data.Entities.TenantEntity tenant;
+        if (provisioningService != null)
         {
-            context.Result = new NotFoundObjectResult(ApiResponse<object>.ErrorResponse(
-                "TENANT_NOT_FOUND",
-                "Tenant not found"));
-            return;
+            var userEmail = context.HttpContext.User.FindFirst("upn")?.Value
+                ?? context.HttpContext.User.FindFirst("email")?.Value;
+            var userName = context.HttpContext.User.FindFirst("name")?.Value;
+            tenant = await provisioningService.GetOrCreateTenantAsync(
+                tenantIdClaim, userObjectId, userEmail, userName);
+        }
+        else
+        {
+            var tenantOrNull = await dbContext.Tenants
+                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
+
+            if (tenantOrNull == null)
+            {
+                context.Result = new NotFoundObjectResult(ApiResponse<object>.ErrorResponse(
+                    "TENANT_NOT_FOUND",
+                    "Tenant not found"));
+                return;
+            }
+
+            tenant = tenantOrNull;
         }
 
         // Get user's role in this tenant

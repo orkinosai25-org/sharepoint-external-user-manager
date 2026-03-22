@@ -20,6 +20,7 @@ public class AuthController : ControllerBase
     private readonly IOAuthService _oauthService;
     private readonly IAuditLogService _auditLogService;
     private readonly IConfiguration _configuration;
+    private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -27,12 +28,14 @@ public class AuthController : ControllerBase
         IOAuthService oauthService,
         IAuditLogService auditLogService,
         IConfiguration configuration,
+        ITenantProvisioningService tenantProvisioningService,
         ILogger<AuthController> logger)
     {
         _context = context;
         _oauthService = oauthService;
         _auditLogService = auditLogService;
         _configuration = configuration;
+        _tenantProvisioningService = tenantProvisioningService;
         _logger = logger;
     }
 
@@ -65,16 +68,11 @@ public class AuthController : ControllerBase
 
         try
         {
-            // Ensure tenant exists in database
-            var tenant = await _context.Tenants
-                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
-
-            if (tenant == null)
-            {
-                return NotFound(ApiResponse<object>.ErrorResponse(
-                    "TENANT_NOT_FOUND",
-                    "Tenant must be registered before connecting. Please complete onboarding first."));
-            }
+            // Auto-provision the tenant if it does not yet exist so that users can
+            // initiate the consent flow even before completing formal onboarding.
+            var userName = User.FindFirst("name")?.Value;
+            var tenant = await _tenantProvisioningService.GetOrCreateTenantAsync(
+                tenantIdClaim, userId, userEmail, userName);
 
             // Create state for CSRF protection
             var state = new OAuthState
@@ -309,16 +307,14 @@ public class AuthController : ControllerBase
 
         try
         {
-            // Get tenant from database
-            var tenant = await _context.Tenants
-                .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
-
-            if (tenant == null)
-            {
-                return NotFound(ApiResponse<object>.ErrorResponse(
-                    "TENANT_NOT_FOUND",
-                    "Tenant not found"));
-            }
+            // Auto-provision the tenant so that /auth/permissions can be called before
+            // formal onboarding is complete. New tenants will not have OAuth tokens yet,
+            // which is handled below by returning HasRequiredPermissions = false.
+            var userId = User.FindFirst("oid")?.Value;
+            var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+            var userName = User.FindFirst("name")?.Value;
+            var tenant = await _tenantProvisioningService.GetOrCreateTenantAsync(
+                tenantIdClaim, userId, userEmail, userName);
 
             // Get tenant auth
             var tenantAuth = await _context.TenantAuth
