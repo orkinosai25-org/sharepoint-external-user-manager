@@ -26,6 +26,7 @@ public class ClientsController : ControllerBase
     private readonly ISharePointService _sharePointService;
     private readonly IAuditLogService _auditLogService;
     private readonly IPlanEnforcementService _planEnforcementService;
+    private readonly ITenantProvisioningService _tenantProvisioningService;
     private readonly ILogger<ClientsController> _logger;
 
     public ClientsController(
@@ -33,12 +34,14 @@ public class ClientsController : ControllerBase
         ISharePointService sharePointService,
         IAuditLogService auditLogService,
         IPlanEnforcementService planEnforcementService,
+        ITenantProvisioningService tenantProvisioningService,
         ILogger<ClientsController> logger)
     {
         _context = context;
         _sharePointService = sharePointService;
         _auditLogService = auditLogService;
         _planEnforcementService = planEnforcementService;
+        _tenantProvisioningService = tenantProvisioningService;
         _logger = logger;
     }
 
@@ -50,17 +53,17 @@ public class ClientsController : ControllerBase
     public async Task<IActionResult> GetClients()
     {
         var tenantIdClaim = User.FindFirst("tid")?.Value;
+        var userId = User.FindFirst("oid")?.Value;
         var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+        var userName = User.FindFirst("name")?.Value;
 
         if (string.IsNullOrEmpty(tenantIdClaim))
             return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing tenant claim"));
 
-        // Get the internal tenant ID from the database
-        var tenant = await _context.Tenants
-            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
-
-        if (tenant == null)
-            return NotFound(ApiResponse<object>.ErrorResponse("TENANT_NOT_FOUND", "Tenant not found in database"));
+        // Auto-provision the tenant on first access so new users never see a
+        // TENANT_NOT_FOUND error when visiting the dashboard for the first time.
+        var tenant = await _tenantProvisioningService.GetOrCreateTenantAsync(
+            tenantIdClaim, userId, userEmail, userName);
 
         var clients = await _context.Clients
             .Where(c => c.TenantId == tenant.Id && c.IsActive)
@@ -139,21 +142,16 @@ public class ClientsController : ControllerBase
         var tenantIdClaim = User.FindFirst("tid")?.Value;
         var userId = User.FindFirst("oid")?.Value;
         var userEmail = User.FindFirst("upn")?.Value ?? User.FindFirst("email")?.Value;
+        var userName = User.FindFirst("name")?.Value;
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         if (string.IsNullOrEmpty(tenantIdClaim) || string.IsNullOrEmpty(userId))
             return Unauthorized(ApiResponse<object>.ErrorResponse("AUTH_ERROR", "Missing authentication claims"));
 
-        // Get the internal tenant from database
-        var tenant = await _context.Tenants
-            .FirstOrDefaultAsync(t => t.EntraIdTenantId == tenantIdClaim);
-
-        if (tenant == null)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(
-                "TENANT_NOT_FOUND",
-                "Tenant not found. Please complete onboarding first."));
-        }
+        // Auto-provision the tenant on first access so new users never see a
+        // TENANT_NOT_FOUND error when creating their first client space.
+        var tenant = await _tenantProvisioningService.GetOrCreateTenantAsync(
+            tenantIdClaim, userId, userEmail, userName);
 
         // Enforce plan-based client space limits
         try

@@ -40,6 +40,7 @@ public class ClientsControllerTests : IDisposable
             _mockSharePointService.Object,
             _auditLogService,
             _mockPlanEnforcementService.Object,
+            new FakeTenantProvisioningService(_context),
             new NullLogger<ClientsController>());
     }
 
@@ -86,7 +87,7 @@ public class ClientsControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task GetClients_WithNonExistentTenant_ReturnsNotFound()
+    public async Task GetClients_WithNonExistentTenant_AutoProvisionsTenantAndReturnsEmptyList()
     {
         // Arrange
         SetupControllerContext("non-existent-tenant", "user-id", "user@example.com");
@@ -94,11 +95,11 @@ public class ClientsControllerTests : IDisposable
         // Act
         var result = await _controller.GetClients();
 
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-        var response = Assert.IsType<ApiResponse<object>>(notFoundResult.Value);
-        Assert.False(response.Success);
-        Assert.Equal("TENANT_NOT_FOUND", response.Error?.Code);
+        // Assert - tenant is auto-provisioned on first access; an empty client list is returned
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ApiResponse<List<ClientResponse>>>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Empty(response.Data);
     }
 
     #endregion
