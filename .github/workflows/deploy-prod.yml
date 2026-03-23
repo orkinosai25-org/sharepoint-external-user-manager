@@ -92,9 +92,26 @@ jobs:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
         AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+        API_BASE_URL: ${{ secrets.API_BASE_URL }}
       run: |
         # Create appsettings.Production.json with secrets from repository
-        cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
+        if [ -n "$API_BASE_URL" ]; then
+          cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
+        {
+          "AzureAd": {
+            "ClientId": "$AZURE_AD_CLIENT_ID",
+            "ClientSecret": "$AZURE_AD_CLIENT_SECRET",
+            "TenantId": "$AZURE_AD_TENANT_ID"
+          },
+          "ApiSettings": {
+            "BaseUrl": "$API_BASE_URL",
+            "Timeout": 30
+          }
+        }
+        EOF
+          echo "✅ Production configuration created with ApiSettings.BaseUrl: $API_BASE_URL"
+        else
+          cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
         {
           "AzureAd": {
             "ClientId": "$AZURE_AD_CLIENT_ID",
@@ -103,7 +120,10 @@ jobs:
           }
         }
         EOF
-        echo "✅ Production configuration created with secrets from repository"
+          echo "⚠️ API_BASE_URL secret not set - add it to enable dashboard API calls"
+          echo "   Value: the base URL of the deployed API App Service (e.g. https://spexternal-api-prod.azurewebsites.net)"
+          echo "✅ Production configuration created (Azure AD only - no ApiSettings.BaseUrl)"
+        fi
     
     - name: Build Blazor Portal
       if: steps.validate-secrets.outputs.has-secrets == 'true'
