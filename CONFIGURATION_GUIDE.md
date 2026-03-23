@@ -40,7 +40,7 @@ The Portal needs to know where the API is hosted:
 ```json
 {
   "ApiSettings": {
-    "BaseUrl": "https://your-api.azurewebsites.net/api",
+    "BaseUrl": "https://your-api.azurewebsites.net",
     "Timeout": 30
   }
 }
@@ -71,13 +71,13 @@ Set environment variables using the double-underscore (`__`) separator:
 export AzureAd__ClientId="your-client-id"
 export AzureAd__ClientSecret="your-secret"
 export AzureAd__TenantId="your-tenant-id"
-export ApiSettings__BaseUrl="https://your-api.azurewebsites.net/api"
+export ApiSettings__BaseUrl="https://your-api.azurewebsites.net"
 
 # Windows PowerShell
 $env:AzureAd__ClientId="your-client-id"
 $env:AzureAd__ClientSecret="your-secret"
 $env:AzureAd__TenantId="your-tenant-id"
-$env:ApiSettings__BaseUrl="https://your-api.azurewebsites.net/api"
+$env:ApiSettings__BaseUrl="https://your-api.azurewebsites.net"
 ```
 
 ### 2. User Secrets (Recommended for Development)
@@ -89,7 +89,7 @@ cd src/portal-blazor/SharePointExternalUserManager.Portal
 dotnet user-secrets set "AzureAd:ClientId" "your-client-id"
 dotnet user-secrets set "AzureAd:ClientSecret" "your-secret"
 dotnet user-secrets set "AzureAd:TenantId" "your-tenant-id"
-dotnet user-secrets set "ApiSettings:BaseUrl" "https://localhost:5049/api"
+dotnet user-secrets set "ApiSettings:BaseUrl" "https://localhost:5049"
 
 cd ../../api-dotnet/WebApi/SharePointExternalUserManager.Api
 dotnet user-secrets set "AzureAd:ClientId" "your-api-client-id"
