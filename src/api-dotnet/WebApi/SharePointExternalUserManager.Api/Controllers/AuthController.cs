@@ -13,7 +13,7 @@ namespace SharePointExternalUserManager.Api.Controllers;
 /// Controller for OAuth authentication and tenant authorization
 /// </summary>
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly ApplicationDbContext _context;

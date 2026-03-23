@@ -54,11 +54,25 @@ public class ApiClient
     {
         if (statusCode == System.Net.HttpStatusCode.NotFound)
         {
-            var apiUrl = _httpClient.BaseAddress?.ToString() ?? "unknown";
+            var baseUrl = _httpClient.BaseAddress?.ToString() ?? "unknown";
+            string actualUrl;
+            try
+            {
+                actualUrl = _httpClient.BaseAddress != null
+                    ? new Uri(_httpClient.BaseAddress, new Uri(endpointPath, UriKind.RelativeOrAbsolute)).ToString()
+                    : baseUrl + endpointPath;
+            }
+            catch
+            {
+                actualUrl = baseUrl + endpointPath;
+            }
+
             throw new HttpRequestException(
                 $"Response status code does not indicate success: 404 (Not Found). " +
-                $"The API endpoint '{endpointPath}' was not found at '{apiUrl}'. " +
-                $"Verify that the 'ApiSettings__BaseUrl' setting points to the correct API App Service URL " +
+                $"The API endpoint '{endpointPath}' was not found. " +
+                $"Actual URL called: '{actualUrl}'. " +
+                $"Configured base URL ('ApiSettings__BaseUrl'): '{baseUrl}'. " +
+                $"Verify that 'ApiSettings__BaseUrl' points to the correct API App Service URL " +
                 $"(e.g. https://your-api.azurewebsites.net) and that the API is deployed and running.",
                 null,
                 System.Net.HttpStatusCode.NotFound);
@@ -73,8 +87,8 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync("/dashboard/summary");
-            ThrowIfNotFound(response.StatusCode, "/dashboard/summary");
+            var response = await _httpClient.GetAsync("/api/dashboard/summary");
+            ThrowIfNotFound(response.StatusCode, "/api/dashboard/summary");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -100,7 +114,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var url = $"/billing/plans?includeEnterprise={includeEnterprise}";
+            var url = $"/api/billing/plans?includeEnterprise={includeEnterprise}";
             var response = await _httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
@@ -128,7 +142,7 @@ public class ApiClient
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            var response = await _httpClient.PostAsync("/billing/checkout-session", content);
+            var response = await _httpClient.PostAsync("/api/billing/checkout-session", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -152,7 +166,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync("/billing/subscription/status");
+            var response = await _httpClient.GetAsync("/api/billing/subscription/status");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -176,8 +190,8 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync("/clients");
-            ThrowIfNotFound(response.StatusCode, "/clients");
+            var response = await _httpClient.GetAsync("/api/clients");
+            ThrowIfNotFound(response.StatusCode, "/api/clients");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -206,7 +220,7 @@ public class ApiClient
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            var response = await _httpClient.PostAsync("/clients", content);
+            var response = await _httpClient.PostAsync("/api/clients", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -232,7 +246,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync($"/clients/{id}");
+            var response = await _httpClient.GetAsync($"/api/clients/{id}");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -262,7 +276,7 @@ public class ApiClient
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            var response = await _httpClient.PostAsync("/auth/connect", content);
+            var response = await _httpClient.PostAsync("/api/auth/connect", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -288,7 +302,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync("/auth/permissions");
+            var response = await _httpClient.GetAsync("/api/auth/permissions");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -314,7 +328,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync($"/clients/{clientId}/external-users");
+            var response = await _httpClient.GetAsync($"/api/clients/{clientId}/external-users");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -343,7 +357,7 @@ public class ApiClient
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            var response = await _httpClient.PostAsync($"/clients/{clientId}/external-users", content);
+            var response = await _httpClient.PostAsync($"/api/clients/{clientId}/external-users", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
@@ -369,7 +383,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.DeleteAsync($"/clients/{clientId}/external-users/{Uri.EscapeDataString(email)}");
+            var response = await _httpClient.DeleteAsync($"/api/clients/{clientId}/external-users/{Uri.EscapeDataString(email)}");
             response.EnsureSuccessStatusCode();
 
             return true;
@@ -389,7 +403,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync($"/clients/{clientId}/libraries");
+            var response = await _httpClient.GetAsync($"/api/clients/{clientId}/libraries");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -415,7 +429,7 @@ public class ApiClient
         try
         {
             EnsureBaseAddressConfigured();
-            var response = await _httpClient.GetAsync($"/clients/{clientId}/lists");
+            var response = await _httpClient.GetAsync($"/api/clients/{clientId}/lists");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();

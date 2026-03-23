@@ -12,7 +12,7 @@ namespace SharePointExternalUserManager.Api.Controllers;
 /// Controller for dashboard operations and aggregated statistics
 /// </summary>
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 [Authorize]
 public class DashboardController : ControllerBase
 {

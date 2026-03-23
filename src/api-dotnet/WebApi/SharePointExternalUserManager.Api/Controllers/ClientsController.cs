@@ -18,7 +18,7 @@ namespace SharePointExternalUserManager.Api.Controllers;
 /// Controller for managing client spaces
 /// </summary>
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 [Authorize]
 public class ClientsController : ControllerBase
 {
