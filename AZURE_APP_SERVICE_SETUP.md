@@ -90,7 +90,7 @@ Now that you have the Azure AD application registered, configure your App Servic
 | `AzureAd__ClientId` | Application (client) ID from Step 2 | `61def48e-a9bc-43ef-932b-10eabef14c2a` |
 | `AzureAd__ClientSecret` | Client secret value from Step 3 | `abc123~DEF456.ghi789` |
 | `AzureAd__TenantId` | Directory (tenant) ID from Step 2 | `b884f3d2-f3d0-4e67-8470-bc7b0372ebb6` |
-| `ApiSettings__BaseUrl` | Your backend API URL | `https://your-api.azurewebsites.net/api` |
+| `ApiSettings__BaseUrl` | Your backend API URL | `https://your-api.azurewebsites.net` |
 
 **Important Notes:**
 - Use double underscores (`__`) in the setting names

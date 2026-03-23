@@ -40,6 +40,32 @@ public class ApiClient
     }
 
     /// <summary>
+    /// Returns the configured API base URL, or null when no base address is configured.
+    /// Useful for diagnostic error messages.
+    /// </summary>
+    public string? BaseUrl => _httpClient.BaseAddress?.ToString();
+
+    /// <summary>
+    /// Throws a descriptive <see cref="HttpRequestException"/> when the server returns 404,
+    /// including the target URL so operators can quickly diagnose misconfigured
+    /// <c>ApiSettings__BaseUrl</c> values.
+    /// </summary>
+    private void ThrowIfNotFound(System.Net.HttpStatusCode statusCode, string endpointPath)
+    {
+        if (statusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            var apiUrl = _httpClient.BaseAddress?.ToString() ?? "unknown";
+            throw new HttpRequestException(
+                $"Response status code does not indicate success: 404 (Not Found). " +
+                $"The API endpoint '{endpointPath}' was not found at '{apiUrl}'. " +
+                $"Verify that the 'ApiSettings__BaseUrl' setting points to the correct API App Service URL " +
+                $"(e.g. https://your-api.azurewebsites.net) and that the API is deployed and running.",
+                null,
+                System.Net.HttpStatusCode.NotFound);
+        }
+    }
+
+    /// <summary>
     /// Get dashboard summary with aggregated statistics
     /// </summary>
     public async Task<DashboardSummaryResponse?> GetDashboardSummaryAsync()
@@ -48,6 +74,7 @@ public class ApiClient
         {
             EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/dashboard/summary");
+            ThrowIfNotFound(response.StatusCode, "/dashboard/summary");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
@@ -150,6 +177,7 @@ public class ApiClient
         {
             EnsureBaseAddressConfigured();
             var response = await _httpClient.GetAsync("/clients");
+            ThrowIfNotFound(response.StatusCode, "/clients");
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync();
