@@ -1,84 +1,220 @@
-name: Deploy Backend to Azure Functions
+# Deploy Backend - ASP.NET Core Web API
+#
+# This workflow builds and deploys the SharePoint External User Manager ASP.NET Core
+# Web API backend to Azure App Service using an Azure publish profile.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# REQUIRED REPOSITORY SECRETS
+# ─────────────────────────────────────────────────────────────────────────────
+# Set these in: Settings → Secrets and variables → Actions → New repository secret
+#
+# Core deployment secrets (at least one is required):
+#   API_PUBLISH_PROFILE_PROD  – Azure App Service publish profile XML for the
+#                               PRODUCTION API (spexternal-api-prod).
+#                               Obtain via: Azure Portal → App Service → Overview →
+#                               "Get publish profile". Copy the entire XML content.
+#
+#   API_PUBLISH_PROFILE       – Azure App Service publish profile XML for the
+#                               DEV/STAGING API (spexternal-api-dev).
+#                               Same steps as above for the dev App Service.
+#
+# Azure AD / application runtime secrets (required for the API to function):
+#   AZURE_AD_CLIENT_ID        – Azure AD Application (client) ID used by the API
+#                               for Microsoft Graph and authentication.
+#   AZURE_AD_CLIENT_SECRET    – Azure AD client secret for the above app registration.
+#   AZURE_AD_TENANT_ID        – Azure AD tenant ID (Directory ID).
+#
+# Optional application secrets (enhance functionality but not required to deploy):
+#   AZURE_SQL_CONNECTION_STRING – Full ADO.NET connection string for the Azure SQL
+#                                 Database. Injected as ConnectionStrings__DefaultConnection.
+#   STRIPE_SECRET_KEY           – Stripe secret key for billing features.
+#   STRIPE_WEBHOOK_SECRET       – Stripe webhook signing secret.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Deploy Backend API to Azure App Service
 
 on:
   push:
     branches:
-      - main
-      - develop
+      - main       # → production environment
+      - develop    # → development environment
     paths:
-      - 'src/api-dotnet/**'
+      - 'src/api-dotnet/WebApi/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - production
+          - development
+        default: production
 
 env:
-  AZURE_FUNCTIONAPP_NAME: spexternal-func-dev
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'src/api-dotnet/src'
   DOTNET_VERSION: '8.0.x'
+  API_PROJECT_PATH: 'src/api-dotnet/WebApi/SharePointExternalUserManager.Api'
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-deploy:
+  # ─── Job 1: Build ────────────────────────────────────────────────────────
+  build:
+    name: Build API
     runs-on: ubuntu-latest
 
     steps:
-      - name: 'Checkout GitHub Action'
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 'Restore dependencies'
-        shell: bash
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet restore
-          popd
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.API_PROJECT_PATH }}
 
-      - name: 'Build project'
-        shell: bash
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --no-restore
-          popd
+      - name: Build (Release)
+        run: dotnet build ${{ env.API_PROJECT_PATH }} --configuration Release --no-restore
 
-      - name: 'Run tests'
-        shell: bash
+      - name: Run tests
         run: |
-          # TODO: Add when tests are created
-          # pushd './src/api-dotnet/tests'
-          # dotnet test --no-build --verbosity normal
-          # popd
-          echo "Tests skipped - test directory not yet created"
+          # Run tests when a test project is available.
+          # Scoped to the WebApi directory to avoid picking up unrelated test projects.
+          # TODO: replace the glob below with the actual test project path once created.
+          TEST_PROJECTS=$(find src/api-dotnet/WebApi -name "*.Tests.csproj" -o -name "*.Test.csproj" 2>/dev/null || true)
+          if [ -n "$TEST_PROJECTS" ]; then
+            echo "$TEST_PROJECTS" | xargs -I{} dotnet test {} --no-build --configuration Release --verbosity normal
+          else
+            echo "ℹ️ No test projects found – skipping test step."
+          fi
 
-      - name: 'Publish'
-        shell: bash
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet publish -c Release -o ./output
-          popd
+      - name: Publish (Release)
+        run: dotnet publish ${{ env.API_PROJECT_PATH }} --configuration Release --output ./api-publish --no-build
 
-      - name: 'Login to Azure'
-        id: azure_login
-        continue-on-error: true
-        uses: azure/login@v1
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v4
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          name: api-package
+          path: ./api-publish
+          retention-days: 1
 
-      - name: 'Run Azure Functions Action'
-        if: steps.azure_login.outcome == 'success'
-        uses: Azure/functions-action@v1
+  # ─── Job 2: Deploy to Production ─────────────────────────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    # Run on push to main OR when workflow_dispatch targets production
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+
+    steps:
+      - name: Download API artifact
+        uses: actions/download-artifact@v4
         with:
-          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          
-      - name: 'Logout from Azure'
-        if: steps.azure_login.outcome == 'success'
-        run: az logout
-      
-      - name: 'Deployment Skipped Notice'
-        if: steps.azure_login.outcome == 'failure'
+          name: api-package
+          path: ./api-package
+
+      - name: Validate publish profile secret
+        env:
+          API_PUBLISH_PROFILE_PROD: ${{ secrets.API_PUBLISH_PROFILE_PROD }}
         run: |
-          echo "⚠️ Azure deployment skipped - AZURE_CREDENTIALS secret not configured or login failed"
-          echo "The build was successful, but deployment to Azure requires AZURE_CREDENTIALS to be set."
-          echo "See docs/DEPLOYMENT.md for setup instructions."
+          if [ -z "$API_PUBLISH_PROFILE_PROD" ]; then
+            echo "❌ API_PUBLISH_PROFILE_PROD secret is not configured."
+            echo ""
+            echo "ℹ️  To enable production deployment:"
+            echo "  1. Open Azure Portal → App Services → spexternal-api-prod"
+            echo "  2. Click 'Get publish profile' in the Overview blade"
+            echo "  3. Open the downloaded .PublishSettings file and copy ALL its XML content"
+            echo "  4. Go to this repository → Settings → Secrets and variables → Actions"
+            echo "  5. Create a new secret named 'API_PUBLISH_PROFILE_PROD' and paste the XML"
+            echo ""
+            echo "  See WORKFLOW_SECRET_SETUP.md for step-by-step screenshots."
+            exit 1
+          fi
+          echo "✅ API_PUBLISH_PROFILE_PROD secret present."
+
+      - name: Deploy to Azure App Service (production)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'spexternal-api-prod'
+          package: ./api-package
+          publish-profile: ${{ secrets.API_PUBLISH_PROFILE_PROD }}
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "## ✅ Backend API – Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App Service | spexternal-api-prod |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Date | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Post-Deployment Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Verify key API endpoints return HTTP 200 (e.g. \`/api/dashboard/summary\`, \`/api/clients\`)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Check application logs in Azure Portal for startup errors" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Confirm Azure AD settings are correct in App Service Configuration" >> $GITHUB_STEP_SUMMARY
+
+  # ─── Job 3: Deploy to Development ────────────────────────────────────────
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: build
+    # Run on push to develop OR when workflow_dispatch targets development
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'development')
+    environment: development
+
+    steps:
+      - name: Download API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api-package
+          path: ./api-package
+
+      - name: Validate publish profile secret
+        env:
+          API_PUBLISH_PROFILE: ${{ secrets.API_PUBLISH_PROFILE }}
+        run: |
+          if [ -z "$API_PUBLISH_PROFILE" ]; then
+            echo "❌ API_PUBLISH_PROFILE secret is not configured."
+            echo ""
+            echo "ℹ️  To enable development deployment:"
+            echo "  1. Open Azure Portal → App Services → spexternal-api-dev"
+            echo "  2. Click 'Get publish profile' in the Overview blade"
+            echo "  3. Open the downloaded .PublishSettings file and copy ALL its XML content"
+            echo "  4. Go to this repository → Settings → Secrets and variables → Actions"
+            echo "  5. Create a new secret named 'API_PUBLISH_PROFILE' and paste the XML"
+            echo ""
+            echo "  See WORKFLOW_SECRET_SETUP.md for step-by-step screenshots."
+            exit 1
+          fi
+          echo "✅ API_PUBLISH_PROFILE secret present."
+
+      - name: Deploy to Azure App Service (development)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'spexternal-api-dev'
+          package: ./api-package
+          publish-profile: ${{ secrets.API_PUBLISH_PROFILE }}
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "## ✅ Backend API – Development Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App Service | spexternal-api-dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Date | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
