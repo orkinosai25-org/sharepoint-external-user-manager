@@ -14,7 +14,7 @@ namespace SharePointExternalUserManager.Api.Controllers;
 /// </summary>
 [Authorize]
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class BillingController : ControllerBase
 {
     // Fallback email for auto-created tenants (should rarely be used)
