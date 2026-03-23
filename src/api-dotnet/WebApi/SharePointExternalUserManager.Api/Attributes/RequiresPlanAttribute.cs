@@ -131,19 +131,23 @@ public class RequiresPlanAttribute : Attribute, IAsyncActionFilter
         await next();
     }
 
-    private static bool IsTierSufficient(string currentTier, string requiredTier)
+    /// <summary>
+    /// Returns true when <paramref name="currentTier"/> meets or exceeds <paramref name="requiredTier"/>.
+    /// Exposed as internal so it can be reused by controllers without duplicating the tier map.
+    /// </summary>
+    internal static bool IsTierSufficient(string currentTier, string requiredTier)
     {
-        var tierOrder = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Free", 0 },
-            { "Starter", 1 },
-            { "Pro", 2 },
-            { "Enterprise", 3 }
-        };
-
-        var currentLevel = tierOrder.GetValueOrDefault(currentTier, 0);
-        var requiredLevel = tierOrder.GetValueOrDefault(requiredTier, 0);
-
+        var currentLevel = TierOrder.GetValueOrDefault(currentTier, 0);
+        var requiredLevel = TierOrder.GetValueOrDefault(requiredTier, 0);
         return currentLevel >= requiredLevel;
     }
+
+    /// <summary>Canonical plan ordering (ascending capability).</summary>
+    internal static readonly Dictionary<string, int> TierOrder = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Free",       0 },
+        { "Starter",    1 },
+        { "Pro",        2 },
+        { "Enterprise", 3 }
+    };
 }

@@ -77,10 +77,12 @@ builder.Services.Configure<AzureOpenAIConfiguration>(options =>
     options.ApiVersion = azureOpenAIConfig["ApiVersion"] ?? "2024-08-01-preview";
     options.Model = azureOpenAIConfig["Model"] ?? "gpt-4";
     
-    // Enable demo mode if endpoint/key not configured
-    options.UseDemoMode = string.IsNullOrWhiteSpace(options.Endpoint) || 
-                         string.IsNullOrWhiteSpace(options.ApiKey) ||
-                         options.Endpoint.Contains("YOUR_", StringComparison.OrdinalIgnoreCase);
+    // Enable demo mode if endpoint/key not configured, or explicitly set via config
+    var configuredDemoMode = azureOpenAIConfig.GetValue<bool?>("UseDemoMode");
+    options.UseDemoMode = configuredDemoMode ?? (
+        string.IsNullOrWhiteSpace(options.Endpoint) || 
+        string.IsNullOrWhiteSpace(options.ApiKey) ||
+        options.Endpoint.Contains("YOUR_", StringComparison.OrdinalIgnoreCase));
 });
 
 // Configure CORS with specific allowed origins (no AllowAnyOrigin)
