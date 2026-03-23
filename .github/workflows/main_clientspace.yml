@@ -9,6 +9,7 @@ on:
       - main
     paths:
       - 'src/portal-blazor/**'
+      - 'src/api-dotnet/WebApi/**'
       - '.github/workflows/main_clientspace.yml'
   workflow_dispatch:
 
@@ -33,6 +34,7 @@ jobs:
           AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
           AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
           AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
           # Create appsettings.Production.json with secrets from repository if available
           # SECURITY NOTE: This file is created at build time and should NEVER be committed to source control
@@ -54,6 +56,18 @@ jobs:
                 CallbackPath = "/signin-oidc"
                 SignedOutCallbackPath = "/signout-callback-oidc"
               }
+            }
+            # Include ApiSettings.BaseUrl when API_BASE_URL secret is configured
+            if (-not [string]::IsNullOrEmpty($env:API_BASE_URL)) {
+              $config["ApiSettings"] = @{
+                BaseUrl = $env:API_BASE_URL
+                Timeout = 30
+              }
+              Write-Host "✅ ApiSettings.BaseUrl configured: $($env:API_BASE_URL)"
+            } else {
+              Write-Host "⚠️ API_BASE_URL secret not set - portal will use fallback from Azure App Service settings or appsettings.json"
+              Write-Host "ℹ️ To enable dashboard API calls, add the 'API_BASE_URL' repository secret:"
+              Write-Host "   Value: the base URL of the deployed API App Service (e.g. https://your-api.azurewebsites.net)"
             }
             $config | ConvertTo-Json -Depth 10 | Out-File -FilePath ./src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json -Encoding UTF8
             Write-Host "✅ Production configuration created with secrets from repository"
@@ -150,4 +164,79 @@ jobs:
           Write-Host "- Verify the application is running correctly" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "- Check application logs for any errors" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Host "- Run smoke tests to ensure functionality" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+  build-api:
+    name: Build API
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
+
+      - name: Build and publish API
+        run: |
+          dotnet restore
+          dotnet build --configuration Release --no-restore
+          dotnet publish --configuration Release --output ./publish --no-build
+        working-directory: ./src/api-dotnet/WebApi/SharePointExternalUserManager.Api
+
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-app
+          path: ./src/api-dotnet/WebApi/SharePointExternalUserManager.Api/publish
+
+  deploy-api:
+    name: Deploy API App Service
+    runs-on: ubuntu-latest
+    needs: build-api
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api-app
+          path: ./api-app
+
+      - name: Check API deployment prerequisites
+        id: check-prereqs
+        env:
+          API_PUBLISH_PROFILE: ${{ secrets.API_PUBLISH_PROFILE }}
+        run: |
+          if [ -z "$API_PUBLISH_PROFILE" ]; then
+            echo "⚠️ API deployment skipped - API_PUBLISH_PROFILE secret not configured"
+            echo ""
+            echo "ℹ️ To enable API deployment and fix dashboard 404 errors:"
+            echo "  1. Deploy or create an Azure App Service for the API"
+            echo "  2. Go to Azure Portal → Your API App Service → Overview"
+            echo "  3. Click 'Get publish profile' and copy the XML content"
+            echo "  4. Go to repository Settings > Secrets and variables > Actions"
+            echo "  5. Add secret named 'API_PUBLISH_PROFILE' with the XML content"
+            echo "  6. Also add secret 'API_BASE_URL' with the API App Service URL"
+            echo "     (e.g. https://your-api.azurewebsites.net)"
+            echo "  7. Optionally add 'API_APP_SERVICE_NAME' if the App Service name"
+            echo "     differs from the default 'spexternal-api-prod'"
+            echo "can-deploy=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ API deployment prerequisites validated"
+            echo "can-deploy=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy API to Azure App Service
+        if: steps.check-prereqs.outputs.can-deploy == 'true'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.API_APP_SERVICE_NAME || 'spexternal-api-prod' }}
+          slot-name: 'Production'
+          package: ./api-app
+          publish-profile: ${{ secrets.API_PUBLISH_PROFILE }}
           

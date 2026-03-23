@@ -85,10 +85,27 @@ jobs:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
         AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+        DEV_API_BASE_URL: ${{ secrets.DEV_API_BASE_URL }}
       run: |
         # Create appsettings.Production.json with secrets from repository for dev environment
         # Note: Using Production config format to ensure same configuration structure in all environments
-        cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
+        if [ -n "$DEV_API_BASE_URL" ]; then
+          cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
+        {
+          "AzureAd": {
+            "ClientId": "$AZURE_AD_CLIENT_ID",
+            "ClientSecret": "$AZURE_AD_CLIENT_SECRET",
+            "TenantId": "$AZURE_AD_TENANT_ID"
+          },
+          "ApiSettings": {
+            "BaseUrl": "$DEV_API_BASE_URL",
+            "Timeout": 30
+          }
+        }
+        EOF
+          echo "✅ Production configuration created with ApiSettings.BaseUrl: $DEV_API_BASE_URL"
+        else
+          cat > src/portal-blazor/SharePointExternalUserManager.Portal/appsettings.Production.json << EOF
         {
           "AzureAd": {
             "ClientId": "$AZURE_AD_CLIENT_ID",
@@ -97,7 +114,9 @@ jobs:
           }
         }
         EOF
-        echo "✅ Production configuration created with secrets from repository"
+          echo "⚠️ DEV_API_BASE_URL secret not set - add it to enable dashboard API calls in dev"
+          echo "   Value: the base URL of the dev API App Service (e.g. https://spexternal-api-dev.azurewebsites.net)"
+        fi
     
     - name: Build Blazor Portal
       run: |
