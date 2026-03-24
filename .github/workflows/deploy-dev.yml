@@ -48,39 +48,42 @@ jobs:
         dotnet publish --configuration Release --output ../../../../api-publish --no-build
         
     - name: Validate Azure AD Secrets
+      id: azure_ad_check
       env:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
         AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
       run: |
-        errors=""
+        missing=""
         
         if [ -z "$AZURE_AD_CLIENT_ID" ]; then
-          errors="$errors AZURE_AD_CLIENT_ID"
+          missing="$missing AZURE_AD_CLIENT_ID"
         fi
         if [ -z "$AZURE_AD_CLIENT_SECRET" ]; then
-          errors="$errors AZURE_AD_CLIENT_SECRET"
+          missing="$missing AZURE_AD_CLIENT_SECRET"
         fi
         if [ -z "$AZURE_AD_TENANT_ID" ]; then
-          errors="$errors AZURE_AD_TENANT_ID"
+          missing="$missing AZURE_AD_TENANT_ID"
         fi
         
-        if [ -n "$errors" ]; then
-          echo "❌ Required Azure AD secrets are not configured:$errors"
+        if [ -n "$missing" ]; then
+          echo "::warning::Azure AD secrets not configured:$missing - Blazor Portal build will be skipped"
           echo ""
-          echo "ℹ️ To fix this:"
+          echo "ℹ️ To enable Blazor Portal build and deployment:"
           echo "  1. Go to repository Settings > Secrets and variables > Actions"
           echo "  2. Add the following secrets:"
           echo "     - AZURE_AD_CLIENT_ID: Your Azure AD Application Client ID"
           echo "     - AZURE_AD_CLIENT_SECRET: Your Azure AD Application Client Secret"
           echo "     - AZURE_AD_TENANT_ID: Your Azure AD Tenant ID"
           echo "  3. See WORKFLOW_SECRET_SETUP.md for detailed instructions"
-          exit 1
+          echo "azure_ad_configured=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "✅ All Azure AD secrets validated"
+          echo "azure_ad_configured=true" >> "$GITHUB_OUTPUT"
         fi
-        
-        echo "✅ All Azure AD secrets validated"
     
     - name: Create Production Configuration for Portal
+      if: steps.azure_ad_check.outputs.azure_ad_configured == 'true'
       env:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
@@ -119,6 +122,7 @@ jobs:
         fi
     
     - name: Build Blazor Portal
+      if: steps.azure_ad_check.outputs.azure_ad_configured == 'true'
       run: |
         cd src/portal-blazor/SharePointExternalUserManager.Portal
         dotnet restore
@@ -149,6 +153,7 @@ jobs:
         retention-days: 1
         
     - name: Upload Portal artifact
+      if: steps.azure_ad_check.outputs.azure_ad_configured == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: portal-package
@@ -175,24 +180,29 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Validate Azure credentials
+      id: creds_check
       env:
         AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       run: |
         if [ -z "$AZURE_CREDENTIALS" ]; then
-          echo "❌ AZURE_CREDENTIALS secret is not configured"
+          echo "::warning::AZURE_CREDENTIALS secret is not configured - infrastructure deployment will be skipped"
           echo "ℹ️ To enable infrastructure deployment:"
           echo "  1. Go to repository Settings > Secrets and variables > Actions"
           echo "  2. Add AZURE_CREDENTIALS secret with Azure service principal credentials"
-          exit 1
+          echo "azure_credentials_configured=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "✅ Azure credentials validated"
+          echo "azure_credentials_configured=true" >> "$GITHUB_OUTPUT"
         fi
-        echo "✅ Azure credentials validated"
       
     - name: Azure Login
+      if: steps.creds_check.outputs.azure_credentials_configured == 'true'
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
     - name: Deploy Bicep template
+      if: steps.creds_check.outputs.azure_credentials_configured == 'true'
       run: |
         az deployment group create \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
@@ -203,6 +213,7 @@ jobs:
           
     - name: Get deployment outputs
       id: deployment
+      if: steps.creds_check.outputs.azure_credentials_configured == 'true'
       run: |
         outputs=$(az deployment group show \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
@@ -212,6 +223,7 @@ jobs:
         echo "$outputs"
         
     - name: Logout from Azure
+      if: steps.creds_check.outputs.azure_credentials_configured == 'true'
       run: az logout
       
   # Job 3: Deploy API
@@ -228,11 +240,12 @@ jobs:
         path: ./api-package
         
     - name: Validate deployment prerequisites
+      id: api_prereqs
       env:
         API_PUBLISH_PROFILE: ${{ secrets.API_PUBLISH_PROFILE }}
       run: |
         if [ -z "$API_PUBLISH_PROFILE" ]; then
-          echo "❌ API deployment skipped - API_PUBLISH_PROFILE secret not configured"
+          echo "::warning::API_PUBLISH_PROFILE secret not configured - API deployment will be skipped"
           echo ""
           echo "ℹ️ To enable API deployment:"
           echo "  1. Go to Azure Portal → Your API App Service"
@@ -240,11 +253,14 @@ jobs:
           echo "  3. Copy the entire XML content"
           echo "  4. Go to repository Settings > Secrets and variables > Actions"
           echo "  5. Add secret named 'API_PUBLISH_PROFILE' with the XML content"
-          exit 1
+          echo "api_deployment_configured=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "✅ Deployment prerequisites validated"
+          echo "api_deployment_configured=true" >> "$GITHUB_OUTPUT"
         fi
-        echo "✅ Deployment prerequisites validated"
         
     - name: Deploy to Azure App Service
+      if: steps.api_prereqs.outputs.api_deployment_configured == 'true'
       uses: azure/webapps-deploy@v3
       with:
         app-name: 'spexternal-api-dev'  # Can be overridden by publish profile
@@ -265,11 +281,12 @@ jobs:
         path: ./portal-package
         
     - name: Validate deployment prerequisites
+      id: portal_prereqs
       env:
         PORTAL_PUBLISH_PROFILE: ${{ secrets.PORTAL_PUBLISH_PROFILE }}
       run: |
         if [ -z "$PORTAL_PUBLISH_PROFILE" ]; then
-          echo "❌ Portal deployment skipped - PORTAL_PUBLISH_PROFILE secret not configured"
+          echo "::warning::PORTAL_PUBLISH_PROFILE secret not configured - Portal deployment will be skipped"
           echo ""
           echo "ℹ️ To enable Portal deployment:"
           echo "  1. Go to Azure Portal → Your Portal App Service"
@@ -277,11 +294,14 @@ jobs:
           echo "  3. Copy the entire XML content"
           echo "  4. Go to repository Settings > Secrets and variables > Actions"
           echo "  5. Add secret named 'PORTAL_PUBLISH_PROFILE' with the XML content"
-          exit 1
+          echo "portal_deployment_configured=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "✅ Deployment prerequisites validated"
+          echo "portal_deployment_configured=true" >> "$GITHUB_OUTPUT"
         fi
-        echo "✅ Deployment prerequisites validated"
         
     - name: Deploy to Azure App Service
+      if: steps.portal_prereqs.outputs.portal_deployment_configured == 'true'
       uses: azure/webapps-deploy@v3
       with:
         app-name: 'spexternal-portal-dev'  # Can be overridden by publish profile
