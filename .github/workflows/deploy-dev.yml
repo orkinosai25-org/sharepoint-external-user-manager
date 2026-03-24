@@ -48,39 +48,42 @@ jobs:
         dotnet publish --configuration Release --output ../../../../api-publish --no-build
         
     - name: Validate Azure AD Secrets
+      id: azure_ad_check
       env:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
         AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
       run: |
-        errors=""
+        missing=""
         
         if [ -z "$AZURE_AD_CLIENT_ID" ]; then
-          errors="$errors AZURE_AD_CLIENT_ID"
+          missing="$missing AZURE_AD_CLIENT_ID"
         fi
         if [ -z "$AZURE_AD_CLIENT_SECRET" ]; then
-          errors="$errors AZURE_AD_CLIENT_SECRET"
+          missing="$missing AZURE_AD_CLIENT_SECRET"
         fi
         if [ -z "$AZURE_AD_TENANT_ID" ]; then
-          errors="$errors AZURE_AD_TENANT_ID"
+          missing="$missing AZURE_AD_TENANT_ID"
         fi
         
-        if [ -n "$errors" ]; then
-          echo "❌ Required Azure AD secrets are not configured:$errors"
+        if [ -n "$missing" ]; then
+          echo "::warning::Azure AD secrets not configured:$missing - Blazor Portal build will be skipped"
           echo ""
-          echo "ℹ️ To fix this:"
+          echo "ℹ️ To enable Blazor Portal build and deployment:"
           echo "  1. Go to repository Settings > Secrets and variables > Actions"
           echo "  2. Add the following secrets:"
           echo "     - AZURE_AD_CLIENT_ID: Your Azure AD Application Client ID"
           echo "     - AZURE_AD_CLIENT_SECRET: Your Azure AD Application Client Secret"
           echo "     - AZURE_AD_TENANT_ID: Your Azure AD Tenant ID"
           echo "  3. See WORKFLOW_SECRET_SETUP.md for detailed instructions"
-          exit 1
+          echo "azure_ad_configured=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "✅ All Azure AD secrets validated"
+          echo "azure_ad_configured=true" >> "$GITHUB_OUTPUT"
         fi
-        
-        echo "✅ All Azure AD secrets validated"
     
     - name: Create Production Configuration for Portal
+      if: steps.azure_ad_check.outputs.azure_ad_configured == 'true'
       env:
         AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
         AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
@@ -119,6 +122,7 @@ jobs:
         fi
     
     - name: Build Blazor Portal
+      if: steps.azure_ad_check.outputs.azure_ad_configured == 'true'
       run: |
         cd src/portal-blazor/SharePointExternalUserManager.Portal
         dotnet restore
@@ -149,6 +153,7 @@ jobs:
         retention-days: 1
         
     - name: Upload Portal artifact
+      if: steps.azure_ad_check.outputs.azure_ad_configured == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: portal-package
