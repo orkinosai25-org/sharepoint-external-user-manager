@@ -87,7 +87,7 @@ jobs:
           # TODO: replace the glob below with the actual test project path once created.
           TEST_PROJECTS=$(find src/api-dotnet/WebApi -name "*.Tests.csproj" -o -name "*.Test.csproj" 2>/dev/null || true)
           if [ -n "$TEST_PROJECTS" ]; then
-            echo "$TEST_PROJECTS" | xargs -I{} dotnet test {} --no-build --configuration Release --verbosity normal
+            echo "$TEST_PROJECTS" | xargs -I{} dotnet test {} --configuration Release --verbosity normal
           else
             echo "ℹ️ No test projects found – skipping test step."
           fi
