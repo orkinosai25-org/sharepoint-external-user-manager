@@ -1,34 +1,120 @@
 @page "/onboarding/success"
 @attribute [Authorize]
+@implements IDisposable
+@inject NavigationManager Navigation
 
-<PageTitle>Success - ClientSpace</PageTitle>
+<PageTitle>Welcome to ClientSpace!</PageTitle>
 
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card border-success">
+            <div class="card border-success shadow-lg">
                 <div class="card-header bg-success text-white text-center">
-                    <h3><span class="bi bi-check-circle-fill"></span> Payment Successful!</h3>
+                    <h3><span class="bi bi-check-circle-fill"></span> Welcome to ClientSpace!</h3>
                 </div>
-                <div class="card-body text-center">
-                    <p class="lead">Thank you for subscribing to ClientSpace.</p>
-                    <p>Your subscription is now being activated. This usually takes just a few moments.</p>
+                <div class="card-body text-center p-5">
+                    <p class="lead mb-4">Your organization is now set up and ready to go.</p>
+                    
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-gift me-2"></i>
+                                Your Free Trial Has Started
+                            </h5>
+                            <p class="card-text mb-0">
+                                You have <strong>30 days</strong> to explore all features of ClientSpace.
+                            </p>
+                        </div>
+                    </div>
                     
                     <div class="my-4">
-                        <h5>Next Steps:</h5>
-                        <ol class="text-start">
-                            <li>Go to your Dashboard to view your subscription status</li>
-                            <li>Create your first Client Space</li>
-                            <li>Install the SPFx package in your SharePoint tenant</li>
-                            <li>Start managing external users!</li>
-                        </ol>
+                        <h5 class="mb-3">What you can do now:</h5>
+                        <ul class="text-start">
+                            <li class="mb-2">
+                                <i class="bi bi-folder-plus text-primary me-2"></i>
+                                <strong>Create Client Spaces</strong> - Set up dedicated SharePoint sites for each client
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-person-plus text-primary me-2"></i>
+                                <strong>Invite External Users</strong> - Grant clients secure access to their documents
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-shield-check text-primary me-2"></i>
+                                <strong>Manage Permissions</strong> - Control who can view or edit specific content
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-graph-up text-primary me-2"></i>
+                                <strong>Monitor Activity</strong> - Track usage and audit access logs
+                            </li>
+                        </ul>
                     </div>
 
-                    <a href="/dashboard" class="btn btn-primary btn-lg">
-                        <span class="bi bi-speedometer2"></span> Go to Dashboard
-                    </a>
+                    <div class="d-grid gap-2">
+                        <a href="/dashboard" class="btn btn-primary btn-lg">
+                            <span class="bi bi-speedometer2 me-2"></span> Go to Dashboard
+                        </a>
+                        <a href="/pricing" class="btn btn-outline-secondary">
+                            <i class="bi bi-star me-2"></i>
+                            View Plans & Pricing
+                        </a>
+                    </div>
                 </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    Need help getting started? Check out our documentation or contact support.
+                </small>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .card {
+        border-radius: 12px;
+    }
+    
+    .btn-lg {
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+    }
+</style>
+
+@code {
+    private bool hasNavigated = false;
+    private CancellationTokenSource? autoRedirectCts;
+
+    protected override void OnInitialized()
+    {
+        // Create cancellation token for auto-redirect
+        autoRedirectCts = new CancellationTokenSource();
+    }
+
+    // Auto-redirect to dashboard after 10 seconds if user doesn't click
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasNavigated)
+        {
+            try
+            {
+                await Task.Delay(10000, autoRedirectCts!.Token); // 10 seconds
+                if (!hasNavigated)
+                {
+                    hasNavigated = true;
+                    Navigation.NavigateTo("/dashboard");
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected when component is disposed or navigation happens
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        autoRedirectCts?.Cancel();
+        autoRedirectCts?.Dispose();
+    }
+}
