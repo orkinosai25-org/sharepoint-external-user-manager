@@ -682,6 +682,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to create client");
+            createError = $"Failed to create client space: {ex.Message}";
             NotificationService.ShowError("Failed to create client space. Please try again.");
         }
         finally

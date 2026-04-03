@@ -105,8 +105,12 @@ if (validationResult.HasWarnings)
 // wires them into the MSAL confidential-client pipeline.  This is the recommended pattern
 // and fixes AADSTS7000218 ("client_secret or client_assertion required") that occurred when
 // the action-based overload with manual Bind did not propagate ClientSecret into MSAL.
+// EnableTokenAcquisitionToCallDownstreamApi enables acquiring Bearer tokens to call the
+// backend API on behalf of the signed-in user.
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
+    .EnableTokenAcquisitionToCallDownstreamApi()
+    .AddInMemoryTokenCaches();
 
 // Use authorization code flow only (more secure, avoids AADSTS700054 about id_token).
 // PostConfigure runs after the library's own configuration so this value always wins.
