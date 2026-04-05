@@ -28,8 +28,12 @@
                     <div class="step-circle">3</div>
                     <div class="step-label">Payment</div>
                 </div>
-                <div class="step @(currentStep >= 4 ? "active" : "")">
+                <div class="step @(currentStep >= 4 ? "active" : "") @(currentStep > 4 ? "completed" : "")">
                     <div class="step-circle">4</div>
+                    <div class="step-label">SharePoint Setup</div>
+                </div>
+                <div class="step @(currentStep >= 5 ? "active" : "")">
+                    <div class="step-circle">5</div>
                     <div class="step-label">Complete</div>
                 </div>
             </div>
@@ -136,9 +140,56 @@
             else if (currentStep == 4)
             {
                 <div class="card">
+                    <div class="card-body">
+                        <h3>
+                            <i class="bi bi-shield-check text-primary me-2"></i>
+                            Set Up SharePoint Permissions
+                        </h3>
+                        <p class="mt-3">
+                            To manage external users and SharePoint sites, ClientSpace needs permission to access
+                            your Microsoft 365 tenant on your organisation's behalf.
+                        </p>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>You must be a Global Administrator or SharePoint Administrator</strong>
+                            to complete this step.
+                        </div>
+
+                        <p>This step will:</p>
+                        <ul>
+                            <li>Install the ClientSpace SPFx package in your SharePoint tenant</li>
+                            <li>Grant the required Microsoft Graph and SharePoint API permissions</li>
+                        </ul>
+
+                        <div class="d-flex gap-2 flex-wrap mt-4">
+                            <a href="/admin/sharepoint-setup" class="btn btn-primary">
+                                <i class="bi bi-shield-check me-2"></i>
+                                Open SharePoint Setup
+                            </a>
+                            <button class="btn btn-outline-secondary" @onclick="NextStep">
+                                I'll do this later
+                            </button>
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-link text-muted p-0" @onclick="PreviousStep">← Back</button>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (currentStep == 5)
+            {
+                <div class="card">
                     <div class="card-body text-center">
                         <h3 class="text-success">✓ Onboarding Complete!</h3>
                         <p class="mt-3">Your subscription is now active.</p>
+                        <p>
+                            <strong>Don't forget:</strong> Visit the
+                            <a href="/admin/sharepoint-setup">SharePoint Setup</a>
+                            page to install the SPFx package and grant Microsoft Graph permissions
+                            if you haven't already.
+                        </p>
                         <a href="/dashboard" class="btn btn-primary mt-3">Go to Dashboard</a>
                     </div>
                 </div>
@@ -251,7 +302,7 @@
 
     private void NextStep()
     {
-        if (currentStep < 4)
+        if (currentStep < 5)
         {
             currentStep++;
         }
