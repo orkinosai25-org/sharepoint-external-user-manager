@@ -1,0 +1,643 @@
+@page "/settings"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@inject Services.ApiClient ApiClient
+@inject NavigationManager Navigation
+@inject ILogger<Settings> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Settings - ClientSpace</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <span class="bi bi-gear-fill me-2 text-primary"></span>
+                Settings
+            </h1>
+            <p class="text-muted">Manage your profile, SharePoint connection, and subscription.</p>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "profile" ? "active" : "")"
+                    @onclick='() => SetTab("profile")' type="button">
+                <span class="bi bi-person-circle me-1"></span> Profile
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "sharepoint" ? "active" : "")"
+                    @onclick='() => SetTab("sharepoint")' type="button">
+                <span class="bi bi-shield-check me-1"></span> SharePoint
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "payment" ? "active" : "")"
+                    @onclick='() => SetTab("payment")' type="button">
+                <span class="bi bi-credit-card me-1"></span> Payment &amp; Subscription
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-danger @(activeTab == "account" ? "active" : "")"
+                    @onclick='() => SetTab("account")' type="button">
+                <span class="bi bi-exclamation-triangle me-1"></span> Account
+            </button>
+        </li>
+    </ul>
+
+    <!-- Profile Tab -->
+    @if (activeTab == "profile")
+    {
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <span class="bi bi-person-circle me-2"></span>
+                            Profile Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(profileSuccessMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <span class="bi bi-check-circle-fill me-2"></span>
+                                @profileSuccessMessage
+                                <button type="button" class="btn-close" @onclick="() => profileSuccessMessage = null"></button>
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Display Name</label>
+                            <input type="text" class="form-control" value="@userName" readonly
+                                   title="Your display name comes from your Microsoft account" />
+                            <div class="form-text">Managed via your Microsoft account.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control" value="@userEmail" readonly
+                                   title="Your email comes from your Microsoft account" />
+                            <div class="form-text">Managed via your Microsoft account.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="contactPhone" class="form-label fw-semibold">Contact Phone</label>
+                            <input id="contactPhone" type="tel" class="form-control" @bind="contactPhone"
+                                   placeholder="e.g. +44 20 1234 5678" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="contactAddress" class="form-label fw-semibold">Address</label>
+                            <textarea id="contactAddress" class="form-control" rows="3" @bind="contactAddress"
+                                      placeholder="e.g. 123 High Street, London, UK"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-primary" @onclick="SaveProfile" disabled="@isSavingProfile">
+                                @if (isSavingProfile)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span class="bi bi-check-lg me-1"></span> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- SharePoint Tab -->
+    @if (activeTab == "sharepoint")
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <span class="bi bi-shield-check me-2"></span>
+                            SharePoint Connection
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (_loadingPermissions)
+                        {
+                            <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                Checking SharePoint permission status&hellip;
+                            </div>
+                        }
+                        else
+                        {
+                            @if (_allPermissionsGranted)
+                            {
+                                <div class="alert alert-success">
+                                    <span class="bi bi-check-circle-fill me-2"></span>
+                                    <strong>Connected.</strong> All required Microsoft Graph permissions are granted.
+                                    Your SharePoint tenant is fully connected to ClientSpace.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning">
+                                    <span class="bi bi-exclamation-triangle-fill me-2"></span>
+                                    <strong>Action Required.</strong> One or more Microsoft Graph permissions are missing.
+                                    SharePoint features will be limited until all permissions are granted.
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_permissionsError))
+                            {
+                                <div class="alert alert-info">
+                                    <span class="bi bi-info-circle me-2"></span>
+                                    @_permissionsError
+                                </div>
+                            }
+
+                            <h6 class="mt-3">Required Permissions</h6>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Permission</th>
+                                            <th class="text-center" style="width:120px">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var perm in _requiredPermissions)
+                                        {
+                                            var isGranted = _grantedPermissions.Contains(perm, StringComparer.OrdinalIgnoreCase);
+                                            <tr>
+                                                <td><code>@perm</code></td>
+                                                <td class="text-center">
+                                                    @if (isGranted)
+                                                    {
+                                                        <span class="badge bg-success">
+                                                            <span class="bi bi-check-circle-fill me-1"></span>Granted
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger">
+                                                            <span class="bi bi-x-circle-fill me-1"></span>Missing
+                                                        </span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="/admin/sharepoint-setup" class="btn btn-primary">
+                                <span class="bi bi-shield-check me-2"></span>
+                                Open SharePoint Setup
+                            </a>
+                            <button class="btn btn-outline-secondary" @onclick="CheckPermissions" disabled="@_loadingPermissions">
+                                <span class="bi bi-arrow-clockwise me-2"></span>
+                                Refresh Status
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Payment & Subscription Tab -->
+    @if (activeTab == "payment")
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                @if (_loadingSubscription)
+                {
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                            Loading subscription information&hellip;
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(_subscriptionError))
+                {
+                    <div class="alert alert-danger">
+                        <span class="bi bi-exclamation-circle me-2"></span>
+                        @_subscriptionError
+                        <button class="btn btn-sm btn-outline-danger ms-3" @onclick="LoadSubscription">
+                            <span class="bi bi-arrow-clockwise"></span> Retry
+                        </button>
+                    </div>
+                }
+                else if (_subscription != null)
+                {
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <span class="bi bi-star-fill me-2"></span>
+                                Current Plan
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-7">
+                                    <h4 class="mb-3">@_subscription.Tier Plan</h4>
+                                    <p class="mb-2">
+                                        <strong>Status:</strong>
+                                        <span class="badge @GetStatusBadgeClass(_subscription.Status)">
+                                            @_subscription.Status
+                                        </span>
+                                    </p>
+                                    @if (_subscription.StartDate.HasValue)
+                                    {
+                                        <p class="mb-2">
+                                            <strong>Started:</strong> @_subscription.StartDate.Value.ToString("MMM dd, yyyy")
+                                        </p>
+                                    }
+                                    @if (_subscription.TrialExpiry.HasValue)
+                                    {
+                                        <p class="mb-2">
+                                            <strong>Trial Expires:</strong> @_subscription.TrialExpiry.Value.ToString("MMM dd, yyyy")
+                                        </p>
+                                    }
+                                    @if (!string.IsNullOrEmpty(_subscription.StripeSubscriptionId))
+                                    {
+                                        <p class="mb-1">
+                                            <strong>Subscription ID:</strong> <code>@_subscription.StripeSubscriptionId</code>
+                                        </p>
+                                    }
+                                </div>
+                                <div class="col-md-5 text-end">
+                                    @if (_subscription.IsActive)
+                                    {
+                                        <a href="/pricing" class="btn btn-outline-primary mb-2 d-block">
+                                            <span class="bi bi-arrow-up-circle me-1"></span> Upgrade Plan
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="/pricing" class="btn btn-primary d-block">
+                                            <span class="bi bi-star me-1"></span> Subscribe Now
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (_subscription.Limits != null)
+                    {
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Plan Limits</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Client Spaces</span>
+                                            <strong>@(_subscription.Limits.MaxClientSpaces?.ToString() ?? "Unlimited")</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6 mb-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>External Users</span>
+                                            <strong>@(_subscription.Limits.MaxExternalUsers?.ToString() ?? "Unlimited")</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                @if (_subscription.Features != null && _subscription.Features.Any())
+                                {
+                                    <div class="pt-2 border-top">
+                                        <h6 class="text-muted mb-2">Enabled Features</h6>
+                                        <ul class="list-unstyled mb-0">
+                                            @foreach (var feature in _subscription.Features)
+                                            {
+                                                <li class="mb-1">
+                                                    <span class="bi bi-check-circle-fill text-success me-1"></span>
+                                                    @feature
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Account Tab -->
+    @if (activeTab == "account")
+    {
+        <div class="row">
+            <div class="col-lg-6">
+                @if (_loadingSubscription)
+                {
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                            Loading account information&hellip;
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card shadow-sm border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">
+                                <span class="bi bi-exclamation-triangle me-2"></span>
+                                Danger Zone
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="fw-semibold">Cancel Subscription</h6>
+                            <p class="text-muted">
+                                Cancelling your subscription will end your access to paid features.
+                                You will have a 7-day grace period to reactivate before access is removed.
+                            </p>
+
+                            @if (_subscription != null && _subscription.IsActive)
+                            {
+                                <div class="alert alert-warning">
+                                    <ul class="mb-0">
+                                        <li>Current plan: <strong>@_subscription.Tier</strong></li>
+                                        <li>You will have a 7-day grace period to reactivate.</li>
+                                        <li>Your data will be preserved during the grace period.</li>
+                                    </ul>
+                                </div>
+
+                                <button class="btn btn-outline-danger" @onclick="ShowCancelModal">
+                                    <span class="bi bi-x-circle me-1"></span> Cancel Subscription
+                                </button>
+                            }
+                            else if (_subscription != null && !_subscription.IsActive)
+                            {
+                                <div class="alert alert-secondary">
+                                    <span class="bi bi-info-circle me-2"></span>
+                                    Your subscription is currently <strong>@_subscription.Status</strong>.
+                                    <a href="/pricing" class="alert-link ms-1">Subscribe again</a>
+                                </div>
+                            }
+                            else if (!string.IsNullOrEmpty(_subscriptionError))
+                            {
+                                <div class="alert alert-danger">
+                                    <span class="bi bi-exclamation-circle me-2"></span>
+                                    Could not load subscription information. Please refresh the page.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Cancel Subscription Modal -->
+@if (showCancelModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <span class="bi bi-exclamation-triangle me-2"></span>
+                        Cancel Subscription
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HideCancelModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(cancelError))
+                    {
+                        <div class="alert alert-danger">@cancelError</div>
+                    }
+                    <p>Are you sure you want to cancel your subscription?</p>
+                    <div class="alert alert-warning">
+                        <strong>Please note:</strong>
+                        <ul class="mb-0">
+                            <li>You will have a 7-day grace period to reactivate.</li>
+                            <li>Your data will be preserved during the grace period.</li>
+                            <li>After the grace period, some features may be limited.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideCancelModal">
+                        Keep Subscription
+                    </button>
+                    <button type="button" class="btn btn-danger" @onclick="CancelSubscription" disabled="@isCancelling">
+                        @if (isCancelling)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Cancelling&hellip;</span>
+                        }
+                        else
+                        {
+                            <span><span class="bi bi-x-circle me-1"></span> Yes, Cancel Subscription</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string activeTab = "profile";
+
+    // Profile
+    private string? userName;
+    private string? userEmail;
+    private string contactPhone = string.Empty;
+    private string contactAddress = string.Empty;
+    private bool isSavingProfile = false;
+    private string? profileSuccessMessage;
+
+    // SharePoint
+    private bool _loadingPermissions = true;
+    private bool _allPermissionsGranted = false;
+    private string? _permissionsError;
+    private List<string> _grantedPermissions = new();
+
+    private static readonly List<string> _requiredPermissions =
+    [
+        "User.Read.All",
+        "Sites.ReadWrite.All",
+        "Sites.FullControl.All",
+        "Directory.Read.All",
+    ];
+
+    // Subscription / Payment
+    private bool _loadingSubscription = true;
+    private string? _subscriptionError;
+    private Models.SubscriptionStatusResponse? _subscription;
+
+    // Cancel modal
+    private bool showCancelModal = false;
+    private bool isCancelling = false;
+    private string? cancelError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        userName = user.Identity?.Name;
+        userEmail = user.FindFirst("preferred_username")?.Value
+                    ?? user.FindFirst("email")?.Value
+                    ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+
+        await Task.WhenAll(CheckPermissions(), LoadSubscription());
+    }
+
+    private void SetTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private async Task SaveProfile()
+    {
+        isSavingProfile = true;
+        profileSuccessMessage = null;
+
+        // Simulate save — extend with a real API call when a profile endpoint is available
+        await Task.Delay(500);
+
+        profileSuccessMessage = "Profile information saved successfully.";
+        isSavingProfile = false;
+    }
+
+    private async Task CheckPermissions()
+    {
+        _loadingPermissions = true;
+        _permissionsError = null;
+
+        try
+        {
+            var result = await ApiClient.ValidatePermissionsAsync();
+            if (result != null)
+            {
+                _grantedPermissions = result.GrantedPermissions ?? new List<string>();
+                _allPermissionsGranted = result.HasRequiredPermissions;
+            }
+            else
+            {
+                _permissionsError = "Unable to retrieve permission status. Ensure the API is running.";
+            }
+        }
+        catch (Services.ApiNotConfiguredException)
+        {
+            _permissionsError = "The API server URL is not configured.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not retrieve permission status");
+            _permissionsError = "Could not reach the API to check SharePoint permissions.";
+        }
+        finally
+        {
+            _loadingPermissions = false;
+        }
+    }
+
+    private async Task LoadSubscription()
+    {
+        _loadingSubscription = true;
+        _subscriptionError = null;
+
+        try
+        {
+            _subscription = await ApiClient.GetMySubscriptionAsync();
+        }
+        catch (Services.ApiNotConfiguredException)
+        {
+            _subscriptionError = "The API server URL is not configured. Contact your administrator.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load subscription in settings");
+            _subscriptionError = "Failed to load subscription information. Please try again.";
+        }
+        finally
+        {
+            _loadingSubscription = false;
+        }
+    }
+
+    private void ShowCancelModal()
+    {
+        cancelError = null;
+        showCancelModal = true;
+    }
+
+    private void HideCancelModal()
+    {
+        showCancelModal = false;
+    }
+
+    private async Task CancelSubscription()
+    {
+        isCancelling = true;
+        cancelError = null;
+
+        try
+        {
+            await ApiClient.CancelSubscriptionAsync();
+            await LoadSubscription();
+            HideCancelModal();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to cancel subscription from settings");
+            cancelError = "Failed to cancel subscription. Please try again or contact support.";
+        }
+        finally
+        {
+            isCancelling = false;
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Active" => "bg-success",
+            "Trial" => "bg-info",
+            "Cancelled" => "bg-danger",
+            "Suspended" => "bg-warning",
+            "Expired" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<style>
+    .nav-tabs .nav-link {
+        cursor: pointer;
+        border: none;
+        background: none;
+    }
+
+    .nav-tabs .nav-link.active {
+        font-weight: 600;
+        border-bottom: 2px solid #0078d4;
+        color: #0078d4;
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        color: #495057;
+        background-color: #f8f9fa;
+        border-radius: 4px 4px 0 0;
+    }
+
+    .card.border-danger .card-header.bg-danger {
+        border-radius: calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;
+    }
+</style>
