@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject ILogger<Settings> Logger
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Settings - ClientSpace</PageTitle>
 
@@ -94,6 +95,11 @@
                             <label for="contactAddress" class="form-label fw-semibold">Address</label>
                             <textarea id="contactAddress" class="form-control" rows="3" @bind="contactAddress"
                                       placeholder="e.g. 123 High Street, London, UK"></textarea>
+                        </div>
+
+                        <div class="alert alert-info py-2">
+                            <span class="bi bi-info-circle me-1"></span>
+                            Contact details are stored locally in your browser until backend profile storage is available.
                         </div>
 
                         <div class="d-flex justify-content-end">
@@ -497,6 +503,23 @@
         await Task.WhenAll(CheckPermissions(), LoadSubscription());
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                contactPhone = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cs_contact_phone") ?? string.Empty;
+                contactAddress = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "cs_contact_address") ?? string.Empty;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Could not load contact info from localStorage");
+            }
+        }
+    }
+
     private void SetTab(string tab)
     {
         activeTab = tab;
@@ -507,11 +530,21 @@
         isSavingProfile = true;
         profileSuccessMessage = null;
 
-        // Simulate save — extend with a real API call when a profile endpoint is available
-        await Task.Delay(500);
-
-        profileSuccessMessage = "Profile information saved successfully.";
-        isSavingProfile = false;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cs_contact_phone", contactPhone);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "cs_contact_address", contactAddress);
+            profileSuccessMessage = "Contact information saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not save contact info to localStorage");
+            profileSuccessMessage = "Unable to save preferences. Please try again.";
+        }
+        finally
+        {
+            isSavingProfile = false;
+        }
     }
 
     private async Task CheckPermissions()
