@@ -2,7 +2,7 @@ name: Build API
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ develop ]
     paths:
       - 'src/api-dotnet/**'
       - 'src/shared/**'

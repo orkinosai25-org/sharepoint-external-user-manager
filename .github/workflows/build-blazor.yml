@@ -2,7 +2,7 @@ name: Build Blazor Portal
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ develop ]
     paths:
       - 'src/portal-blazor/**'
       - 'src/shared/**'

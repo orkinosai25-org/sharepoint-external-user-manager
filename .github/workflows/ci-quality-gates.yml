@@ -20,8 +20,6 @@ name: CI Quality Gates
 on:
   pull_request:
     branches: [ main ]
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 # Cancel in-progress runs when a new commit is pushed

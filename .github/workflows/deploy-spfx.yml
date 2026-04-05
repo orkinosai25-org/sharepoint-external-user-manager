@@ -26,6 +26,8 @@ name: Deploy SPFx Solution to SharePoint
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'src/client-spfx/**'
   workflow_dispatch: # Allow manual triggering
 
 env:
