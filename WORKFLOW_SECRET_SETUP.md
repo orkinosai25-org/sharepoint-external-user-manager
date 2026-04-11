@@ -47,6 +47,19 @@ The SharePoint External User Manager uses **publish profiles** for deploying .NE
 | `AZURE_AD_CLIENT_SECRET` | Azure AD Application Client Secret | Yes |
 | `AZURE_AD_TENANT_ID` | Azure AD Tenant ID | Yes |
 
+### For Azure Infrastructure Setup (azure-infra-setup.yml)
+
+This workflow uses **OIDC federated credentials** — no client secret is stored in GitHub.
+The service principal must hold the **Contributor** role on the target subscription or resource group.
+See [docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md](docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md) for setup instructions.
+
+| Secret Name | Purpose | Required |
+|-------------|---------|----------|
+| `AZURE_CLIENT_ID` | Service principal application (client) ID | Yes |
+| `AZURE_TENANT_ID` | Azure AD tenant ID | Yes |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | Yes |
+| `SQL_ADMIN_PASSWORD` | SQL Server administrator password | Yes |
+
 ### For SPFx Deployment (deploy-spfx.yml)
 
 | Secret Name | Purpose | Required |

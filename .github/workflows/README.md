@@ -322,6 +322,33 @@ Deploys Azure Functions backend to production.
 
 **Environment**: Production (with manual approval)
 
+### Azure Infrastructure Setup (`azure-infra-setup.yml`)
+
+Provisions Azure resources using Bicep templates. Uses **OIDC federated credentials** — no client secret stored in GitHub.
+
+**Triggers**:
+- Manual dispatch only (`workflow_dispatch`)
+
+**Inputs**:
+| Input | Description | Default |
+|-------|-------------|---------|
+| `environment` | Target environment (`dev`, `staging`, `prod`) | `dev` |
+| `resource_group` | Resource group name (blank = auto) | auto |
+| `location` | Azure region | `uksouth` |
+| `sql_admin_username` | SQL Server admin login | `sqladmin` |
+| `validate_only` | Validate template without deploying | `false` |
+
+**Required Secrets**: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `SQL_ADMIN_PASSWORD`
+
+**Jobs**:
+1. **Preflight** — validates secrets and resolves resource group name
+2. **Deploy Infrastructure** — runs Bicep deployment (or validate-only)
+
+**Prerequisites**:
+The service principal (`AZURE_CLIENT_ID`) must hold the **Contributor** role on the subscription or resource group.
+See [docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md](../../docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md) for setup instructions,
+including what to do when the service principal is not visible in the Azure Portal IAM search.
+
 ---
 
 ## Workflow Dependencies
