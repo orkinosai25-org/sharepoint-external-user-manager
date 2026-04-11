@@ -1,0 +1,266 @@
+name: Azure Infrastructure Setup
+
+# This workflow provisions Azure resources using Bicep templates.
+# It authenticates via OIDC (federated credentials) — no client secrets stored.
+#
+# PREREQUISITE: The service principal identified by AZURE_CLIENT_ID must hold
+# the Contributor role on the target subscription or resource group.
+# See docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md for setup instructions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+      resource_group:
+        description: 'Azure Resource Group name (leave blank to use default per environment)'
+        required: false
+        type: string
+      location:
+        description: 'Azure region (e.g. uksouth, eastus)'
+        required: false
+        type: string
+        default: 'uksouth'
+      sql_admin_username:
+        description: 'SQL Server admin username'
+        required: false
+        type: string
+        default: 'sqladmin'
+      validate_only:
+        description: 'Validate Bicep template only (do not deploy)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+# Required for OIDC token exchange with Azure
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ── Job 1: Pre-flight validation ──────────────────────────────────────────
+  preflight:
+    name: Validate Secrets and Inputs
+    runs-on: ubuntu-latest
+    outputs:
+      resource_group: ${{ steps.resolve.outputs.resource_group }}
+      environment: ${{ github.event.inputs.environment }}
+      oidc_ready: ${{ steps.check.outputs.oidc_ready }}
+
+    steps:
+      - name: Check OIDC secrets
+        id: check
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          missing=""
+          [ -z "$AZURE_CLIENT_ID" ]       && missing="$missing AZURE_CLIENT_ID"
+          [ -z "$AZURE_TENANT_ID" ]       && missing="$missing AZURE_TENANT_ID"
+          [ -z "$AZURE_SUBSCRIPTION_ID" ] && missing="$missing AZURE_SUBSCRIPTION_ID"
+
+          if [ -n "$missing" ]; then
+            echo "::error::Required OIDC secrets are not configured:$missing"
+            echo ""
+            echo "ℹ️  To fix this:"
+            echo "  1. Go to repository Settings → Secrets and variables → Actions"
+            echo "  2. Add the following secrets:"
+            echo "     - AZURE_CLIENT_ID      : Service principal application (client) ID"
+            echo "     - AZURE_TENANT_ID      : Azure AD tenant ID"
+            echo "     - AZURE_SUBSCRIPTION_ID: Target Azure subscription ID"
+            echo ""
+            echo "  See docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md for full setup instructions."
+            echo "oidc_ready=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "✅ All OIDC secrets are configured"
+          echo "oidc_ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve resource group name
+        id: resolve
+        run: |
+          INPUT_RG="${{ github.event.inputs.resource_group }}"
+          ENV="${{ github.event.inputs.environment }}"
+
+          if [ -n "$INPUT_RG" ]; then
+            RG="$INPUT_RG"
+          else
+            case "$ENV" in
+              dev)     RG="spexternal-dev-rg" ;;
+              staging) RG="spexternal-staging-rg" ;;
+              prod)    RG="spexternal-prod-rg" ;;
+              *)       RG="spexternal-dev-rg" ;;
+            esac
+          fi
+
+          echo "resource_group=$RG" >> "$GITHUB_OUTPUT"
+          echo "✅ Resolved resource group: $RG (environment: $ENV)"
+
+  # ── Job 2: Deploy or validate Bicep ───────────────────────────────────────
+  deploy-infrastructure:
+    name: ${{ github.event.inputs.validate_only == 'true' && 'Validate' || 'Deploy' }} Infrastructure (${{ github.event.inputs.environment }})
+    runs-on: ubuntu-latest
+    needs: preflight
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # OIDC login — no client secret required.
+      # The service principal (AZURE_CLIENT_ID) must have the Contributor role
+      # on the subscription or resource group; otherwise this step yields a 403.
+      # See docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md for role-assignment instructions.
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify service principal permissions
+        id: verify-perms
+        env:
+          RESOURCE_GROUP: ${{ needs.preflight.outputs.resource_group }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          echo "🔍 Checking access to resource group '$RESOURCE_GROUP'…"
+
+          # Try a lightweight read operation to detect 403 early
+          if az group show --name "$RESOURCE_GROUP" &>/dev/null; then
+            echo "✅ Resource group '$RESOURCE_GROUP' is accessible"
+          else
+            echo "::warning::Resource group '$RESOURCE_GROUP' not found — it will be created during deployment"
+          fi
+
+          echo "ℹ️  If deployment fails with 403/AuthorizationFailed, follow"
+          echo "   docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md to assign the Contributor role."
+
+      - name: Ensure resource group exists
+        if: github.event.inputs.validate_only != 'true'
+        env:
+          RESOURCE_GROUP: ${{ needs.preflight.outputs.resource_group }}
+          LOCATION: ${{ github.event.inputs.location }}
+        run: |
+          if ! az group show --name "$RESOURCE_GROUP" &>/dev/null; then
+            echo "📦 Creating resource group '$RESOURCE_GROUP' in '$LOCATION'…"
+            az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
+            echo "✅ Resource group created"
+          else
+            echo "✅ Resource group '$RESOURCE_GROUP' already exists"
+          fi
+
+      - name: Validate Bicep template
+        env:
+          RESOURCE_GROUP: ${{ needs.preflight.outputs.resource_group }}
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          SQL_ADMIN_USERNAME: ${{ github.event.inputs.sql_admin_username }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$SQL_ADMIN_PASSWORD" ]; then
+            echo "::warning::SQL_ADMIN_PASSWORD secret is not set — using a placeholder for validation only"
+            SQL_ADMIN_PASSWORD="Placeholder@123!"
+          fi
+
+          echo "🔍 Validating Bicep template for environment '$ENVIRONMENT'…"
+          az deployment group validate \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/bicep/main.bicep \
+            --parameters environment="$ENVIRONMENT" \
+            --parameters sqlAdminUsername="$SQL_ADMIN_USERNAME" \
+            --parameters sqlAdminPassword="$SQL_ADMIN_PASSWORD"
+          echo "✅ Template validation passed"
+
+      - name: Deploy Bicep infrastructure
+        if: github.event.inputs.validate_only != 'true'
+        id: deploy
+        env:
+          RESOURCE_GROUP: ${{ needs.preflight.outputs.resource_group }}
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          SQL_ADMIN_USERNAME: ${{ github.event.inputs.sql_admin_username }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          DEPLOYMENT_NAME="infra-setup-$ENVIRONMENT-$(date -u +%Y%m%d%H%M%S)"
+
+          echo "🚀 Deploying infrastructure to '$RESOURCE_GROUP' (deployment: $DEPLOYMENT_NAME)…"
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file infra/bicep/main.bicep \
+            --parameters environment="$ENVIRONMENT" \
+            --parameters sqlAdminUsername="$SQL_ADMIN_USERNAME" \
+            --parameters sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
+            --name "$DEPLOYMENT_NAME"
+
+          echo "deployment_name=$DEPLOYMENT_NAME" >> "$GITHUB_OUTPUT"
+          echo "✅ Deployment '$DEPLOYMENT_NAME' completed"
+
+      - name: Capture deployment outputs
+        if: github.event.inputs.validate_only != 'true' && steps.deploy.outcome == 'success'
+        env:
+          RESOURCE_GROUP: ${{ needs.preflight.outputs.resource_group }}
+          DEPLOYMENT_NAME: ${{ steps.deploy.outputs.deployment_name }}
+        run: |
+          echo "📋 Deployment outputs:"
+          az deployment group show \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$DEPLOYMENT_NAME" \
+            --query "properties.outputs" \
+            --output json
+
+      - name: Write job summary
+        if: always()
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          RESOURCE_GROUP: ${{ needs.preflight.outputs.resource_group }}
+          VALIDATE_ONLY: ${{ github.event.inputs.validate_only }}
+          DEPLOY_RESULT: ${{ steps.deploy.outcome }}
+        run: |
+          MODE="Deploy"
+          [ "$VALIDATE_ONLY" = "true" ] && MODE="Validate"
+
+          {
+            echo "## 🏗️ Azure Infrastructure Setup — $MODE"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Environment | \`$ENVIRONMENT\` |"
+            echo "| Resource Group | \`$RESOURCE_GROUP\` |"
+            echo "| Mode | $MODE |"
+            echo "| Date | $(date -u +"%Y-%m-%d %H:%M:%S") UTC |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo ""
+
+            if [ "$VALIDATE_ONLY" = "true" ]; then
+              echo "### ✅ Template validated — no resources were created"
+            elif [ "$DEPLOY_RESULT" = "success" ]; then
+              echo "### ✅ Infrastructure deployed successfully"
+              echo ""
+              echo "**Next steps:**"
+              echo "1. Run the application deployment workflows (deploy-dev.yml / deploy-prod.yml)"
+              echo "2. Configure App Service environment variables"
+              echo "3. Verify health endpoints"
+            else
+              echo "### ❌ Deployment failed"
+              echo ""
+              echo "**Common causes:**"
+              echo "- Service principal lacks Contributor role → see [role assignment guide](../../docs/AZURE_SP_ROLE_ASSIGNMENT_GUIDE.md)"
+              echo "- \`SQL_ADMIN_PASSWORD\` secret not configured"
+              echo "- Resource group in wrong region"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Azure Logout
+        if: always()
+        run: az logout || true
