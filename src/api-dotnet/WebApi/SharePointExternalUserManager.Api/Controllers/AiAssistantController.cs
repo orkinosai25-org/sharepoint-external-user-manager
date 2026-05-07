@@ -36,10 +36,11 @@ public class AiAssistantController : ControllerBase
     }
 
     /// <summary>
-    /// Send a message to the AI assistant
+    /// Send a message to the AI assistant.
+    /// Marketing mode is available anonymously; InProduct mode requires authentication and a Pro plan.
     /// </summary>
     [HttpPost("chat")]
-    [RequiresPlan("Pro", "AI Assistant")]
+    [AllowAnonymous]
     public async Task<ActionResult<AiChatResponse>> SendMessage([FromBody] AiChatRequest request)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -54,6 +55,12 @@ public class AiAssistantController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.Message))
             {
                 return BadRequest("Message cannot be empty");
+            }
+
+            // InProduct mode requires authentication
+            if (request.Mode == AiMode.InProduct && User.Identity?.IsAuthenticated != true)
+            {
+                return Unauthorized("Authentication is required for in-product AI assistant");
             }
 
             // Get tenant ID and user info from claims if authenticated (for InProduct mode)
@@ -73,6 +80,36 @@ public class AiAssistantController : ControllerBase
                 if (int.TryParse(tenantIdClaim, out var tid))
                 {
                     tenantId = tid;
+                }
+
+                // Enforce Pro plan requirement for InProduct mode
+                if (tenantId.HasValue)
+                {
+                    var subscription = await _context.Subscriptions
+                        .Where(s => s.TenantId == tenantId.Value)
+                        .OrderByDescending(s => s.StartDate)
+                        .FirstOrDefaultAsync();
+
+                    if (subscription == null)
+                    {
+                        return StatusCode(403, "No active subscription found. AI assistant requires a Pro plan.");
+                    }
+
+                    if (!RequiresPlanAttribute.IsTierSufficient(subscription.Tier, "Pro"))
+                    {
+                        return StatusCode(403, $"In-product AI assistant requires a Pro plan or higher. Current plan: {subscription.Tier}");
+                    }
+
+                    if (subscription.Status != "Active" && subscription.Status != "Trial")
+                    {
+                        return StatusCode(403, $"Subscription is {subscription.Status}. Please renew your subscription.");
+                    }
+
+                    if (subscription.Status == "Trial" && subscription.TrialExpiry.HasValue
+                        && subscription.TrialExpiry.Value < DateTime.UtcNow)
+                    {
+                        return StatusCode(403, "Your trial has expired. Please upgrade to a paid plan.");
+                    }
                 }
 
                 // Get user role from claims
@@ -130,16 +167,16 @@ public class AiAssistantController : ControllerBase
                     return StatusCode(429, "Monthly token budget exceeded");
                 }
 
-                // Check plan-based monthly message limit
-                var subscription = await _context.Subscriptions
+                // Check plan-based monthly message limit (fetch subscription once; InProduct already verified it above)
+                var tenantSubscription = await _context.Subscriptions
                     .Where(s => s.TenantId == tenantId.Value)
                     .OrderByDescending(s => s.StartDate)
                     .FirstOrDefaultAsync();
 
-                if (subscription != null)
+                if (tenantSubscription != null)
                 {
                     // Get plan definition for the subscription tier
-                    var planDef = PlanConfiguration.GetPlanDefinitionByName(subscription.Tier);
+                    var planDef = PlanConfiguration.GetPlanDefinitionByName(tenantSubscription.Tier);
                     if (planDef != null && planDef.Limits.MaxAiMessagesPerMonth.HasValue)
                     {
                         // Count messages this month for this tenant
